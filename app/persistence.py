@@ -25,9 +25,14 @@ class JsonStore:
         self.backups = root / "backups"
         self.exports = root / "exports"
         self.configurations = root / "configurations"
+        self.master_data = root / "master-data"
+        self.master_data_backups = root / "master-data-backups"
         self.backup_retention = backup_retention
         self._locks: dict[str, threading.Lock] = {}
-        for path in (self.projects, self.backups, self.exports, self.configurations):
+        for path in (
+            self.projects, self.backups, self.exports, self.configurations,
+            self.master_data, self.master_data_backups,
+        ):
             path.mkdir(parents=True, exist_ok=True)
 
     def _lock(self, key: str) -> threading.Lock:
@@ -44,6 +49,15 @@ class JsonStore:
             return value
         except (OSError, json.JSONDecodeError, ValueError) as exc:
             raise PersistenceError(f"Cannot read valid JSON from {path.name}: {exc}") from exc
+
+    @staticmethod
+    def _migrate_project(document: dict[str, Any]) -> dict[str, Any]:
+        """Migrate a project in memory without rewriting its source file."""
+        from .migrations import migrate_project_document
+        try:
+            return migrate_project_document(document)
+        except ValueError as exc:
+            raise PersistenceError(f"Cannot migrate project document: {exc}") from exc
 
     @staticmethod
     def atomic_write(path: Path, value: dict[str, Any]) -> None:
@@ -73,7 +87,7 @@ class JsonStore:
         output = []
         for path in sorted(self.projects.glob("*.json")):
             try:
-                doc = self._read(path)
+                doc = self._migrate_project(self._read(path))
                 output.append(doc["project"])
             except (PersistenceError, KeyError):
                 output.append({"id": path.stem, "name": path.stem, "malformed": True, "archived": False})
@@ -82,14 +96,14 @@ class JsonStore:
     def load_project(self, project_id: str, recover: bool = False) -> tuple[dict[str, Any], str | None]:
         path = self.project_path(project_id)
         try:
-            return self._read(path), None
+            return self._migrate_project(self._read(path)), None
         except PersistenceError as primary_error:
             if not recover:
                 raise
             candidates = sorted((self.backups / project_id).glob("*.json"), reverse=True)
             for candidate in candidates:
                 try:
-                    return self._read(candidate), candidate.name
+                    return self._migrate_project(self._read(candidate)), candidate.name
                 except PersistenceError:
                     continue
             raise PersistenceError(f"Primary is invalid and no valid backup exists: {primary_error}") from primary_error
@@ -134,7 +148,7 @@ class JsonStore:
 
     def restore_backup(self, project_id: str, backup_name: str) -> dict[str, Any]:
         candidate = self.backups / project_id / Path(backup_name).name
-        recovered = self._read(candidate)
+        recovered = self._migrate_project(self._read(candidate))
         current_revision = int(recovered["project"].get("revision", 0))
         path = self.project_path(project_id)
         try:
@@ -165,3 +179,95 @@ class JsonStore:
 
     def list_configurations(self) -> list[dict[str, Any]]:
         return [self._read(p) for p in sorted(self.configurations.glob("*.json"))]
+
+    @staticmethod
+    def _safe_document_name(name: str) -> str:
+        safe = "".join(c for c in str(name) if c.isalnum() or c in "_-")
+        if safe != name or not safe:
+            raise PersistenceError("Invalid document identifier")
+        return safe
+
+    def master_data_path(self, name: str = "directory") -> Path:
+        """Return the path for a named reusable master-data document."""
+        return self.master_data / f"{self._safe_document_name(name)}.json"
+
+    def load_master_data(self, name: str = "directory") -> dict[str, Any]:
+        return self._read(self.master_data_path(name))
+
+    def save_master_data(
+        self,
+        document: dict[str, Any],
+        expected_revision: int | None,
+        *,
+        name: str = "directory",
+    ) -> dict[str, Any]:
+        """Atomically save a revisioned reusable master-data document.
+
+        Master data has an independent revision stream and backup collection so a
+        directory update can never advance or overwrite a project revision.
+        """
+        safe_name = self._safe_document_name(name)
+        path = self.master_data_path(safe_name)
+        with self._lock(f"master-data:{safe_name}"):
+            current = None
+            if path.exists():
+                current = self._read(path)
+                actual = int(current.get("revision", 0))
+                if expected_revision is not None and expected_revision != actual:
+                    raise ConflictError(
+                        f"Concurrent master-data edit detected: expected revision "
+                        f"{expected_revision}, current revision {actual}."
+                    )
+                self._backup_master_data(safe_name, path, actual)
+            elif expected_revision not in (None, -1, 0):
+                raise ConflictError("Master-data document does not yet exist at the expected revision.")
+            saved = json.loads(json.dumps(document))
+            saved["revision"] = int(current.get("revision", 0)) + 1 if current else 1
+            saved["updated_at"] = datetime.now(UTC).isoformat()
+            self.atomic_write(path, saved)
+            return saved
+
+    def _backup_master_data(self, name: str, path: Path, revision: int) -> Path:
+        stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
+        folder = self.master_data_backups / name
+        folder.mkdir(parents=True, exist_ok=True)
+        target = folder / f"{stamp}-r{revision}.json"
+        shutil.copy2(path, target)
+        backups = sorted(folder.glob("*.json"), reverse=True)
+        for old in backups[self.backup_retention:]:
+            old.unlink(missing_ok=True)
+        return target
+
+    def master_data_backup_names(self, name: str = "directory") -> list[str]:
+        safe_name = self._safe_document_name(name)
+        return [
+            path.name
+            for path in sorted((self.master_data_backups / safe_name).glob("*.json"), reverse=True)
+        ]
+
+    def restore_master_data(self, backup_name: str, *, name: str = "directory") -> dict[str, Any]:
+        """Restore a known-valid master-data backup as a new revision."""
+        safe_name = self._safe_document_name(name)
+        candidate = self.master_data_backups / safe_name / Path(backup_name).name
+        recovered = self._read(candidate)
+        path = self.master_data_path(safe_name)
+        with self._lock(f"master-data:{safe_name}"):
+            current = None
+            if path.exists():
+                try:
+                    current = self._read(path)
+                except PersistenceError:
+                    # Retain malformed directory bytes as forensic evidence,
+                    # then atomically install the selected known-valid backup.
+                    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
+                    folder = self.master_data_backups / safe_name
+                    folder.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(path, folder / f"{stamp}-corrupt-primary.json.corrupt")
+                else:
+                    self._backup_master_data(safe_name, path, int(current.get("revision", 0)))
+            saved = json.loads(json.dumps(recovered))
+            basis_revision = int((current or recovered).get("revision", 0))
+            saved["revision"] = basis_revision + 1
+            saved["updated_at"] = datetime.now(UTC).isoformat()
+            self.atomic_write(path, saved)
+            return saved

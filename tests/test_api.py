@@ -1,10 +1,14 @@
 import json
+import re
+from copy import deepcopy
 
 import pytest
 from fastapi.testclient import TestClient
 
+from app.custom_code_auth import MINIMUM_ITERATIONS, hash_password
 from app.persistence import JsonStore
-from app.schema import CONFIG_VERSION, default_configuration
+from app.schema import CONFIG_VERSION, SCHEMA_VERSION, default_configuration
+from app.version import SOFTWARE_VERSION
 
 
 @pytest.fixture()
@@ -18,6 +22,22 @@ def client(tmp_path, monkeypatch):
 
 def h(role="Estimator", actor="Tester"):
     return {"X-Role":role,"X-Actor":actor}
+
+
+def create_project(client, name="API Contract"):
+    response = client.post("/api/projects", headers=h(), json={"name": name})
+    assert response.status_code == 200
+    return response.json()["project"]
+
+
+def first_controlled_cost_code():
+    reference = next(row for row in default_configuration()["csi_references"] if row.get("active", True))
+    return {
+        "id": "ccd_api_contract",
+        "code": reference["display_code"],
+        "description": reference["description"],
+        "deduct": False,
+    }
 
 
 def test_direct_workspace_routes_return_fresh_application_shell(client):
@@ -35,7 +55,12 @@ def test_direct_workspace_routes_return_fresh_application_shell(client):
 
 
 def test_health_static_and_project_crud_conflict(client):
-    assert client.get("/api/health").status_code == 200
+    health = client.get("/api/health")
+    assert health.status_code == 200
+    assert health.json()["software_version"] == SOFTWARE_VERSION
+    assert re.fullmatch(r"(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)", health.json()["software_version"])
+    assert health.json()["schema_version"] == SCHEMA_VERSION == "1.1.0"
+    assert client.get("/openapi.json").json()["info"]["version"] == SOFTWARE_VERSION
     assert "Murphy Window" in client.get("/").text
     created=client.post("/api/projects",headers=h(),json={"name":"API Job"})
     assert created.status_code == 200
@@ -57,6 +82,270 @@ def test_unauthorized_save_activate_and_configuration(client):
     assert client.post("/api/configurations",headers=h(),json={}).status_code == 403
 
 
+@pytest.mark.parametrize(
+    ("field", "invalid_value", "error_code"),
+    (
+        ("project_type", "Training / Sandbox", "invalid_project_type"),
+        ("contract_type", "Time and materials", "invalid_contract_type"),
+        ("wage_type", "Unknown wage plan", "invalid_wage_type"),
+    ),
+)
+def test_new_controlled_project_values_are_enforced_server_side(client, field, invalid_value, error_code):
+    doc = create_project(client, f"Controlled {field}")
+    project_id = doc["project"]["id"]
+    doc["project"][field] = invalid_value
+
+    response = client.put(
+        f"/api/projects/{project_id}",
+        headers=h(),
+        json={"project": doc, "expected_revision": doc["project"]["revision"]},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == error_code
+    reopened = client.get(f"/api/projects/{project_id}", headers=h()).json()["project"]
+    assert reopened["project"][field] in (None, "")
+
+
+def test_new_source_rows_must_reference_a_project_cost_code(client):
+    doc = create_project(client, "Source Cost Code guard")
+    project_id = doc["project"]["id"]
+    doc["cost_codes"] = [first_controlled_cost_code()]
+    doc["equipment"] = [{
+        "id": "eqp_invalid_source_code", "code": "99 99 99",
+        "description": "Invalid source", "quantity": 1, "duration": 1,
+        "duration_unit": "day", "rate": "100", "delivery": "0", "taxable": True,
+    }]
+    response = client.put(
+        f"/api/projects/{project_id}", headers=h(),
+        json={"project": doc, "expected_revision": doc["project"]["revision"]},
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "invalid_source_cost_code"
+
+
+def test_unchanged_legacy_controlled_values_are_preserved_and_marked(client):
+    import app.main as main
+
+    doc = create_project(client, "Legacy controlled values")
+    project_id = doc["project"]["id"]
+    persisted, _ = main.store.load_project(project_id)
+    persisted["project"].update({
+        "project_type": "Training / Sandbox",
+        "contract_type": "Legacy negotiated contract",
+        "wage_type": "Legacy wage class",
+    })
+    persisted = main.store.save_project(persisted, persisted["project"]["revision"])
+
+    persisted["project"]["notes"] = "Unrelated edit"
+    response = client.put(
+        f"/api/projects/{project_id}",
+        headers=h(),
+        json={"project": persisted, "expected_revision": persisted["project"]["revision"]},
+    )
+
+    assert response.status_code == 200
+    project = response.json()["project"]["project"]
+    assert project["project_type"] == "Training / Sandbox"
+    assert project["contract_type"] == "Legacy negotiated contract"
+    assert project["wage_type"] == "Legacy wage class"
+    assert project["project_type_status"] == "legacy_unsupported"
+    assert project["contract_type_status"] == "legacy_unsupported"
+    assert project["wage_type_status"] == "legacy_unsupported"
+
+
+@pytest.mark.parametrize("deadline", ("2026-09-01", "2026-09-01T14:30:00Z", "2026-09-01T14:30:00-05:00"))
+def test_bid_due_date_rejects_non_local_datetime_values(client, deadline):
+    doc = create_project(client, "Local deadline validation")
+    project_id = doc["project"]["id"]
+    doc["project"]["bid_due_date"] = deadline
+
+    response = client.put(
+        f"/api/projects/{project_id}", headers=h(),
+        json={"project": doc, "expected_revision": doc["project"]["revision"]},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "invalid_bid_due_date"
+
+
+def test_bid_due_local_datetime_round_trips_without_timezone_conversion(client):
+    doc = create_project(client, "Local deadline round trip")
+    project_id = doc["project"]["id"]
+    entered = "2026-09-01T14:30"
+    doc["project"]["bid_due_date"] = entered
+
+    saved = client.put(
+        f"/api/projects/{project_id}", headers=h(),
+        json={"project": doc, "expected_revision": doc["project"]["revision"]},
+    )
+    assert saved.status_code == 200
+    assert saved.json()["project"]["project"]["bid_due_date"] == entered
+    assert client.get(f"/api/projects/{project_id}", headers=h()).json()["project"]["project"]["bid_due_date"] == entered
+    exported = client.get(f"/api/projects/{project_id}/export", headers=h())
+    assert json.loads(exported.text)["project"]["bid_due_date"] == entered
+
+
+def test_quote_square_feet_manual_edit_is_not_replaced_by_later_frame_calculation(client):
+    doc = create_project(client, "Manual Quote area")
+    project_id = doc["project"]["id"]
+    code = first_controlled_cost_code()
+    doc["cost_codes"] = [code]
+    doc["takeoff_sections"] = [{
+        "id": "sec_quote_area", "definition_id": "frame-v1", "code": code["code"],
+        "name": "Quote area frames", "material_overrides": {}, "tie_back_qty": 0,
+        "backpan_lf": 0, "lines": [{
+            "id": "frm_quote_area", "mark": "F1", "quantity": 1,
+            "width_inches": 12, "height_inches": 12, "caulking_passes": 3,
+        }],
+    }]
+    doc["quotes"] = [{
+        "id": "quo_manual_area", "code": code["code"], "vendor": "Area Vendor",
+        "price": "100", "used": True, "tax_included": True,
+        "square_feet": None, "square_feet_source": "unassigned",
+    }]
+    first = client.put(
+        f"/api/projects/{project_id}", headers=h(),
+        json={"project": doc, "expected_revision": doc["project"]["revision"]},
+    )
+    assert first.status_code == 200
+    saved = first.json()["project"]
+    assert saved["quotes"][0]["square_feet"] == "1"
+    assert saved["quotes"][0]["square_feet_source"] == "frame_default"
+
+    saved["quotes"][0]["square_feet"] = "25"
+    second = client.put(
+        f"/api/projects/{project_id}", headers=h(),
+        json={"project": saved, "expected_revision": saved["project"]["revision"]},
+    )
+    assert second.status_code == 200
+    edited = second.json()["project"]
+    assert edited["quotes"][0]["square_feet"] == "25"
+    assert edited["quotes"][0]["square_feet_source"] == "manual"
+
+    edited["takeoff_sections"][0]["lines"][0]["width_inches"] = 120
+    third = client.put(
+        f"/api/projects/{project_id}", headers=h(),
+        json={"project": edited, "expected_revision": edited["project"]["revision"]},
+    )
+    assert third.status_code == 200
+    assert third.json()["project"]["quotes"][0]["square_feet"] == "25"
+    assert third.json()["project"]["quotes"][0]["square_feet_source"] == "manual"
+
+
+def test_labor_type_change_resolves_the_new_controlled_rate_family(client):
+    doc = create_project(client, "Labor rate family")
+    project_id = doc["project"]["id"]
+    code = first_controlled_cost_code()
+    doc["cost_codes"] = [code]
+    doc["project"].update({"wage_type": "Non-PW", "wage_type_status": "current"})
+    doc["labor_estimates"] = [{
+        "id": "lbr_rate_family", "code": code["code"], "description": "Rate family",
+        "labor_type": "Field", "man_hours": "10", "crew_size": "1",
+        "hours_per_worker_per_day": "8", "workdays_per_week": "5", "origin": "manual",
+    }]
+    first = client.put(
+        f"/api/projects/{project_id}", headers=h(),
+        json={"project": doc, "expected_revision": doc["project"]["revision"]},
+    )
+    assert first.status_code == 200
+    saved = first.json()["project"]
+    field_rate = saved["labor_estimates"][0]["calculated_controlled_rate"]
+    assert field_rate not in (None, "")
+
+    saved["labor_estimates"][0]["labor_type"] = "Shop"
+    second = client.put(
+        f"/api/projects/{project_id}", headers=h(),
+        json={"project": saved, "expected_revision": saved["project"]["revision"]},
+    )
+    assert second.status_code == 200
+    shop = second.json()["project"]["labor_estimates"][0]
+    assert shop["labor_type"] == "Shop"
+    assert shop["calculated_controlled_rate"] not in (None, "", field_rate)
+    assert shop["controlled_rate_snapshot"]["rate"] == shop["calculated_controlled_rate"]
+
+
+def test_ui_only_draft_rows_are_never_persisted_or_calculated(client):
+    doc = create_project(client, "Draft row boundary")
+    project_id = doc["project"]["id"]
+    doc["quotes"] = [
+        {"id": "draft-quotes-working", "_ui_only": True, "vendor": "Must not persist", "price": "999"},
+        {},
+    ]
+    doc["takeoff_sections"] = [{
+        "id": "sec_draft_contract",
+        "definition_id": "frame-v1",
+        "name": "Draft test",
+        "code": "",
+        "material_overrides": {},
+        "lines": [
+            {"id": "draft-frame-working", "row_kind": "draft", "mark": "Must not persist"},
+            {},
+        ],
+    }]
+
+    response = client.put(
+        f"/api/projects/{project_id}", headers=h(),
+        json={"project": doc, "expected_revision": doc["project"]["revision"]},
+    )
+
+    assert response.status_code == 200
+    saved = response.json()["project"]
+    assert saved["quotes"] == []
+    assert saved["takeoff_sections"][0]["lines"] == []
+    reopened = client.get(f"/api/projects/{project_id}", headers=h()).json()["project"]
+    assert "draft-quotes-working" not in json.dumps(reopened)
+    assert "draft-frame-working" not in json.dumps(reopened)
+
+
+def test_material_rate_override_audit_retains_controlled_override_and_effective_values(client):
+    doc = create_project(client, "Material override audit")
+    project_id = doc["project"]["id"]
+    code = first_controlled_cost_code()
+    doc["cost_codes"] = [code]
+    doc["takeoff_sections"] = [{
+        "id": "sec_rate_audit", "definition_id": "frame-v1", "code": code["code"],
+        "name": "Rate audit", "material_overrides": {}, "tie_back_qty": 0,
+        "backpan_lf": 0, "lines": [{
+            "id": "frm_rate_audit", "mark": "F1", "quantity": 1,
+            "width_inches": 12, "height_inches": 12, "caulking_passes": 3,
+        }],
+    }]
+    initial = client.put(
+        f"/api/projects/{project_id}", headers=h(),
+        json={"project": doc, "expected_revision": doc["project"]["revision"]},
+    )
+    assert initial.status_code == 200
+    saved = initial.json()["project"]
+    configuration_before = client.get("/api/configurations", headers=h()).json()["configurations"]
+
+    saved["takeoff_sections"][0]["material_overrides"]["mat_sealant"] = {
+        "rate_override": "15", "rate_override_reason": "Project supplier quotation",
+    }
+    changed = client.put(
+        f"/api/projects/{project_id}", headers=h(),
+        json={
+            "project": saved, "expected_revision": saved["project"]["revision"],
+            "changes": [{
+                "path": "takeoff_sections.0.material_overrides.mat_sealant.rate_override",
+                "prior": None, "new": "15", "reason": "Project-only rate override modified",
+            }],
+        },
+    )
+    assert changed.status_code == 200
+    project = changed.json()["project"]
+    result = next(item for item in project["takeoff_sections"][0]["material_results"] if item["material_rule_id"] == "mat_sealant")
+    assert result["controlled_rate"] == "12.00"
+    assert result["rate_override"] == "15"
+    assert result["effective_rate"] == "15"
+    event = project["audit_events"][-1]
+    assert event["new_value"]["rate_context"] == {
+        "controlled_rate": "12.00", "project_rate_override": "15",
+        "effective_rate": "15", "configuration_id": CONFIG_VERSION,
+    }
+    assert client.get("/api/configurations", headers=h()).json()["configurations"] == configuration_before
+
+
 def test_duplicate_export_backup_import_and_job_data(client):
     doc=client.post("/api/projects",headers=h(),json={"name":"Portable"}).json()["project"];pid=doc["project"]["id"]
     dup=client.post(f"/api/projects/{pid}/duplicate",headers=h(),json={"name":"Portable Copy"})
@@ -64,9 +353,292 @@ def test_duplicate_export_backup_import_and_job_data(client):
     export=client.get(f"/api/projects/{pid}/export",headers=h()); assert export.status_code == 200
     assert export.headers["content-type"].startswith("application/json")
     assert client.post(f"/api/projects/{pid}/backup",headers=h(),json={}).status_code == 200
-    data=client.get(f"/api/projects/{pid}/job-data",headers=h()).json();assert data["version"] == "1.0.0"
+    data=client.get(f"/api/projects/{pid}/job-data",headers=h()).json();assert data["version"] == "1.1.0"
     imported=client.post("/api/projects/import",headers=h(),json={"project_document":json.loads(export.text),"as_duplicate":True})
     assert imported.status_code == 200 and imported.json()["project"]["project"]["id"] != pid
+
+
+def test_master_data_add_and_search_returns_canonical_record(client):
+    added = client.post(
+        "/api/master-data/organizations",
+        headers=h(),
+        json={
+            "display_name": "Steinier Glass",
+            "legal_name": "Steinier Glass, Inc.",
+            "aliases": ["Steinier"],
+            "classifications": ["Vendor"],
+            "email": "estimating@example.invalid",
+        },
+    )
+    assert added.status_code == 200
+    record = added.json()["record"]
+    assert record["display_name"] == "Steinier Glass"
+    assert record["entity_kind"] == "organization"
+
+    exact = client.get("/api/master-data/search", headers=h(), params={"kind": "organizations", "q": "STEINIER GLASS"})
+    alias = client.get("/api/master-data/search", headers=h(), params={"kind": "organizations", "q": "steinier"})
+    assert exact.status_code == alias.status_code == 200
+    assert exact.json()["resolved_id"] == record["id"]
+    assert exact.json()["results"][0]["display_name"] == "Steinier Glass"
+    assert alias.json()["results"][0]["id"] == record["id"]
+
+
+def test_structured_address_search_proxies_existing_provider_and_request_identity(client, monkeypatch):
+    import app.main as main
+
+    observed = {}
+
+    def fake_search(query, *, limit, request_id):
+        observed.update({"query": query, "limit": limit, "request_id": request_id})
+        return {
+            "query": query,
+            "request_id": request_id,
+            "cache_hit": False,
+            "provider": "Existing mileage provider",
+            "attribution": "Provider attribution",
+            "results": [{
+                "id": "address_result_1",
+                "label": "3900 Hoffman Road, White Bear Lake, MN 55110",
+                "street": "3900 Hoffman Road",
+                "city": "White Bear Lake",
+                "state": "MN",
+                "zip": "55110",
+                "county": "Ramsey County",
+                "latitude": "45.053",
+                "longitude": "-93.012",
+                "provider": "Existing mileage provider",
+            }],
+        }
+
+    monkeypatch.setattr(main, "search_addresses", fake_search)
+    response = client.get(
+        "/api/address-search", headers=h(),
+        params={"q": "3900 Hoffman", "limit": 4, "request_id": "address-request-7"},
+    )
+
+    assert response.status_code == 200
+    assert observed == {"query": "3900 Hoffman", "limit": 4, "request_id": "address-request-7"}
+    assert response.json()["results"][0] == {
+        "id": "address_result_1",
+        "label": "3900 Hoffman Road, White Bear Lake, MN 55110",
+        "street": "3900 Hoffman Road",
+        "city": "White Bear Lake",
+        "state": "MN",
+        "zip": "55110",
+        "county": "Ramsey County",
+        "latitude": "45.053",
+        "longitude": "-93.012",
+        "provider": "Existing mileage provider",
+    }
+    short = client.get("/api/address-search", headers=h(), params={"q": "ab"})
+    assert short.status_code == 200 and short.json()["results"] == []
+
+
+def test_custom_cost_code_requires_hashed_local_secret_and_never_persists_password(client, tmp_path):
+    import app.main as main
+
+    secret_path = tmp_path / "secrets" / "custom-code.json"
+    secret_path.parent.mkdir(parents=True)
+    test_username = "custom-code-test-user"
+    valid_password = "test-only credential with spaces"
+    secret_path.write_text(json.dumps({
+        "username": test_username,
+        "password_hash": hash_password(valid_password, iterations=MINIMUM_ITERATIONS, salt=b"api-contract-salt"),
+    }), encoding="utf-8")
+    doc = create_project(client, "Custom Cost Code auth")
+    project_id = doc["project"]["id"]
+    invalid = client.post(
+        f"/api/projects/{project_id}/cost-codes/custom", headers=h(),
+        json={
+            "expected_revision": doc["project"]["revision"],
+            "username": test_username,
+            "password": "wrong test credential",
+            "code": "CUSTOM 991",
+            "description": "Protected test code",
+        },
+    )
+    assert invalid.status_code == 403
+    assert invalid.json()["error"]["code"] == "custom_code_authorization_failed"
+
+    created = client.post(
+        f"/api/projects/{project_id}/cost-codes/custom", headers=h(),
+        json={
+            "expected_revision": doc["project"]["revision"],
+            "username": test_username,
+            "password": valid_password,
+            "code": "CUSTOM 991",
+            "description": "Protected test code",
+            "reason": "API contract test",
+        },
+    )
+    assert created.status_code == 200
+    record = created.json()["cost_code"]
+    assert record["is_custom"] is True
+    assert record["custom_status"] == "authorized_custom"
+    assert record["controlled_status"] == "custom_exception"
+
+    response_text = created.text
+    reopened_text = client.get(f"/api/projects/{project_id}", headers=h()).text
+    persisted_text = main.store.project_path(project_id).read_text(encoding="utf-8")
+    for text in (response_text, reopened_text, persisted_text):
+        assert valid_password not in text
+        assert "wrong test credential" not in text
+        assert "password_hash" not in text
+
+
+def test_cost_code_dependency_preview_does_not_mutate_then_confirmed_cascade_removes_working_detail(client):
+    doc = create_project(client, "Cascade contract")
+    project_id = doc["project"]["id"]
+    code = first_controlled_cost_code()
+    doc["cost_codes"] = [code]
+    doc["quotes"] = [{
+        "id": "quo_cascade_contract",
+        "code": code["code"],
+        "vendor": "Cascade Vendor",
+        "price": "1250",
+        "used": True,
+        "tax_included": True,
+    }]
+    doc["borrowed_lites"] = [{
+        "id": "brl_cascade_contract", "code": code["code"], "mark": "BL-1",
+        "quantity": 1, "width_inches": 12, "height_inches": 12, "rate": "10",
+    }]
+    normalized_code = "".join(char for char in code["code"] if char.isalnum()).upper()
+    doc["working_estimate"]["component_markup_overrides"] = {
+        f"borrowed_lite:{normalized_code}": {"rate": ".35", "reason": "Cascade coverage"},
+    }
+    saved_response = client.put(
+        f"/api/projects/{project_id}", headers=h(),
+        json={"project": doc, "expected_revision": doc["project"]["revision"]},
+    )
+    assert saved_response.status_code == 200
+    saved = saved_response.json()["project"]
+    revision = saved["project"]["revision"]
+
+    preview = client.post(
+        f"/api/projects/{project_id}/cost-codes/{code['id']}/remove", headers=h(),
+        json={"expected_revision": revision, "confirm_cascade": False},
+    )
+    assert preview.status_code == 200
+    assert preview.json()["removed"] is False
+    assert preview.json()["requires_confirmation"] is True
+    assert preview.json()["dependency_report"]["dependency_count"] >= 1
+    assert any(item["id"] == "quo_cascade_contract" for item in preview.json()["dependency_report"]["dependencies"])
+    assert preview.json()["project"]["project"]["revision"] == revision
+    assert preview.json()["project"]["cost_codes"][0]["id"] == code["id"]
+
+    removed = client.post(
+        f"/api/projects/{project_id}/cost-codes/{code['id']}/remove", headers=h(),
+        json={"expected_revision": revision, "confirm_cascade": True, "reason": "Confirmed API cascade"},
+    )
+    assert removed.status_code == 200
+    result = removed.json()
+    assert result["removed"] is True
+    assert result["project"]["cost_codes"] == []
+    assert result["project"]["quotes"] == []
+    assert result["project"]["borrowed_lites"] == []
+    assert result["project"]["working_estimate"]["component_markup_overrides"] == {}
+    event = next(item for item in result["project"]["audit_events"] if item["operation"] == "cost_code_cascade_removed")
+    assert "quo_cascade_contract" in event["new_value"]["removed_record_ids"]
+
+
+def test_import_migrates_supported_legacy_project_document_to_current_schema(client):
+    current = create_project(client, "Legacy import source")
+    legacy = deepcopy(current)
+    legacy["schema_version"] = "1.0.0"
+    legacy["interchange_version"] = "1.0.0"
+    legacy["project"]["project_type"] = "Training / Sandbox"
+    legacy["project"]["contract_type"] = "Legacy negotiated contract"
+    legacy["project"]["bid_due_date"] = "2026-09-01"
+    for field in (
+        "project_type_status", "contract_type_status", "wage_type", "wage_type_status",
+        "address_street", "address_city", "address_state", "county", "address_match_metadata",
+    ):
+        legacy["project"].pop(field, None)
+    legacy.pop("schema_migrations", None)
+
+    imported = client.post(
+        "/api/projects/import", headers=h(),
+        json={"project_document": legacy, "as_duplicate": True, "name": "Migrated legacy import"},
+    )
+
+    assert imported.status_code == 200
+    migrated = imported.json()["project"]
+    assert migrated["schema_version"] == SCHEMA_VERSION == "1.1.0"
+    assert migrated["interchange_version"] == "1.1.0"
+    assert migrated["project"]["project_type"] == "Training / Sandbox"
+    assert migrated["project"]["project_type_status"] == "legacy_unsupported"
+    assert migrated["project"]["contract_type"] == "Legacy negotiated contract"
+    assert migrated["project"]["contract_type_status"] == "legacy_unsupported"
+    assert migrated["project"]["bid_due_date"] == "2026-09-01"
+    assert migrated["project"]["bid_due_date_status"] == "legacy_date_only"
+    assert migrated["schema_migrations"][-1]["id"] == "project-1.0.0-to-1.1.0"
+
+
+def test_bid_source_edit_requires_confirmation_and_updates_only_canonical_record(client):
+    doc = create_project(client, "Canonical Bid edit")
+    project_id = doc["project"]["id"]
+    code = first_controlled_cost_code()
+    doc["cost_codes"] = [code]
+    doc["quotes"] = [{
+        "id": "quo_bid_edit_contract",
+        "code": code["code"],
+        "vendor": "Canonical Vendor",
+        "price": "100.00",
+        "credit_type": None,
+        "credit_value": None,
+        "surcharge_type": None,
+        "surcharge_value": None,
+        "tax_included": True,
+        "used": True,
+        "notes": "Before Bid edit",
+    }]
+    saved_response = client.put(
+        f"/api/projects/{project_id}", headers=h(),
+        json={"project": doc, "expected_revision": doc["project"]["revision"]},
+    )
+    assert saved_response.status_code == 200
+    saved = saved_response.json()["project"]
+    revision = saved["project"]["revision"]
+
+    declined = client.post(
+        f"/api/projects/{project_id}/bid-source-edit", headers=h(),
+        json={
+            "expected_revision": revision,
+            "source_type": "quote",
+            "source_id": "quo_bid_edit_contract",
+            "changes": {"price": "275.50", "notes": "Edited from Bid"},
+            "confirmed": False,
+        },
+    )
+    assert declined.status_code == 422
+    assert declined.json()["error"]["code"] == "confirmation_required"
+    unchanged = client.get(f"/api/projects/{project_id}", headers=h()).json()["project"]
+    assert unchanged["project"]["revision"] == revision
+    assert unchanged["quotes"][0]["price"] == "100.00"
+
+    confirmed = client.post(
+        f"/api/projects/{project_id}/bid-source-edit", headers=h(),
+        json={
+            "expected_revision": revision,
+            "source_type": "quote",
+            "source_id": "quo_bid_edit_contract",
+            "changes": {"price": "275.50", "notes": "Edited from Bid"},
+            "confirmed": True,
+            "reason": "Estimator confirmed canonical source update",
+            "correlation_id": "cor_bid_edit_contract",
+        },
+    )
+    assert confirmed.status_code == 200
+    result = confirmed.json()
+    canonical = next(row for row in result["project"]["quotes"] if row["id"] == "quo_bid_edit_contract")
+    assert canonical["price"] == "275.50"
+    assert canonical["notes"] == "Edited from Bid"
+    assert result["source"]["id"] == canonical["id"]
+    audit_event = next(item for item in result["project"]["audit_events"] if item["operation"] == "bid_source_edit")
+    assert audit_event["correlation_id"] == "cor_bid_edit_contract"
+    assert audit_event["prior_value"]["price"] == "100.00"
+    assert audit_event["new_value"]["price"] == "275.50"
 
 
 def test_frame_takeoff_round_trips_realistic_scale_and_downstream_material_costs(client):
@@ -114,8 +686,10 @@ def test_frame_takeoff_round_trips_realistic_scale_and_downstream_material_costs
 
 def test_vertical_submission_activation_contract_pco_sov_closeout(client):
     doc=client.post("/api/projects",headers=h(),json={"name":"Vertical"}).json()["project"];pid=doc["project"]["id"]
+    doc["project"].update({"project_type":"New Construction - Exterior Storefront","contract_type":"Bid to CM/GC","wage_type":"Non-PW"})
     doc["cost_codes"]=[{"id":"ccd_api","code":"08 40 00","description":"Frames","deduct":False}]
     doc["quotes"]=[{"id":"quo_api","group_id":"g","code":"08 40 00","price":"1000","surcharge_percent":"0","tax_included":True,"used":True,"vendor":"V"}]
+    doc["working_estimate"]["labor_suggestion_exclusions"]=["08 40 00"]
     doc=client.put(f"/api/projects/{pid}",headers=h(),json={"project":doc,"expected_revision":1}).json()["project"]
     sub=client.post(f"/api/projects/{pid}/submit",headers=h(),json={"recipient":"GC","method":"email"})
     assert sub.status_code == 200

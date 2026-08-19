@@ -22,7 +22,7 @@ Trailing spaces in the second occurrence normalize to the same stable code. The 
 
 ## Application behavior
 
-`data/reference/codes.json` is the canonical imported payload. Configuration `cfg-2026-08-17-v2` first adopted it; current configuration `cfg-2026-08-17-v4` retains the same owner-confirmed reference and owner rate tables while adding versioned mileage settings. Search matches display code, normalized code, primary description, and description aliases. Selecting a result creates a project cost-code record containing the reference ID and reference configuration ID.
+`data/reference/codes.json` is the canonical imported payload. Configuration `cfg-2026-08-17-v2` first adopted it; current configuration `cfg-2026-08-19-v5` retains the same owner-confirmed reference, owner rate tables, and versioned mileage settings while adding the schema 1.1 policy metadata. Search matches display code, normalized code, primary description, and description aliases. Selecting a result creates a project cost-code record containing the reference ID and reference configuration ID.
 
 An entered code not found in this list is preserved for correction and produces a field-specific `invalid_cost_code` validation warning. The list does not supply internal MWD mappings, vendor directories, deduct status, tax treatment, or commercial pricing; those remain separate versioned data and must not be inferred from the code description.
 

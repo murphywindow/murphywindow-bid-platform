@@ -6,7 +6,7 @@ from app.schema import CONFIG_VERSION, default_configuration
 
 def test_owner_rate_tables_are_normalized_into_version_three_configuration():
     config = default_configuration()
-    assert CONFIG_VERSION.endswith("-v4") and config["version"] == 4
+    assert CONFIG_VERSION == "cfg-2026-08-19-v5" and config["version"] == 5
     assert config["rate_reference"]["reference_id"] == "owner-rate-tables-2026-08-17-v1"
     assert len(config["wage_records"]) == 87
     assert len(config["labor_burden_records"]) == 14

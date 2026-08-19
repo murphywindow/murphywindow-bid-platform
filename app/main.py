@@ -17,13 +17,27 @@ from reportlab.lib.units import inch
 from reportlab.platypus import KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 from xml.sax.saxutils import escape
 
+from .api_models import BidSourceEditCommand, CustomCostCodeCommand, MasterRecordCommand, RemoveCostCodeCommand
+from .calculations import normalize_code, split_variant
+from .custom_code_auth import verify_custom_code_credentials
+from .master_data import (
+    MasterDataRepository, build_search_index, search_master_data, seed_master_data,
+    upsert_organization, upsert_person_organization_contact, upsert_text_entity,
+)
+from .migrations import MigrationError, migrate_project_document
 from .persistence import ConflictError, JsonStore, PersistenceError
 from .generator import generate_test_project
-from .mileage import MileageError, calculate_driving_mileage
-from .schema import CONFIG_VERSION, default_configuration, duplicate_project, new_project, now, test_project, uid
+from .mileage import MileageError, calculate_driving_mileage, search_addresses
+from .project_commands import (
+    cost_code_dependencies, new_custom_cost_code, remove_cost_code_cascade,
+    preserve_quote_square_feet_intent, refresh_labor_rate_selection,
+    strip_ui_working_rows, validate_project_inputs,
+)
+from .schema import CONFIG_VERSION, INTERCHANGE_VERSION, SCHEMA_VERSION, default_configuration, duplicate_project, new_project, now, test_project, uid
+from .version import SOFTWARE_RELEASE_DATE, SOFTWARE_VERSION
 from .services import (
     DomainError, ROLES, activate, audit, bump_bid_version, calculate_project, create_change_order,
-    job_data, provisional_closeout, redact, reestimate_contract, require,
+    edit_bid_source, job_data, provisional_closeout, redact, reestimate_contract, require,
     save_sov, submit, update_change_order_status,
 )
 
@@ -31,6 +45,10 @@ BASE_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = Path(os.environ.get("MURPHY_BID_DATA_DIR", BASE_DIR / "data"))
 STATIC_DIR = BASE_DIR / "app" / "static"
 store = JsonStore(DATA_DIR)
+
+
+def custom_code_secret_path() -> Path:
+    return store.root / "secrets" / "custom-code.json"
 
 
 def ensure_seed() -> None:
@@ -43,7 +61,8 @@ def ensure_seed() -> None:
         calculate_project(doc, store.load_configuration(CONFIG_VERSION))
         store.save_project(doc, -1)
     else:
-        # Update only the untouched generated sandbox to the new owner reference.
+        # Update only the untouched generated sandbox to the current immutable
+        # seed configuration. Any real user edit makes it ineligible.
         # Any user edit (bid sequence > 0 or file revision > 1) makes it ineligible.
         doc, _ = store.load_project(test_id)
         bid_sequence = int(doc["project"].get("bid_version", {}).get("sequence", 0))
@@ -52,14 +71,144 @@ def ensure_seed() -> None:
             doc["project"]["configuration_id"] = CONFIG_VERSION
             doc.setdefault("configuration_lineage", []).append({"configuration_id": CONFIG_VERSION, "adopted_at": now(), "actor": "System seed migration"})
             calculate_project(doc, store.load_configuration(CONFIG_VERSION))
-            bump_bid_version(doc, "owner_cost_code_reference_adopted")
+            bump_bid_version(doc, "seed_configuration_adopted")
             audit(doc, "System seed migration", "Systems Administrator", "project", test_id, "configuration_adopted",
-                  {"configuration_id": prior_config}, {"configuration_id": CONFIG_VERSION}, "Untouched test project adopted owner-provided cost-code reference")
+                  {"configuration_id": prior_config}, {"configuration_id": CONFIG_VERSION}, "Untouched test project adopted the current seed configuration")
             store.save_project(doc, 1)
 
 
+def master_repository() -> MasterDataRepository:
+    """Bind the reusable directory to the current store (including test stores)."""
+    return MasterDataRepository(store)
+
+
+def _reusable_projection(document: dict | None) -> dict:
+    if not document:
+        return {}
+    project = document.get("project", {})
+    return {
+        "project": {
+            key: project.get(key)
+            for key in (
+                "estimator", "plan_source", "owner_name", "architect", "engineer",
+                "general_contractor", "construction_manager",
+            )
+        },
+        "contacts": document.get("contacts", []),
+        "quote_vendors": [row.get("vendor") for row in document.get("quotes", [])],
+    }
+
+
+def index_reusable_history(document: dict, prior: dict | None = None) -> None:
+    """Index changed reusable values without modifying any project snapshot."""
+    if prior is not None and _reusable_projection(prior) == _reusable_projection(document):
+        return
+    repository = master_repository()
+    current = repository.load_or_create()
+    updated = seed_master_data([document], current)
+    repository.save(updated, int(current.get("revision", 0)))
+
+
+def apply_manual_quote_selection_changes(document: dict, changes: list[dict]) -> None:
+    """A changed Used checkbox switches only its Cost Code group to manual mode."""
+    changed_indexes: set[int] = set()
+    for change in changes:
+        parts = str(change.get("path") or "").split(".")
+        if len(parts) == 3 and parts[0] == "quotes" and parts[2] == "used" and parts[1].isdigit():
+            changed_indexes.add(int(parts[1]))
+    quotes = document.get("quotes", [])
+    selection = document.setdefault("working_estimate", {}).setdefault("quote_selection_by_code", {})
+    for index in changed_indexes:
+        if index >= len(quotes):
+            continue
+        code = str(quotes[index].get("code") or "").strip().upper()
+        if not code:
+            continue
+        selected = [
+            row.get("id") for row in quotes
+            if str(row.get("code") or "").strip().upper() == code and row.get("used") and row.get("id")
+        ]
+        selection[code] = {"mode": "manual", "selected_quote_ids": selected, "source": "estimator_used_change"}
+
+
+def apply_line_acknowledgement_metadata(document: dict, changes: list[dict], actor: str) -> None:
+    for change in changes:
+        path = str(change.get("path") or "")
+        parts = path.split(".")
+        row = None
+        acknowledgement = None
+        if len(parts) == 5 and parts[0] == "takeoff_sections" and parts[2] == "lines" and parts[1].isdigit() and parts[3].isdigit() and parts[4] == "missing_quantity_acknowledged":
+            sections = document.get("takeoff_sections", [])
+            if int(parts[1]) < len(sections) and int(parts[3]) < len(sections[int(parts[1])].get("lines", [])):
+                row = sections[int(parts[1])]["lines"][int(parts[3])]
+                acknowledgement = "missing_quantity"
+        elif len(parts) == 3 and parts[0] == "doors" and parts[1].isdigit() and parts[2] == "missing_quantity_acknowledged":
+            rows = document.get("doors", [])
+            if int(parts[1]) < len(rows):
+                row, acknowledgement = rows[int(parts[1])], "missing_quantity"
+        elif len(parts) == 3 and parts[0] == "labor_estimates" and parts[1].isdigit() and parts[2] == "stale_acknowledged":
+            rows = document.get("labor_estimates", [])
+            if int(parts[1]) < len(rows):
+                row, acknowledgement = rows[int(parts[1])], "stale"
+        if row is None:
+            continue
+        enabled = bool(change.get("new"))
+        prefix = "missing_quantity" if acknowledgement == "missing_quantity" else "stale"
+        row[f"{prefix}_acknowledged_at"] = now() if enabled else None
+        row[f"{prefix}_acknowledged_by"] = actor if enabled else None
+
+
+def rate_override_audit_context(document: dict, config: dict, path: str) -> dict | None:
+    """Return controlled/override/effective values for a rate-override audit."""
+    parts = path.split(".")
+    if (
+        len(parts) == 5 and parts[0] == "takeoff_sections" and parts[1].isdigit()
+        and parts[2] == "material_overrides" and parts[4] in {"rate", "rate_override"}
+    ):
+        sections = document.get("takeoff_sections", [])
+        if int(parts[1]) >= len(sections):
+            return None
+        rule_id = parts[3]
+        rule = next((item for item in config.get("material_rules", []) if item.get("id") == rule_id), {})
+        result = next((
+            item for item in sections[int(parts[1])].get("material_results", [])
+            if item.get("material_rule_id") == rule_id
+        ), {})
+        return {
+            "controlled_rate": rule.get("rate"),
+            "project_rate_override": result.get("rate_override"),
+            "effective_rate": result.get("effective_rate"),
+            "configuration_id": config.get("id"),
+        }
+    if len(parts) == 3 and parts[0] == "labor_estimates" and parts[1].isdigit() and parts[2] == "rate_override":
+        rows = document.get("labor_estimates", [])
+        if int(parts[1]) >= len(rows):
+            return None
+        row = rows[int(parts[1])]
+        return {
+            "controlled_rate": row.get("calculated_controlled_rate"),
+            "project_rate_override": row.get("rate_override"),
+            "effective_rate": row.get("calculated_effective_rate"),
+            "configuration_id": config.get("id"),
+        }
+    return None
+
+
+def ensure_master_history() -> None:
+    documents = []
+    for path in sorted(store.projects.glob("*.json")):
+        try:
+            document, _ = store.load_project(path.stem)
+            documents.append(document)
+        except PersistenceError:
+            continue
+    if documents:
+        master_repository().seed_projects(documents)
+
+
 ensure_seed()
-app = FastAPI(title="Murphy Window Bid Platform", version="1.0.0", docs_url="/api/docs", redoc_url=None)
+ensure_master_history()
+app = FastAPI(title="Murphy Window Bid Platform", version=SOFTWARE_VERSION, docs_url="/api/docs", redoc_url=None)
 
 
 @app.middleware("http")
@@ -81,12 +230,19 @@ def identity(x_actor: str = Header("Local User"), x_role: str = Header("Estimato
 
 def fail(exc: Exception) -> None:
     if isinstance(exc, DomainError):
-        status = 403 if exc.code == "forbidden" else (409 if exc.code in {"duplicate_activation"} else 422)
+        status = (
+            403 if exc.code in {"forbidden", "custom_code_authorization_failed"}
+            else 404 if exc.code == "not_found"
+            else 409 if exc.code in {"duplicate_activation"}
+            else 422
+        )
         raise HTTPException(status, detail={"code": exc.code, "message": str(exc), "details": exc.details}) from exc
     if isinstance(exc, ConflictError):
         raise HTTPException(409, detail={"code": "concurrent_edit", "message": str(exc)}) from exc
     if isinstance(exc, PersistenceError):
         raise HTTPException(500, detail={"code": "persistence_error", "message": str(exc)}) from exc
+    if isinstance(exc, ValueError):
+        raise HTTPException(422, detail={"code": "validation_error", "message": str(exc)}) from exc
     raise exc
 
 
@@ -109,12 +265,137 @@ async def http_error(_: Request, exc: HTTPException) -> JSONResponse:
 
 @app.get("/api/health")
 def health() -> dict:
-    return {"status": "ok", "data_directory": str(DATA_DIR), "schema_version": "1.0.0"}
+    return {
+        "status": "ok",
+        "data_directory": str(DATA_DIR),
+        "software_version": SOFTWARE_VERSION,
+        "software_release_date": SOFTWARE_RELEASE_DATE,
+        "schema_version": SCHEMA_VERSION,
+    }
 
 
 @app.get("/api/roles")
 def roles() -> dict:
     return {"roles": ROLES}
+
+
+def _master_result(directory: dict, result: dict) -> dict:
+    entity_kind, record_id = result.get("entity_kind"), result.get("id")
+    collection = {
+        "organization": "organizations",
+        "contact": "person_organization_contacts",
+        "text": "text_entities",
+    }.get(entity_kind)
+    record = next((item for item in directory.get(collection or "", []) if item.get("id") == record_id), {})
+    enriched = {**deepcopy(record), **result}
+    if entity_kind == "contact":
+        organization = next((
+            item for item in directory.get("organizations", [])
+            if item.get("id") == record.get("organization_id")
+        ), None)
+        enriched["organization"] = organization.get("display_name", "") if organization else ""
+        enriched["organization_name"] = enriched["organization"]
+        enriched["role"] = (record.get("roles") or [""])[0]
+    return enriched
+
+
+@app.get("/api/master-data/search")
+def master_data_search(q: str, kind: str = "organizations", limit: int = 10,
+                       actor_role: tuple[str, str] = __import__("fastapi").Depends(identity)) -> dict:
+    try:
+        directory = master_repository().load_or_create()
+        kind_map = {
+            "organizations": ("organization", None),
+            "organization": ("organization", None),
+            "contacts": ("contact", None),
+            "contact": ("contact", None),
+            "estimators": ("text", "estimator"),
+            "estimator": ("text", "estimator"),
+            "plan_sources": ("text", "plan_source"),
+            "plan_source": ("text", "plan_source"),
+            "contact_roles": ("text", "contact_role"),
+            "contact_role": ("text", "contact_role"),
+        }
+        entity_kind, text_kind = kind_map.get(kind, (None, None))
+        if entity_kind is None:
+            raise DomainError("Unknown reusable master-data kind.", "invalid_master_data_kind")
+        raw = search_master_data(directory, q, entity_kinds=[entity_kind], limit=100 if text_kind else limit)
+        results = [_master_result(directory, item) for item in raw["results"]]
+        if text_kind:
+            results = [item for item in results if item.get("kind") == text_kind][:max(1, min(limit, 100))]
+        return {**raw, "results": results, "kind": kind}
+    except Exception as exc:
+        fail(exc)
+
+
+@app.post("/api/master-data/{kind}")
+def save_master_record(kind: str, command: MasterRecordCommand,
+                       actor_role: tuple[str, str] = __import__("fastapi").Depends(identity)) -> dict:
+    actor, role = actor_role
+    try:
+        require(role, "edit_estimate")
+        repository = master_repository()
+        directory = repository.load_or_create()
+        expected = int(directory.get("revision", 0) if command.expected_revision is None else command.expected_revision)
+        record = command.model_dump(exclude_none=True)
+        record.pop("expected_revision", None)
+        record.pop("update_scope", None)
+        if kind in {"organizations", "organization"}:
+            if record.get("phone") and not record.get("primary_phone"):
+                record["primary_phone"] = record["phone"]
+            target = next((item for item in directory.get("organizations", []) if item.get("id") == record.get("id")), None)
+            if target is not None:
+                for field in ("display_name", "legal_name", "aliases", "classifications", "address", "website", "primary_phone", "email", "notes"):
+                    if field in record:
+                        target[field] = deepcopy(record[field])
+            saved_record = upsert_organization(directory, record)
+            entity_kind = "organization"
+        elif kind in {"contacts", "contact"}:
+            if record.get("organization") and not record.get("organization_id"):
+                organization = upsert_organization(directory, {"display_name": record["organization"]})
+                record["organization_id"] = organization["id"]
+            if record.get("display_name") and not record.get("name"):
+                record["name"] = record["display_name"]
+            if record.get("role"):
+                record["roles"] = list(dict.fromkeys([*record.get("roles", []), record["role"]]))
+            target = next((item for item in directory.get("person_organization_contacts", []) if item.get("id") == record.get("id")), None)
+            if target is not None:
+                for field in ("name", "organization_id", "aliases", "roles", "position", "email", "office_phone", "mobile_phone", "notes"):
+                    if field in record:
+                        target[field] = deepcopy(record[field])
+            saved_record = upsert_person_organization_contact(directory, record)
+            entity_kind = "contact"
+        else:
+            text_kinds = {
+                "estimators": "estimator", "estimator": "estimator",
+                "plan_sources": "plan_source", "plan_source": "plan_source",
+                "contact_roles": "contact_role", "contact_role": "contact_role",
+            }
+            text_kind = text_kinds.get(kind)
+            if text_kind is None:
+                raise DomainError("Unknown reusable master-data kind.", "invalid_master_data_kind")
+            record["kind"] = text_kind
+            saved_record = upsert_text_entity(directory, record)
+            entity_kind = "text"
+        build_search_index(directory)
+        saved_directory = repository.save(directory, expected)
+        response_record = _master_result(saved_directory, {"id": saved_record["id"], "entity_kind": entity_kind})
+        return {"record": response_record, "revision": saved_directory["revision"], "updated_by": actor}
+    except Exception as exc:
+        fail(exc)
+
+
+@app.get("/api/address-search")
+def address_search(q: str, limit: int = 5, request_id: str | None = None,
+                   actor_role: tuple[str, str] = __import__("fastapi").Depends(identity)) -> dict:
+    try:
+        if len(str(q or "").strip()) < 3:
+            return {"query": q, "results": [], "provider": None, "attribution": None, "cache_hit": False, "request_id": request_id}
+        return search_addresses(q, limit=limit, request_id=request_id)
+    except MileageError as exc:
+        fail(DomainError(str(exc), "address_lookup_failed"))
+    except Exception as exc:
+        fail(exc)
 
 
 @app.get("/api/projects")
@@ -130,7 +411,9 @@ def create_project(payload: dict = Body(...), actor_role: tuple[str, str] = __im
         doc = new_project(payload.get("name", "Untitled Project"), actor, role)
         config = store.load_configuration(CONFIG_VERSION)
         calculate_project(doc, config)
-        return {"project": redact(store.save_project(doc, -1), role)}
+        saved = store.save_project(doc, -1)
+        index_reusable_history(saved)
+        return {"project": redact(saved, role)}
     except Exception as exc:
         fail(exc)
 
@@ -145,6 +428,7 @@ def generate_project_for_testing(payload: dict = Body(default={}), actor_role: t
         doc = generate_test_project(config, actor, role, payload.get("seed"))
         calculate_project(doc, config)
         saved = store.save_project(doc, -1)
+        index_reusable_history(saved)
         generated = saved["project"].get("test_generation", {})
         return {
             "project": redact(saved, role),
@@ -180,7 +464,7 @@ def save_project(project_id: str, payload: dict = Body(...), actor_role: tuple[s
     actor, role = actor_role
     try:
         require(role, "edit_estimate")
-        incoming = payload["project"]
+        incoming = strip_ui_working_rows(deepcopy(payload["project"]))
         if incoming.get("project", {}).get("id") != project_id:
             raise DomainError("Project identifier does not match route.")
         expected = int(payload.get("expected_revision", incoming["project"].get("revision", 0)))
@@ -191,26 +475,155 @@ def save_project(project_id: str, payload: dict = Body(...), actor_role: tuple[s
             incoming[key] = deepcopy(current.get(key))
         incoming["project"]["configuration_id"] = current["project"]["configuration_id"]
         incoming["project"]["bid_version"] = deepcopy(current["project"].get("bid_version"))
+        incoming["schema_version"] = current.get("schema_version", SCHEMA_VERSION)
+        incoming["interchange_version"] = current.get("interchange_version", INTERCHANGE_VERSION)
+        preserve_quote_square_feet_intent(incoming, current)
+        refresh_labor_rate_selection(incoming, current)
+        incoming_ids = {row.get("id") for row in incoming.get("cost_codes", [])}
+        for row in current.get("cost_codes", []):
+            if row.get("id") not in incoming_ids:
+                report = cost_code_dependencies(current, row["id"])
+                if report["has_dependencies"]:
+                    raise DomainError(
+                        "Cost Code has dependent detail. Use the dependency preview and confirmed cascade command.",
+                        "cost_code_dependencies",
+                        [report],
+                    )
+        validate_project_inputs(incoming, current, config)
         prior_digest = {"name": current["project"].get("name"), "working_total": current.get("working_estimate", {}).get("totals", {}).get("selling_value")}
-        calculate_project(incoming, config)
         changes = payload.get("changes") or []
         if len(changes) > 10000:
             raise DomainError("A single save cannot record more than 10,000 datapoint changes.")
+        apply_manual_quote_selection_changes(incoming, changes)
+        apply_line_acknowledgement_metadata(incoming, changes, actor)
+        calculate_project(incoming, config)
         count = len(changes) or max(1, int(payload.get("data_point_changes", 1)))
         bump_bid_version(incoming, "data_point_change", amount=count)
         correlation = payload.get("correlation_id") or uid("cor")
         if changes:
             for change in changes:
                 path = str(change.get("path", "unknown"))[:500]
+                prior_value = {"path": path, "value": change.get("prior")}
+                new_value = {"path": path, "value": change.get("new")}
+                rate_context = rate_override_audit_context(incoming, config, path)
+                if rate_context is not None:
+                    new_value["rate_context"] = rate_context
                 audit(incoming, actor, role, "project_datapoint", project_id, "data_point_change",
-                      {"path": path, "value": change.get("prior")}, {"path": path, "value": change.get("new")},
+                      prior_value, new_value,
                       str(change.get("reason") or "Datapoint modified")[:1000], correlation)
         else:
             audit(incoming, actor, role, "project", project_id, "edit_save", prior_digest,
                   {"name": incoming["project"].get("name"), "working_total": incoming["working_estimate"]["totals"].get("selling_value"), "data_point_changes": count},
                   payload.get("reason", "Project inputs changed"), correlation)
         saved = store.save_project(incoming, expected)
+        index_reusable_history(saved, current)
         return {"project": redact(saved, role), "saved_at": saved["project"]["updated_at"]}
+    except Exception as exc:
+        fail(exc)
+
+
+@app.post("/api/projects/{project_id}/cost-codes/custom")
+def create_custom_cost_code(project_id: str, command: CustomCostCodeCommand,
+                            actor_role: tuple[str, str] = __import__("fastapi").Depends(identity)) -> dict:
+    actor, role = actor_role
+    try:
+        require(role, "edit_estimate")
+        if not verify_custom_code_credentials(
+            command.username,
+            command.password.get_secret_value(),
+            secret_file=custom_code_secret_path(),
+        ):
+            raise DomainError(
+                "The dedicated Add Custom Code credential was not accepted.",
+                "custom_code_authorization_failed",
+            )
+        doc, config = load(project_id)
+        expected = command.expected_revision
+        _, requested_base = split_variant(command.code)
+        normalized = normalize_code(requested_base)
+        if not normalized:
+            raise DomainError("Custom Cost Code cannot be blank.", "invalid_cost_code")
+        existing = {
+            normalize_code(split_variant(row.get("code", ""))[1])
+            for row in doc.get("cost_codes", [])
+        }
+        controlled = {
+            normalize_code(row.get("normalized_code") or row.get("display_code") or "")
+            for row in config.get("csi_references", [])
+        }
+        if normalized in existing:
+            raise DomainError("That Cost Code is already present in this project.", "duplicate_cost_code")
+        if normalized in controlled:
+            raise DomainError("That is a controlled Cost Code; select it from the reference search instead.", "controlled_cost_code_exists")
+        record_data = command.model_dump(exclude={"password", "username", "expected_revision"})
+        record = new_custom_cost_code(record_data, actor)
+        doc.setdefault("cost_codes", []).append(record)
+        calculate_project(doc, config)
+        bump_bid_version(doc, "custom_cost_code_created")
+        correlation = uid("cor")
+        audit(
+            doc, actor, role, "cost_code", record["id"], "custom_cost_code_created",
+            None,
+            {"id": record["id"], "code": record["code"], "description": record["description"], "custom_status": record["custom_status"]},
+            command.reason,
+            correlation,
+        )
+        saved = store.save_project(doc, expected)
+        return {"project": redact(saved, role), "cost_code": record, "correlation_id": correlation}
+    except Exception as exc:
+        fail(exc)
+
+
+@app.post("/api/projects/{project_id}/cost-codes/{cost_code_id}/remove")
+def remove_cost_code(project_id: str, cost_code_id: str, command: RemoveCostCodeCommand,
+                     actor_role: tuple[str, str] = __import__("fastapi").Depends(identity)) -> dict:
+    actor, role = actor_role
+    try:
+        require(role, "edit_estimate")
+        doc, config = load(project_id)
+        report = cost_code_dependencies(doc, cost_code_id)
+        if report["has_dependencies"] and not command.confirm_cascade:
+            return {
+                "project": redact(doc, role),
+                "removed": False,
+                "requires_confirmation": True,
+                "dependency_report": report,
+            }
+        report = remove_cost_code_cascade(doc, cost_code_id)
+        calculate_project(doc, config)
+        bump_bid_version(doc, "cost_code_cascade_removed")
+        correlation = uid("cor")
+        audit(
+            doc, actor, role, "cost_code", cost_code_id, "cost_code_cascade_removed",
+            {"code": report["code"], "dependencies": report["dependencies"]},
+            {"removed_cost_code_id": cost_code_id, "removed_record_ids": report["removed_record_ids"]},
+            command.reason,
+            correlation,
+        )
+        saved = store.save_project(doc, command.expected_revision)
+        return {
+            "project": redact(saved, role),
+            "removed": True,
+            "requires_confirmation": False,
+            "dependency_report": report,
+            "correlation_id": correlation,
+        }
+    except Exception as exc:
+        fail(exc)
+
+
+@app.post("/api/projects/{project_id}/bid-source-edit")
+def update_bid_source(project_id: str, command: BidSourceEditCommand,
+                      actor_role: tuple[str, str] = __import__("fastapi").Depends(identity)) -> dict:
+    actor, role = actor_role
+    try:
+        doc, config = load(project_id)
+        prior = deepcopy(doc)
+        payload = command.model_dump(exclude={"expected_revision"})
+        source = edit_bid_source(doc, config, actor, role, payload)
+        saved = store.save_project(doc, command.expected_revision)
+        index_reusable_history(saved, prior)
+        return {"project": redact(saved, role), "source": source}
     except Exception as exc:
         fail(exc)
 
@@ -254,7 +667,9 @@ def duplicate(project_id: str, payload: dict = Body(...), actor_role: tuple[str,
         source, config = load(project_id)
         doc = duplicate_project(source, payload.get("name") or f"{source['project']['name']} Copy", actor, role)
         calculate_project(doc, config)
-        return {"project": redact(store.save_project(doc, -1), role)}
+        saved = store.save_project(doc, -1)
+        index_reusable_history(saved)
+        return {"project": redact(saved, role)}
     except Exception as exc:
         fail(exc)
 
@@ -281,15 +696,21 @@ def import_project(payload: dict = Body(...), actor_role: tuple[str, str] = __im
     try:
         require(role, "edit_estimate")
         doc = payload.get("project_document")
-        if not isinstance(doc, dict) or doc.get("schema_version") != "1.0.0" or "project" not in doc:
-            raise DomainError("Import must be a Murphy Window project JSON document with schema_version 1.0.0.")
-        doc = deepcopy(doc)
+        if not isinstance(doc, dict) or "project" not in doc:
+            raise DomainError("Import must be a versioned Murphy Window project JSON document.")
+        try:
+            doc = migrate_project_document(doc)
+        except MigrationError as exc:
+            raise DomainError(str(exc), "unsupported_schema_version") from exc
+        doc = strip_ui_working_rows(doc)
         if payload.get("as_duplicate", True):
             doc = duplicate_project(doc, payload.get("name") or f"{doc['project'].get('name', 'Imported')} Import", actor, role)
         config = store.load_configuration(doc["project"].get("configuration_id", CONFIG_VERSION))
         calculate_project(doc, config)
         audit(doc, actor, role, "project", doc["project"]["id"], "import", None, {"source": payload.get("source", "JSON upload")}, "Project JSON import")
-        return {"project": redact(store.save_project(doc, -1), role)}
+        saved = store.save_project(doc, -1)
+        index_reusable_history(saved)
+        return {"project": redact(saved, role)}
     except Exception as exc:
         fail(exc)
 

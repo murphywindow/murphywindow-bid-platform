@@ -3,10 +3,12 @@ from decimal import Decimal as D
 
 import pytest
 
-from app.schema import default_configuration, new_project
+from app.schema import INTERCHANGE_VERSION, default_configuration, new_project
 from app.services import (
     DomainError, activate, calculate_project, create_change_order, job_data,
-    provisional_closeout, redact, reestimate_contract, save_sov, submit, update_change_order_status,
+    edit_bid_source, provisional_closeout, redact, reestimate_contract, save_sov,
+    select_used_quotes, submission_blockers, submit, sync_labor_candidates,
+    update_change_order_status,
 )
 
 
@@ -18,6 +20,11 @@ def example():
     cfg["markup_defaults"]["LAS"]["rate"] = ".40"
     cfg["pco"]["markup_one"] = ".10"; cfg["pco"]["markup_two"] = ".20"
     doc = new_project("Service Test", "Est", "Estimator")
+    doc["project"].update({
+        "project_type": "New Construction - Exterior Storefront", "project_type_status": "current",
+        "contract_type": "Bid to CM/GC", "contract_type_status": "current",
+        "wage_type": "Non-PW", "wage_type_status": "current",
+    })
     doc["cost_codes"] = [{"id":"ccd_1","code":"08 40 00","description":"Entrances","deduct":False},{"id":"ccd_2","code":"07 90 00","description":"Sealants","deduct":True}]
     doc["quotes"] = [
         {"id":"quo_base","group_id":"g1","code":"08 40 00","price":"1000","surcharge_percent":".10","tax_included":False,"used":True},
@@ -102,6 +109,349 @@ def test_missing_frame_material_selection_means_all_materials_selected():
     assert results["mat_sealant"]["source_quantity"] == "12"
 
 
+def test_quote_selection_is_implicit_by_code_uses_adjusted_cost_and_locks_manual_choice():
+    doc, cfg = example()
+    doc["quotes"] = [
+        {"id": "quo_a", "group_id": "historical-a", "code": "08 40 00", "price": "1000",
+         "credit_type": "percentage", "credit_value": ".10", "surcharge_type": "percentage",
+         "surcharge_value": ".10", "tax_included": True, "used": False, "square_feet": None,
+         "square_feet_source": "unassigned"},
+        {"id": "quo_b", "group_id": "historical-b", "code": "08-40-00", "price": "950",
+         "credit_type": "dollar", "credit_value": "0", "surcharge_type": "dollar",
+         "surcharge_value": "0", "tax_included": True, "used": False, "square_feet": "777",
+         "square_feet_source": "manual"},
+    ]
+    doc["working_estimate"]["quote_selection_by_code"] = {
+        "08 40 00": {"mode": "automatic", "selected_quote_ids": []},
+    }
+    calculate_project(doc, cfg)
+    assert doc["quotes"][0]["calculated_cost"] == "990.00"
+    assert doc["quotes"][1]["calculated_cost"] == "950.00"
+    assert [row["id"] for row in doc["quotes"] if row["used"]] == ["quo_b"]
+    assert doc["quotes"][0]["square_feet"] == "1"
+    assert doc["quotes"][0]["square_feet_source"] == "frame_default"
+    assert doc["quotes"][1]["square_feet"] == "777"
+
+    doc["working_estimate"]["quote_selection_by_code"]["08 40 00"] = {
+        "mode": "manual", "selected_quote_ids": ["quo_b"],
+    }
+    doc["quotes"][1]["price"] = "5000"
+    calculate_project(doc, cfg)
+    assert [row["id"] for row in doc["quotes"] if row["used"]] == ["quo_b"]
+    lineage = doc["quotes"][0]["calculation_lineage"]
+    assert lineage["credit_amount"] == "100.00"
+    assert lineage["post_credit_subtotal"] == "900.00"
+    assert lineage["surcharge_amount"] == "90.00"
+
+
+def test_quote_frame_default_combines_frame_sections_but_excludes_borrowed_lites():
+    doc, cfg = example()
+    doc["takeoff_sections"].append({
+        "id": "sec_2", "definition_id": "frame-v1", "code": "08 40 00", "name": "More frames",
+        "lines": [{"id": "frm_2", "quantity": 2, "width_inches": 12, "height_inches": 12}],
+        "material_overrides": {}, "tie_back_qty": 0, "backpan_lf": 0,
+    })
+    doc["borrowed_lites"] = [{
+        "id": "brl_1", "code": "08 40 00", "quantity": 1, "width_inches": 12,
+        "height_inches": 12, "rate": None,
+    }]
+    doc["quotes"][0].update({"square_feet": None, "square_feet_source": "unassigned"})
+    calculate_project(doc, cfg)
+    assert doc["quotes"][0]["square_feet"] == "3"
+    summary = next(row for row in doc["working_estimate"]["cost_code_summaries"] if row["code"] == "08 40 00")
+    assert summary["total_square_feet"] == "8"  # 3 Frame SF + BRL's five-SF row minimum.
+
+
+def test_frame_and_door_missing_quantities_are_structured_blockers_and_acknowledged_exceptions():
+    doc, cfg = example()
+    doc["takeoff_sections"][0]["lines"].append({
+        "id": "frm_missing", "mark": "F-missing", "quantity": 0,
+        "width_inches": 48, "height_inches": 96, "missing_quantity_acknowledged": False,
+    })
+    doc["doors"] = [{
+        "id": "dor_missing", "code": "08 40 00", "door_number": "D-missing",
+        "leaf_quantity": None, "width_inches": 36, "height_inches": 84,
+        "missing_quantity_acknowledged": False,
+    }]
+    calculate_project(doc, cfg)
+    quantity_issues = [item for item in submission_blockers(doc) if item["code"] in {"missing_frame_quantity", "missing_door_quantity"}]
+    assert {item["entity_id"] for item in quantity_issues} == {"frm_missing", "dor_missing"}
+
+    doc["takeoff_sections"][0]["lines"][-1]["missing_quantity_acknowledged"] = True
+    doc["doors"][0]["missing_quantity_acknowledged"] = True
+    calculate_project(doc, cfg)
+    visible = [item for item in doc["working_estimate"]["validation"] if item["entity_id"] in {"frm_missing", "dor_missing"}]
+    assert all(item["acknowledged"] and not item["blocking"] for item in visible)
+    assert not [item for item in submission_blockers(doc) if item["entity_id"] in {"frm_missing", "dor_missing"}]
+
+
+def test_installation_material_controlled_override_and_effective_values_are_distinct():
+    doc, cfg = example()
+    original_rule = deepcopy(next(rule for rule in cfg["material_rules"] if rule["id"] == "mat_sealant"))
+    doc["takeoff_sections"][0]["material_overrides"]["mat_sealant"] = {
+        "factor_override": ".10", "rate_override": "15",
+        "rate_override_reason": "Project supplier quotation",
+    }
+    calculate_project(doc, cfg)
+    result = next(row for row in doc["takeoff_sections"][0]["material_results"] if row["material_rule_id"] == "mat_sealant")
+    assert result["controlled_factor"] == "0.08"
+    assert result["factor_override"] == "0.10"
+    assert result["factor"] == "0.10"
+    assert result["controlled_rate"] == "12.00"
+    assert result["rate_override"] == "15"
+    assert result["effective_rate"] == "15"
+    assert result["pre_tax_cost"] == "18.00"
+    assert result["rate_override_reason"] == "Project supplier quotation"
+    assert next(rule for rule in cfg["material_rules"] if rule["id"] == "mat_sealant") == original_rule
+
+
+def test_equipment_subtotal_is_pre_tax_and_each_row_honors_taxable_flag():
+    doc, cfg = example()
+    doc["equipment"] = [
+        {"id": "eqp_tax", "code": "08 40 00", "description": "Taxed lift", "quantity": 1,
+         "duration": 2, "rate": 100, "delivery": 10, "taxable": True},
+        {"id": "eqp_exempt", "code": "08 40 00", "description": "Exempt lift", "quantity": 1,
+         "duration": 1, "rate": 50, "delivery": 0, "taxable": False},
+    ]
+    calculate_project(doc, cfg)
+    assert doc["working_estimate"]["equipment_subtotal"] == "260.00"
+    lines = {line["lineage"][0]["source_id"]: line for line in doc["working_estimate"]["lines"] if line["category"] == "equipment"}
+    assert lines["eqp_tax"]["direct_cost"] == "231.00"
+    assert lines["eqp_tax"]["lineage"][0]["pre_tax_cost"] == "210.00"
+    assert lines["eqp_exempt"]["direct_cost"] == "50.00"
+    assert lines["eqp_exempt"]["tax_treatment"] == "exempt"
+
+
+def test_labor_cost_schedule_rate_lineage_and_unavailable_commercial_rules():
+    doc, cfg = example()
+    snapshot = {
+        "rate": "50", "rate_id": "labor_field_nonpw_2025", "configuration_id": cfg["id"],
+        "source": "controlled test", "status": "owner_provided",
+    }
+    doc["labor_estimates"] = [{
+        "id": "lbr_canonical", "code": "08 40 00", "description": "Canonical field work",
+        "labor_type": "Field", "man_hours": "80", "man_hours_source": "manual",
+        "crew_size": "2", "hours_per_worker_per_day": "8", "workdays_per_week": "5",
+        "controlled_rate_snapshot": deepcopy(snapshot), "rate_override": "75",
+        "rate_override_reason": "Approved project condition", "origin": "manual",
+        "source_links": [], "source_status": "unclassified", "stale_acknowledged": False,
+    }, {
+        "id": "lbr_design", "code": "08 40 00", "description": "Design coordination",
+        "labor_type": "Design", "man_hours": "10", "crew_size": "1",
+        "hours_per_worker_per_day": "8", "workdays_per_week": "5",
+        "controlled_rate_snapshot": {"rate": None, "rate_id": "labor_design_unavailable", "configuration_id": cfg["id"], "status": "unavailable"},
+        "rate_override": None, "origin": "manual", "source_links": [], "source_status": "unclassified",
+    }]
+    doc["travel_estimates"] = [{"id": "trv_unresolved", "code": "08 40 00", "enabled": True}]
+    calculate_project(doc, cfg)
+    row = doc["labor_estimates"][0]
+    assert row["controlled_rate_snapshot"] == snapshot
+    assert row["calculated_controlled_rate"] == "50"
+    assert row["calculated_effective_rate"] == "75"
+    assert row["calculated_cost"] == "6000.00"
+    assert row["shift_configuration"] == "5x8"
+    assert row["calculated_working_days"] == "5"
+    assert row["calculated_calendar_weeks"] == "1"
+    assert row["calculated_calendar_days"] == "7"
+    line = next(line for line in doc["working_estimate"]["lines"] if line.get("source_key") == "labor:lbr_canonical")
+    assert line["direct_cost"] == "6000.00"
+    assert line["lineage"][0]["man_hours"] == "80"
+    assert line["lineage"][0]["effective_rate"] == "75"
+    blocker_codes = {item["code"] for item in submission_blockers(doc)}
+    assert {"unavailable_design_rate", "travel_policy_unavailable"} <= blocker_codes
+    assert not [line for line in doc["working_estimate"]["lines"] if line.get("source_key") == "labor:lbr_design"]
+
+
+def test_labor_suggestions_are_unique_source_linked_excludable_and_stale_acknowledgeable():
+    doc, cfg = example()
+    doc["quotes"] = [doc["quotes"][0]]
+    doc["labor_estimates"] = []
+    doc["doors"] = [{"id": "dor_1", "code": "08 40 00", "leaf_quantity": 1}]
+    doc["hardware_assignments"] = [{"id": "hwa_1", "door_id": "dor_1", "code": "07 90 00"}]
+    doc["equipment"] = [{"id": "eqp_1", "code": "08 40 00"}]
+    doc["borrowed_lites"] = [{"id": "brl_1", "code": "08 40 00"}]
+    doc["working_estimate"]["labor_suggestion_exclusions"] = ["07 90 00"]
+    created = sync_labor_candidates(doc, cfg)
+    assert len(created) == 1
+    candidate = created[0]
+    assert candidate["code"] == "08 40 00"
+    assert {link["source_type"] for link in candidate["source_links"]} == {"quote", "frame", "door", "equipment", "borrowed_lite"}
+    assert "door_hardware" not in {link["source_type"] for link in candidate["source_links"]}
+    assert not sync_labor_candidates(doc, cfg)
+
+    doc["working_estimate"]["labor_suggestion_exclusions"] = []
+    hardware_candidates = sync_labor_candidates(doc, cfg)
+    assert len(hardware_candidates) == 1
+    assert hardware_candidates[0]["code"] == "07 90 00"
+    assert hardware_candidates[0]["source_links"] == [{"source_type": "door_hardware", "source_id": "hwa_1"}]
+
+    doc["quotes"] = []
+    doc["takeoff_sections"] = []
+    doc["doors"] = []
+    doc["hardware_assignments"] = []
+    doc["equipment"] = []
+    doc["borrowed_lites"] = []
+    sync_labor_candidates(doc, cfg)
+    assert candidate["source_status"] == "stale"
+    calculate_project(doc, cfg)
+    assert any(item["code"] == "stale_labor_source" and item["blocking"] for item in submission_blockers(doc))
+    candidate["stale_acknowledged"] = True
+    calculate_project(doc, cfg)
+    warning = next(item for item in doc["working_estimate"]["validation"] if item["code"] == "stale_labor_source")
+    assert warning["acknowledged"] and not warning["blocking"]
+
+
+def test_bid_code_summary_uses_area_once_and_preserves_component_markup_provenance():
+    doc, cfg = example()
+    doc["borrowed_lites"] = [{
+        "id": "brl_area", "code": "08 40 00", "quantity": 1,
+        "width_inches": 12, "height_inches": 12, "rate": "10",
+    }]
+    doc["working_estimate"]["borrowed_lite_source_by_code"] = {"08 40 00": "internal"}
+    doc["working_estimate"]["component_markup_overrides"] = {
+        "quote:quo_base": {"rate": ".50", "reason": "Estimator source-line decision", "source": "Estimator"},
+    }
+    calculate_project(doc, cfg)
+    quote_line = next(line for line in doc["working_estimate"]["lines"] if line.get("source_key") == "quote:quo_base")
+    assert quote_line["markup_default_rate"] == ".20"
+    assert quote_line["markup_override_rate"] == ".50"
+    assert quote_line["markup_provenance"]["effective_rate"] == ".50"
+    assert quote_line["markup_provenance"]["override_reason"] == "Estimator source-line decision"
+    summary = next(row for row in doc["working_estimate"]["cost_code_summaries"] if row["code"] == "08 40 00")
+    assert summary["total_square_feet"] == "6"
+    assert {component["name"] for component in summary["components"]} >= {"Base Product", "Installation Materials", "Labor", "Borrowed Lites"}
+    assert set(summary["source_line_ids"]) == {
+        line["id"] for line in doc["working_estimate"]["lines"] if line["code"] == "08 40 00"
+    }
+    assert D(summary["dollars_per_square_foot"]) == (D(summary["selling_value"]) / D("6")).quantize(D(".01"))
+
+
+def test_installation_material_markup_inherits_configured_base_product_rate_until_distinct_rate_exists():
+    doc, cfg = example()
+    cfg["markup_defaults"]["base_product"]["rate"] = ".25"
+    cfg["markup_defaults"]["installation_material"] = {
+        "rate": None, "inherits": "base_product", "status": "pending_distinct_rate",
+    }
+    doc["working_estimate"]["markup_overrides"] = {}
+    calculate_project(doc, cfg)
+
+    material = next(
+        line for line in doc["working_estimate"]["lines"]
+        if line["category"] == "installation_material"
+    )
+    assert material["markup_rate"] == ".25"
+    assert material["markup_provenance"]["configuration_default_rate"] == ".25"
+    assert material["markup_provenance"]["inherited_from"] == "base_product"
+
+
+def test_bid_source_edit_requires_confirmation_updates_canonical_record_and_audits():
+    doc, cfg = example()
+    calculate_project(doc, cfg)
+    with pytest.raises(DomainError) as exc:
+        edit_bid_source(doc, cfg, "Est", "Estimator", {
+            "source_type": "quote", "source_id": "quo_base", "changes": {"price": "1200"},
+        })
+    assert exc.value.code == "confirmation_required"
+    prior_version = doc["project"]["bid_version"]["patch"]
+    edited = edit_bid_source(doc, cfg, "Est", "Estimator", {
+        "confirmed": True, "source_type": "quote", "source_id": "quo_base",
+        "changes": {"price": "1200"}, "reason": "Confirmed supplier revision",
+    })
+    assert edited is doc["quotes"][0]
+    assert doc["quotes"][0]["price"] == "1200"
+    assert doc["quotes"][0]["calculated_cost"] == "1320.00"
+    assert doc["project"]["bid_version"]["patch"] == prior_version + 1
+    event = doc["audit_events"][-1]
+    assert event["operation"] == "bid_source_edit"
+    assert event["entity_id"] == "quo_base"
+    assert event["reason"] == "Confirmed supplier revision"
+
+    edit_bid_source(doc, cfg, "Est", "Estimator", {
+        "confirmed": True, "source_type": "quote", "source_id": "quo_base",
+        "changes": {"square_feet": "250"}, "reason": "Estimator confirmed quote area",
+    })
+    assert doc["quotes"][0]["square_feet"] == "250"
+    assert doc["quotes"][0]["square_feet_source"] == "manual"
+
+
+def test_bid_markup_override_uses_stable_source_key_and_can_be_cleared_without_editing_source():
+    doc, cfg = example()
+    calculate_project(doc, cfg)
+    original_quote = deepcopy(doc["quotes"][0])
+    result = edit_bid_source(doc, cfg, "Est", "Estimator", {
+        "confirmed": True, "source_type": "quote", "source_id": "quo_base",
+        "changes": {"markup_override": ".55"}, "reason": "Unique quote risk",
+        "correlation_id": "cor_markup_set",
+    })
+    assert result == {"source_key": "quote:quo_base", "markup_override": "0.55", "cleared": False}
+    assert doc["quotes"][0]["price"] == original_quote["price"]
+    assert doc["working_estimate"]["component_markup_overrides"]["quote:quo_base"]["rate"] == "0.55"
+    line = next(item for item in doc["working_estimate"]["lines"] if item.get("source_key") == "quote:quo_base")
+    assert line["markup_override_rate"] == "0.55"
+    assert doc["audit_events"][-1]["operation"] == "set_bid_markup_override"
+    assert doc["audit_events"][-1]["correlation_id"] == "cor_markup_set"
+
+    cleared = edit_bid_source(doc, cfg, "Est", "Estimator", {
+        "confirmed": True, "source_type": "quote", "source_id": line["id"],
+        "changes": {"markup_override": None}, "reason": "Return to current default",
+    })
+    assert cleared["cleared"] is True
+    assert "quote:quo_base" not in doc["working_estimate"]["component_markup_overrides"]
+    line = next(item for item in doc["working_estimate"]["lines"] if item.get("source_key") == "quote:quo_base")
+    assert line["markup_override_rate"] is None
+    assert line["markup_rate"] == ".20"
+    assert doc["audit_events"][-1]["operation"] == "clear_bid_markup_override"
+
+
+def test_submission_blockers_include_controlled_project_and_pending_paste_states():
+    doc, cfg = example()
+    doc["project"]["project_type"] = "Historical freeform type"
+    doc["project"]["project_type_status"] = "legacy_unsupported"
+    doc["working_estimate"]["pending_controlled_values"] = [{
+        "table_id": "quotes", "row_id": "quo_base", "field": "code",
+        "entered_value": "bad", "message": "Select a controlled Cost Code.",
+    }]
+    calculate_project(doc, cfg)
+    blockers = submission_blockers(doc)
+    assert any(item["code"] == "invalid_project_type" and item["field"] == "project_type" for item in blockers)
+    pending = next(item for item in blockers if item["code"] == "pending_controlled_value")
+    assert pending["entity_id"] == "quo_base" and pending["entered_value"] == "bad"
+    with pytest.raises(DomainError) as exc:
+        submit(doc, cfg, "Est", "Estimator", {})
+    assert {item["code"] for item in exc.value.details} >= {"invalid_project_type", "pending_controlled_value"}
+
+
+def test_historical_source_code_missing_from_project_scope_is_a_submission_blocker():
+    doc, cfg = example()
+    doc["equipment"] = [{
+        "id": "eqp_legacy_orphan", "code": "99 99 99", "description": "Legacy orphan",
+        "quantity": 1, "duration": 1, "rate": "100", "delivery": "0", "taxable": True,
+    }]
+    calculate_project(doc, cfg)
+    blocker = next(item for item in submission_blockers(doc) if item["code"] == "invalid_source_cost_code")
+    assert blocker["entity_id"] == "eqp_legacy_orphan"
+
+
+def test_pw_without_selected_controlled_record_never_falls_back_to_non_pw_rate():
+    doc, cfg = example()
+    doc["project"].update({"wage_type": "PW", "wage_type_status": "current", "wage_data_id": None})
+    doc["labor_estimates"] = [{
+        "id": "lbr_pw", "code": "08 40 00", "description": "PW field work",
+        "labor_type": "Field", "man_hours": "10", "origin": "manual",
+    }]
+    calculate_project(doc, cfg)
+    row = doc["labor_estimates"][0]
+    assert row["calculated_controlled_rate"] is None
+    assert row["calculated_cost"] is None
+    assert {item["code"] for item in submission_blockers(doc)} >= {"missing_prevailing_wage_record", "missing_labor_rate"}
+
+    wage = next(item for item in cfg["wage_records"] if item.get("estimated_company_rate") not in (None, ""))
+    doc["project"]["wage_data_id"] = wage["id"]
+    calculate_project(doc, cfg)
+    assert doc["labor_estimates"][0]["calculated_controlled_rate"] == str(wage["estimated_company_rate"])
+    assert doc["labor_estimates"][0]["calculated_cost"] is not None
+
+
 def test_submission_immutable_revision_and_later_working_edit():
     doc, cfg = example(); calculate_project(doc, cfg)
     assert doc["project"]["bid_version"]["display"] == "B0.0.0"
@@ -116,13 +466,19 @@ def test_submission_immutable_revision_and_later_working_edit():
     assert doc["proposal_artifacts"][0]["bid_version"]["display"] == "B0.1.0"
 
 
-def test_submit_permission_and_multiple_used_quote_validation():
+def test_submit_permission_and_multiple_used_quotes_are_additive_not_blocking():
     doc, cfg = example(); calculate_project(doc, cfg)
     with pytest.raises(DomainError):
         submit(doc, cfg, "PM", "Project Manager", {})
-    doc["quotes"].append({"id":"quo_x","group_id":"g1","code":"08 40 00","price":2,"used":True})
-    with pytest.raises(DomainError, match="validation failed"):
-        submit(doc, cfg, "Est", "Estimator", {})
+    doc["quotes"].append({"id":"quo_x","group_id":"historical-other","code":"08 40 00","price":"200","used":True})
+    doc["working_estimate"]["quote_selection_by_code"]["08 40 00"] = {
+        "mode": "manual", "selected_quote_ids": ["quo_base", "quo_x"],
+    }
+    calculate_project(doc, cfg)
+    used = [row for row in doc["quotes"] if row["code"] == "08 40 00" and row["used"]]
+    assert {row["id"] for row in used} == {"quo_base", "quo_x"}
+    assert not [item for item in submission_blockers(doc) if item["code"] == "multiple_used_quotes"]
+    assert submit(doc, cfg, "Est", "Estimator", {})["revision_id"]
 
 
 def activated():
@@ -197,5 +553,5 @@ def test_multiple_sov_lines_reconcile_one_allocation_in_aggregate():
 
 def test_job_data_has_deterministic_empty_arrays_and_version():
     doc,_=example(); data=job_data(doc)
-    assert data["schema"] == "murphywindow.job-data" and data["version"] == "1.0.0"
+    assert data["schema"] == "murphywindow.job-data" and data["version"] == INTERCHANGE_VERSION
     assert isinstance(data["contacts"], list) and isinstance(data["bid_tabulation"], list)

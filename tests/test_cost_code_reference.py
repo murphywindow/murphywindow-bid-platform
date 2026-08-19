@@ -27,6 +27,6 @@ def test_duplicate_source_variants_are_preserved_as_aliases():
 
 def test_active_configuration_contains_owner_reference():
     config = default_configuration()
-    assert config["version"] == 4
+    assert config["version"] == 5
     assert config["cost_code_reference"]["record_count"] == 9330
     assert len(config["csi_references"]) == 9330

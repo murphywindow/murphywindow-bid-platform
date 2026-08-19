@@ -73,11 +73,78 @@ def map_cost_code(code: str, mappings: list[dict[str, Any]]) -> dict[str, Any] |
 
 
 def quote_cost(price: Any, surcharge_percent: Any = 0) -> Decimal | None:
+    """Backward-compatible workbook surcharge calculation.
+
+    New records use :func:`quote_adjustment`; this wrapper intentionally keeps the
+    original two-argument contract for historical project documents and callers.
+    """
     p = dec(price)
     if p is None:
         return None
     surcharge = dec(surcharge_percent, D(0)) or D(0)
     return money(p * (D(1) + surcharge))
+
+
+def _adjustment_type(value: Any, *, default: str) -> str:
+    normalized = str(value or default).strip().lower().replace("_", " ")
+    if normalized in {"percentage", "percent", "%", "rate"}:
+        return "percentage"
+    if normalized in {"dollar", "dollars", "dollar amount", "amount", "$"}:
+        return "dollar"
+    raise ValueError("Quote adjustment type must be percentage or dollar.")
+
+
+def quote_adjustment(
+    price: Any,
+    credit_type: Any = None,
+    credit_value: Any = 0,
+    surcharge_type: Any = None,
+    surcharge_value: Any = 0,
+    *,
+    legacy_surcharge_percent: Any = None,
+) -> dict[str, Decimal | str | None]:
+    """Apply a quote credit before its surcharge and retain calculation lineage.
+
+    Percentage values are stored as decimal rates (``0.05`` means five percent).
+    Historical ``surcharge_percent`` values are accepted without changing their
+    meaning. Currency results round only at the named currency boundaries.
+    """
+    base = dec(price)
+    if base is None:
+        return {
+            "base_price": None, "credit_type": _adjustment_type(credit_type, default="dollar"),
+            "credit_value": dec(credit_value, D(0)) or D(0), "credit_amount": None,
+            "post_credit_subtotal": None,
+            "surcharge_type": _adjustment_type(surcharge_type, default="percentage"),
+            "surcharge_value": dec(surcharge_value, D(0)) or D(0),
+            "surcharge_amount": None, "final_adjusted_value": None,
+        }
+
+    c_type = _adjustment_type(credit_type, default="dollar")
+    c_value = dec(credit_value, D(0)) or D(0)
+    if legacy_surcharge_percent is not None and surcharge_type in (None, ""):
+        s_type, s_value = "percentage", dec(legacy_surcharge_percent, D(0)) or D(0)
+    else:
+        s_type = _adjustment_type(surcharge_type, default="percentage")
+        s_value = dec(surcharge_value, D(0)) or D(0)
+    if s_value < 0:
+        raise ValueError("Quote surcharge cannot be negative; enter a reduction as a Credit.")
+
+    credit_amount_raw = base * c_value if c_type == "percentage" else c_value
+    post_credit_raw = base - credit_amount_raw
+    surcharge_amount_raw = post_credit_raw * s_value if s_type == "percentage" else s_value
+    final_raw = post_credit_raw + surcharge_amount_raw
+    return {
+        "base_price": money(base),
+        "credit_type": c_type,
+        "credit_value": c_value,
+        "credit_amount": money(credit_amount_raw),
+        "post_credit_subtotal": money(post_credit_raw),
+        "surcharge_type": s_type,
+        "surcharge_value": s_value,
+        "surcharge_amount": money(surcharge_amount_raw),
+        "final_adjusted_value": money(final_raw),
+    }
 
 
 def quote_unit_cost(cost: Any, square_feet: Any) -> Decimal | None:
@@ -150,6 +217,62 @@ def labor_hours(quantity: Any, crew: Any, productivity: Any, override: Any = Non
 def labor_extension(hours: Any, rate: Any) -> Decimal | None:
     h, r = dec(hours), dec(rate)
     return None if h is None or r is None else money(h * r)
+
+
+def effective_rate(controlled_rate: Any, override_rate: Any = None) -> dict[str, Decimal | bool | None]:
+    """Resolve a project rate without ever mutating its controlled reference."""
+    controlled = dec(controlled_rate)
+    override = dec(override_rate) if override_rate not in (None, "") else None
+    return {
+        "controlled_rate": controlled,
+        "rate_override": override,
+        "effective_rate": override if override is not None else controlled,
+        "is_override": override is not None,
+    }
+
+
+def _schedule_number(value: Decimal | None) -> str:
+    if value is None:
+        return ""
+    return format(value.normalize(), "f")
+
+
+def labor_schedule(
+    man_hours: Any,
+    crew_size: Any,
+    hours_per_worker_per_day: Any,
+    workdays_per_week: Any,
+) -> dict[str, Decimal | str | None]:
+    """Calculate schedule duration without changing labor cost or inventing nights."""
+    hours = dec(man_hours)
+    crew = dec(crew_size)
+    hours_per_day = dec(hours_per_worker_per_day)
+    days_per_week = dec(workdays_per_week)
+    if hours is not None and hours < 0:
+        raise ValueError("Man Hours must be nonnegative.")
+    if crew is not None and crew < 0:
+        raise ValueError("Crew Size must be nonnegative.")
+    if hours_per_day is not None and (hours_per_day < 0 or hours_per_day > 24):
+        raise ValueError("Hours per Worker per Day must be between 0 and 24.")
+    if days_per_week is not None and (days_per_week < 0 or days_per_week > 7):
+        raise ValueError("Workdays per Week must be between 0 and 7.")
+
+    shift = None
+    if hours_per_day is not None and days_per_week is not None:
+        shift = f"{_schedule_number(days_per_week)}x{_schedule_number(hours_per_day)}"
+    denominator = None if crew is None or hours_per_day is None else crew * hours_per_day
+    working_days = None if hours is None or denominator is None or denominator == 0 else hours / denominator
+    calendar_weeks = None if working_days is None or days_per_week in (None, D(0)) else working_days / days_per_week
+    return {
+        "man_hours": hours,
+        "crew_size": crew,
+        "hours_per_worker_per_day": hours_per_day,
+        "workdays_per_week": days_per_week,
+        "shift_configuration": shift,
+        "working_days": working_days,
+        "calendar_weeks": calendar_weeks,
+        "calendar_days": None if calendar_weeks is None else calendar_weeks * D(7),
+    }
 
 
 def prevailing_wage(published_wage: Any, published_fringe: Any, classification_addition: Any = 0, credit_rate: Any = "0.1425") -> dict[str, Decimal]:

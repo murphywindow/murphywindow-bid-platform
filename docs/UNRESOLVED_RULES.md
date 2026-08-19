@@ -1,6 +1,6 @@
 # INF-4320 rule status and unresolved requirements
 
-INF-4320 v2.0.0 is a **Developing** specification. This application distinguishes:
+INF-4320 v2.1.0 is a **Developing** specification. This application distinguishes:
 
 - **Verified** — directly observed workbook structure or formula behavior.
 - **Confirmed** — business rule explicitly confirmed by the owner in INF-4320.
@@ -16,7 +16,9 @@ Owner-provided rate tables are stored in configuration version 3. Their numeric 
 
 ## Owner decisions still required
 
-1. Required project fields, controlled enumerations, file naming/reuse, and submission evidence.
+The 2.1 web contract now confirms Project Type, Contract Type, Wage Type, local Bid Due Date/time, reusable records, Quote adjustment/selection, Frame and Door quantity exceptions, controlled project overrides, Man-Hours Labor scheduling, and per-code Bid aggregation. The following decisions remain unresolved:
+
+1. Remaining required project fields, file naming/reuse, and submission evidence.
 2. Large-bid dollar/risk/customer/scope threshold and proof of GM/President review.
 3. Exact Support delegation and activation reversal/correction handling.
 4. Contract re-estimate control total, approval, and ability to change total value.
@@ -29,5 +31,8 @@ Owner-provided rate tables are stored in configuration version 3. Their numeric 
 11. SOV role, approval, underallocation treatment, and rounding policy beyond reconciliation.
 12. Closeout gates, final approval, exceptions, archive location, and retention period.
 13. Exact approved Rogers mileage origin, route-provider service level, and whether travel policy uses one-way, round-trip, or another mileage basis.
+14. A controlled Design Labor rate and its source/effective-date authority.
+15. The authoritative Door/Hardware monetary route into Bid, including cost code, tax, and markup treatment.
+16. Whether Installation Materials should receive a distinct controlled markup; until confirmed, the web contract explicitly inherits Base Product markup.
 
-Until resolved, closeout is explicitly `provisional_pending_policy`; activation cannot be reversed through the UI; overallocated SOV lines are blocked; and underallocated lines remain pending treatment.
+Until resolved, closeout is explicitly `provisional_pending_policy`; activation cannot be reversed through the UI; overallocated SOV lines are blocked; and underallocated lines remain pending treatment. Enabled travel without a controlled policy, Design Labor without a controlled rate, and other required unavailable commercial inputs remain structured submission blockers. The application does not infer Door/Hardware selling cost or invent a separate Installation Materials markup.

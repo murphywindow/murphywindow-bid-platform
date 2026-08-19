@@ -1,9 +1,9 @@
-# Job-data interchange schema 1.0.0
+# Job-data interchange schema 1.1.0
 
 `GET /api/projects/{id}/job-data` and the **Copy job data** action produce a UTF-8 JSON object with:
 
 - `schema`: constant `murphywindow.job-data`;
-- `version`: `1.0.0`;
+- `version`: `1.1.0`;
 - `generated_at`: UTC ISO-8601 timestamp;
 - `project`, `contacts`, and `quotes`: authoritative project records;
 - `bid`: the current server-calculated working estimate, including lines, totals, warnings, alternate inclusion, and lineage;
@@ -15,3 +15,4 @@ Arrays are always arrays, including when empty. JSON escaping is handled by the 
 
 Import accepts the full project document described by `docs/PROJECT_SCHEMA.json`, not the smaller job-data payload. By default import creates a new project ID so an existing local project is never overwritten.
 
+Version 1.1.0 adds structured project-address fields; explicit controlled-value status; quote adjustment and selection provenance; controlled, override, and effective rates; line-level validation acknowledgements; labor schedule/source metadata; and derived Bid cost-code summaries. Older 1.0.0 project documents are migrated in memory before use. Migration is idempotent and preserves deprecated source fields and historical commercial values.

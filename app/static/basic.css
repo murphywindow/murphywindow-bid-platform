@@ -31,3 +31,24 @@ main{min-width:0;padding:10px}.welcome{display:grid;grid-template-columns:1fr 1f
 #toast{position:fixed;right:10px;bottom:10px;z-index:100;background:#fff;border:1px solid #555;padding:7px;display:none}#toast.show{display:block}
 dialog{max-width:650px;border:1px solid #555}.dialog-actions{display:flex;justify-content:flex-end;gap:5px;margin-top:10px}
 @media(max-width:850px){.shell{grid-template-columns:1fr}.sidebar{border-right:0;border-bottom:1px solid #777}.grid.three,.grid.four{grid-template-columns:repeat(2,minmax(0,1fr))}.frame-basic-section>header{grid-template-columns:1fr}}
+
+/* Shared functional data-entry behavior. These selectors intentionally provide
+   state clarity rather than a polished presentation layer. */
+[data-edit-table] table{min-width:max-content}[data-edit-table] thead th{position:sticky;top:0;z-index:2}
+[data-edit-table] input,[data-edit-table] select,[data-edit-table] textarea{min-width:92px;width:100%}
+[data-edit-table] textarea{min-height:30px;height:30px;resize:vertical}
+[data-table-row].trailing-row td{background:#fafafa;color:#555}
+.table-empty-note{margin:5px;color:#555}
+[aria-invalid=true],.has-pending-cell input{border:2px solid #a00!important;background:#fff2f2!important}
+.incomplete-row td{background:#fff0f0}.acknowledged-exception td{background:#fff8e5}.has-rate-override td{background:#fff8e5}
+.has-rate-override small{display:block;color:#734d00}
+.autocomplete-field{position:relative}.autocomplete-popup,.cost-code-suggestions{position:fixed;z-index:100;max-height:260px;overflow:auto;border:1px solid #555;background:#fff}
+.autocomplete-popup[hidden],.cost-code-suggestions[hidden]{display:none}.autocomplete-popup table,.cost-code-suggestions table{width:100%}
+.autocomplete-popup tr[data-autocomplete-index],.cost-code-suggestions tr[role=option]{cursor:pointer}
+.autocomplete-popup tr.active,.autocomplete-popup tr:hover,.cost-code-suggestions tr[aria-selected=true]{background:#ddd}
+.autocomplete-add td{font-weight:bold}.scope-code-wrap{overflow:visible}
+.quote-group>h2{margin-bottom:6px}.compact-help{padding:7px}.compact-help p{margin:3px 0}
+.bid-controls .field{min-width:130px}.bid-breakdown>table{width:100%}.bid-detail-row>td{padding:8px;background:#f7f7f7}.bid-detail-row table{width:100%}.bid-source-line td:first-child{padding-left:22px}
+.dialog-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#softwareVersion{font-variant-numeric:tabular-nums}
+@media(max-width:850px){.dialog-grid{grid-template-columns:1fr}.autocomplete-popup,.cost-code-suggestions{max-width:calc(100vw - 16px)}}

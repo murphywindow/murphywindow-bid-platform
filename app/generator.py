@@ -11,39 +11,43 @@ from .calculations import normalize_code
 from .schema import CONFIG_VERSION, new_project, now, uid
 from .services import audit
 
-GENERATOR_VERSION = "1.0.0"
+GENERATOR_VERSION = "1.1.0"
 
 
 PROJECT_PROFILES = [
     {
         "kind": "Community recreation center",
+        "project_type": "New Construction - Curtainwall",
         "names": ["Northstar Commons", "Riverbend Recreation Center", "Prairie Creek Community Center"],
         "building_type": "Municipal recreation and assembly",
-        "contract_type": "Lump sum public bid",
+        "contract_type": "Bid to CM/GC",
         "prevailing_wage": True,
         "scope": "Furnish and install aluminum storefront, curtain wall, entrances, doors, hardware, glazing, perimeter sealants, and associated installation materials.",
     },
     {
         "kind": "Medical office",
+        "project_type": "New Construction - Exterior Storefront",
         "names": ["Cedar Health Pavilion", "Lakeview Specialty Clinic", "Meadowbrook Medical Offices"],
         "building_type": "Outpatient healthcare",
-        "contract_type": "Negotiated lump sum",
+        "contract_type": "Bid to CM/GC",
         "prevailing_wage": False,
         "scope": "Furnish and install exterior aluminum framing, glazed entrances, interior borrowed lites, glazing, door hardware, sealants, and related installation materials.",
     },
     {
         "kind": "K-12 education addition",
+        "project_type": "Addition/Renovation - Curtainwall",
         "names": ["Oak Ridge Learning Center", "Summit Ridge School Addition", "Maple Grove Academic Wing"],
         "building_type": "Education",
-        "contract_type": "Competitive lump sum",
+        "contract_type": "Bid to CM/GC",
         "prevailing_wage": True,
         "scope": "Furnish and install thermally improved storefront and curtain wall, aluminum entrances, glazing, hardware, borrowed lites, sealants, and installation accessories.",
     },
     {
         "kind": "Corporate office renovation",
+        "project_type": "Addition/Renovation - Interior Storefront",
         "names": ["Granite Point Workplace", "Mill District Offices", "Pinnacle Operations Center"],
         "building_type": "Commercial office",
-        "contract_type": "Construction manager at risk",
+        "contract_type": "Bid to CM/GC",
         "prevailing_wage": False,
         "scope": "Furnish and install exterior and interior aluminum framing, entrances, glazing, borrowed lites, door hardware, perimeter sealants, and installation materials.",
     },
@@ -99,8 +103,11 @@ def _quote(rng: random.Random, group: str, code: str, vendor: str, base_price: i
     return {
         "id": uid("quo"), "group_id": group, "code": code, "date": "2026-08-12", "vendor": vendor,
         "price": str((Decimal(base_price) * variation).quantize(Decimal("1"))),
-        "surcharge_percent": rng.choice(["0", "0.015", "0.025", "0.035"]),
-        "tax_included": rng.choice([True, False]), "used": used, "notes": note,
+        "credit_type": "dollar", "credit_value": "0",
+        "surcharge_type": "percentage", "surcharge_value": rng.choice(["0", "0.015", "0.025", "0.035"]),
+        "surcharge_percent": "0", "square_feet": None, "square_feet_source": "unassigned",
+        "tax_included": rng.choice([True, False]), "used": False,
+        "notes": note + (" Automatic selection will choose the lowest final adjusted value." if used else ""),
     }
 
 
@@ -115,6 +122,7 @@ def _frame_line(rng: random.Random, section_index: int, line_index: int, frame_t
         "sill": rng.choice(["Standard", "High-performance", "Subsill"]),
         "type": frame_type, "material": "Extruded aluminum", "finish": finish,
         "notes": rng.choice(["Per architectural elevations", "Field verify opening", "Coordinate adjacent finish", "Typical condition"]),
+        "missing_quantity_acknowledged": False,
     }
 
 
@@ -147,8 +155,9 @@ def generate_test_project(config: dict, actor: str, role: str, seed: int | str |
 
     doc["project"].update({
         "project_number": project_number, "address": f"{street_number} {rng.choice(STREETS)}, {city}, {state}", "zip": zip_code,
-        "miles_from_rogers": miles, "project_type": profile["kind"], "building_type": profile["building_type"],
-        "contract_type": profile["contract_type"], "owner_name": owner, "owner_address": f"100 Civic Plaza, {city}, {state} {zip_code}",
+        "miles_from_rogers": miles, "project_type": profile["project_type"], "building_type": profile["building_type"],
+        "project_type_status": "current", "contract_type": profile["contract_type"], "contract_type_status": "current",
+        "owner_name": owner, "owner_address": f"100 Civic Plaza, {city}, {state} {zip_code}",
         "architect": architect, "engineer": engineer, "general_contractor": gc,
         "construction_manager": gc if "manager" in profile["contract_type"].lower() else "",
         "plan_source": "Synthetic issued-for-bid drawing set", "addenda_count": rng.randint(0, 4),
@@ -158,9 +167,11 @@ def generate_test_project(config: dict, actor: str, role: str, seed: int | str |
         "proposal_scope": profile["scope"],
         "proposal_inclusions": "Standard manufacturer warranties; shop drawings; normal delivery; installation materials; final perimeter sealants; one mobilization per phase.",
         "proposal_exclusions": "Testing artifact only. Excludes permits, engineering delegated by others, temporary heat, hazardous-material remediation, after-hours premiums, and unresolved travel policy.",
-        "bid_due_date": bid_due.isoformat(), "start_date": start.isoformat(), "completion_date": finish.isoformat(),
+        "bid_due_date": f"{bid_due.isoformat()}T14:00", "start_date": start.isoformat(), "completion_date": finish.isoformat(),
         "fabrication_due_date": (start - timedelta(days=35)).isoformat(), "fabrication_start_date": (start - timedelta(days=70)).isoformat(),
         "prevailing_wage_required": use_prevailing,
+        "wage_type": "PW" if use_prevailing else "Non-PW",
+        "wage_type_status": "current",
         "wage_data_id": wage_record.get("id") if use_prevailing else None,
         "wage_selection_source": wage_record.get("source") if use_prevailing else "Non-PW profile",
         "wage_selected_at": now() if use_prevailing else None,
@@ -198,6 +209,10 @@ def generate_test_project(config: dict, actor: str, role: str, seed: int | str |
         for index, vendor in enumerate(vendors):
             doc["quotes"].append(_quote(rng, group, code, vendor, price, index == selected,
                                         "Selected synthetic comparison quote" if index == selected else "Synthetic comparison quote"))
+    doc["working_estimate"]["quote_selection_by_code"] = {
+        code: {"mode": "automatic", "selected_quote_ids": []}
+        for code in dict.fromkeys(row["code"] for row in doc["quotes"])
+    }
 
     section_specs = [
         ("Level 1 Storefront", "08 41 13", "Storefront"), ("Main Curtain Wall", "08 44 13", "Curtain wall"),
@@ -220,12 +235,13 @@ def generate_test_project(config: dict, actor: str, role: str, seed: int | str |
         door_id = uid("dor")
         hw = f"HW{rng.randint(1, 6)}"
         doc["doors"].append({
-            "id": door_id, "door_number": f"{101 + index}", "mark": f"D{index + 1}", "leaf_quantity": rng.choice([1, 1, 1, 2]),
+            "id": door_id, "code": "08 11 00", "door_number": f"{101 + index}", "mark": f"D{index + 1}", "leaf_quantity": rng.choice([1, 1, 1, 2]),
             "width_inches": rng.choice([36, 42, 48]), "height_inches": rng.choice([84, 96]), "type": rng.choice(door_types),
             "material": "Aluminum", "finish": rng.choice(FINISHES), "description": "Glazed aluminum entrance door",
             "glass": rng.choice(["1-inch insulated", "1/4-inch tempered", "Laminated safety glass"]),
             "style": rng.choice(["Full vision", "10-inch bottom rail", "ADA bottom rail"]), "rails": "Standard top / optional mid / 10-inch bottom",
             "hardware_group_id": hw, "fire_rating": "None", "notes": "Synthetic door schedule; coordinate final handing.",
+            "missing_quantity_acknowledged": False,
         })
         doc["hardware_assignments"].append({
             "id": uid("hwa"), "door_id": door_id, "hardware_group_id": hw, "quantity": 1,
@@ -244,6 +260,12 @@ def generate_test_project(config: dict, actor: str, role: str, seed: int | str |
         "taxable": True, "rate_id": configured_equipment.get(description, {}).get("id"), "rate_version": config.get("id"),
         "notes": "Owner-provided rental reference used for synthetic testing; verify stale vendor rate and duration before commercial use.",
     } for description, quantity, duration in equipment_specs]
+    existing_codes = {normalize_code(row.get("code")) for row in doc["cost_codes"]}
+    for equipment in doc["equipment"]:
+        normalized = normalize_code(equipment.get("code"))
+        if normalized and normalized not in existing_codes:
+            doc["cost_codes"].append(_cost_code(config, equipment["code"]))
+            existing_codes.add(normalized)
 
     doc["borrowed_lites"] = [{
         "id": uid("brl"), "code": "08 80 00", "mark": f"BL-{index + 1}", "quantity": rng.randint(1, 5),
@@ -267,12 +289,29 @@ def generate_test_project(config: dict, actor: str, role: str, seed: int | str |
         ("design", "08 80 00", "Glazing submittals", 1, "package", 1, 0.05, "92", "synthetic_design_rate"),
         ("field", "ALT1-08 41 13", "ALT1 storefront installation", 1420, "SF", 2, 5.5, field_rate, field_rate_id),
     ]
-    doc["labor_estimates"] = [{
-        "id": uid("lbr"), "category": category, "code": code, "description": description, "quantity": quantity,
-        "quantity_unit": unit, "crew": crew, "productivity": productivity, "rate": str(rate),
-        "rate_id": rate_id, "rate_version": config.get("id"),
-        "notes": "Owner-provided rate reference used for testing." if rate_id != "synthetic_design_rate" else "Synthetic design rate: no owner design rate supplied; replace before commercial use.",
-    } for category, code, description, quantity, unit, crew, productivity, rate, rate_id in labor_specs]
+    doc["labor_estimates"] = []
+    for category, code, description, quantity, unit, crew, productivity, rate, rate_id in labor_specs:
+        labor_type = category.title()
+        controlled_available = labor_type != "Design"
+        controlled_rate = str(rate) if controlled_available else None
+        controlled_id = rate_id if controlled_available else "labor_design_unavailable"
+        man_hours = Decimal(str(quantity)) / Decimal(str(crew)) / Decimal(str(productivity))
+        doc["labor_estimates"].append({
+            "id": uid("lbr"), "labor_type": labor_type, "category": category, "code": code, "description": description,
+            "man_hours": str(man_hours), "man_hours_source": "synthetic_test_input", "crew_size": crew,
+            "hours_per_worker_per_day": "8", "workdays_per_week": "5",
+            "controlled_rate_snapshot": {
+                "rate": controlled_rate, "rate_id": controlled_id, "configuration_id": config.get("id"),
+                "source": config.get("rate_reference", {}).get("source"),
+                "status": "owner_provided" if controlled_available else "unavailable_no_owner_design_rate",
+            },
+            "legacy_effective_rate": None, "rate_override": None, "rate_override_reason": None,
+            "rate": controlled_rate, "rate_id": controlled_id, "rate_version": config.get("id"),
+            "origin": "manual", "source_links": [], "source_status": "unclassified", "stale_acknowledged": False,
+            # Retained only as clearly labeled test lineage; new cost uses Man Hours.
+            "quantity": quantity, "quantity_unit": unit, "crew": crew, "productivity": productivity,
+            "notes": "Owner-provided controlled rate reference used for testing." if controlled_available else "No owner-controlled Design rate exists; this line intentionally blocks commercial submission and contributes no Design cost.",
+        })
 
     doc["travel_estimates"] = [
         {"id": uid("trv"), "code": "01 59 40", "enabled": False, "crew_load": 6, "days_per_week": 5, "row_days": 65,
@@ -287,6 +326,7 @@ def generate_test_project(config: dict, actor: str, role: str, seed: int | str |
         "alternate_inclusion": {"ALT1": True, "ALT2": False, "ALT3": False, "ALT4": False},
         "markup_overrides": {"base_product": "0.12", "LAF": "0.18", "LAS": "0.15"},
         "contingency_enabled": False, "bond_enabled": False,
+        "labor_suggestion_exclusions": [], "component_markup_overrides": {},
     })
     doc["alternates"] = [
         {"id": uid("alt"), "variant": "ALT1", "name": "Value-engineered storefront system", "included": True,

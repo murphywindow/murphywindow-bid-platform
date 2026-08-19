@@ -1,13 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://murphywindow.local/schemas/project-1.0.0.json",
+  "$id": "https://murphywindow.local/schemas/project-1.1.0.json",
   "title": "Murphy Window Bid Project",
   "description": "Versioned normalized local project document controlled by INF-4320.",
   "type": "object",
   "required": ["schema_version", "interchange_version", "project", "contacts", "cost_codes", "quotes", "takeoff_sections", "labor_estimates", "estimate_revisions", "audit_events"],
   "properties": {
-    "schema_version": {"const": "1.0.0"},
-    "interchange_version": {"const": "1.0.0"},
+    "schema_version": {"const": "1.1.0"},
+    "interchange_version": {"const": "1.1.0"},
     "project": {"$ref": "#/$defs/project"},
     "contacts": {"type": "array", "items": {"$ref": "#/$defs/entity"}},
     "cost_codes": {"type": "array", "items": {"$ref": "#/$defs/entity"}},
@@ -43,6 +43,28 @@
       "properties": {
         "id": {"type": "string", "pattern": "^prj_[a-f0-9]+$"}, "revision": {"type": "integer", "minimum": 0}, "name": {"type": "string"},
         "configuration_id": {"type": "string"},
+        "project_type": {
+          "type": "string",
+          "description": "Current values are controlled by the application. A migrated historical value may remain here with project_type_status=legacy_unsupported until deliberately replaced."
+        },
+        "project_type_status": {"enum": ["current", "missing", "legacy_unsupported"]},
+        "contract_type": {
+          "type": "string",
+          "description": "Current values are Bid to CM/GC or Bid as GC. Migrated unsupported values remain losslessly marked legacy_unsupported."
+        },
+        "contract_type_status": {"enum": ["current", "missing", "legacy_unsupported"]},
+        "wage_type": {"type": "string", "description": "Canonical deliberate wage classification, including Non-PW and PW."},
+        "wage_type_status": {"enum": ["current", "missing", "legacy_unsupported"]},
+        "bid_due_date": {
+          "type": ["string", "null"],
+          "description": "Local wall-clock date and time. It is not shifted to UTC."
+        },
+        "address_street": {"type": "string"},
+        "address_city": {"type": "string"},
+        "address_state": {"type": "string"},
+        "zip": {"type": "string"},
+        "county": {"type": "string"},
+        "address_match_metadata": {"type": ["object", "null"]},
         "bid_version": {"type": "object", "required": ["major", "minor", "patch", "display", "sequence", "last_event", "recorded_at"], "properties": {"major": {"type": "integer", "minimum": 0}, "minor": {"type": "integer", "minimum": 0}, "patch": {"type": "integer", "minimum": 0}, "display": {"type": "string", "pattern": "^B[0-9]+\\.[0-9]+\\.[0-9]+$"}, "sequence": {"type": "integer", "minimum": 0}, "last_event": {"type": "string"}, "recorded_at": {"type": "string", "format": "date-time"}}, "additionalProperties": false},
         "lifecycle_state": {"enum": ["estimate_created", "scope_takeoff_in_progress", "estimate_review", "submitted", "revised_resubmitted", "award_pending", "awarded_activated", "contract_allocation", "change_order_management", "sov_management", "provisional_closeout"]},
         "created_at": {"type": "string", "format": "date-time"}, "updated_at": {"type": "string", "format": "date-time"}

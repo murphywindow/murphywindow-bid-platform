@@ -4,9 +4,9 @@ import pytest
 
 from app.calculations import (
     bond_amount, borrowed_lite_area, contingency, dollars_in_words,
-    equipment_extension, escalated_rate, frame_quantities, installation_material,
-    labor_extension, labor_hours, map_cost_code, markup, prevailing_wage,
-    project_abbreviation, quote_cost, quote_unit_cost, sequential_pco,
+    effective_rate, equipment_extension, escalated_rate, frame_quantities, installation_material,
+    labor_extension, labor_hours, labor_schedule, map_cost_code, markup, prevailing_wage,
+    project_abbreviation, quote_adjustment, quote_cost, quote_unit_cost, sequential_pco,
     sov_values, split_variant, taxed_cost,
 )
 
@@ -31,6 +31,31 @@ def test_quote_surcharge_unit_cost_and_blank_behavior():
     assert quote_cost(None, "0.05") is None
     assert quote_unit_cost("1050", "100") == D("10.50")
     assert quote_unit_cost("1050", 0) is None
+
+
+def test_quote_credit_is_applied_before_surcharge_with_named_lineage():
+    result = quote_adjustment("1000", "percentage", ".10", "percentage", ".10")
+    assert result == {
+        "base_price": D("1000.00"), "credit_type": "percentage", "credit_value": D(".10"),
+        "credit_amount": D("100.00"), "post_credit_subtotal": D("900.00"),
+        "surcharge_type": "percentage", "surcharge_value": D(".10"),
+        "surcharge_amount": D("90.00"), "final_adjusted_value": D("990.00"),
+    }
+    dollars = quote_adjustment("1000", "dollar", "125", "dollar", "25")
+    assert dollars["credit_amount"] == D("125.00")
+    assert dollars["post_credit_subtotal"] == D("875.00")
+    assert dollars["surcharge_amount"] == D("25.00")
+    assert dollars["final_adjusted_value"] == D("900.00")
+    with pytest.raises(ValueError, match="negative"):
+        quote_adjustment("1000", "dollar", 0, "dollar", -1)
+
+
+def test_quote_adjustment_preserves_legacy_percent_and_blank_price():
+    legacy = quote_adjustment("1000", legacy_surcharge_percent=".05")
+    assert legacy["final_adjusted_value"] == D("1050.00")
+    blank = quote_adjustment(None, "dollar", "10", "percentage", ".05")
+    assert blank["final_adjusted_value"] is None
+    assert blank["credit_value"] == D("10")
 
 
 def test_taxable_exempt_and_tax_included():
@@ -78,6 +103,29 @@ def test_labor_productivity_override_extension_and_missing_rate():
     assert labor_hours(100, 0, 5) is None
     assert labor_extension(10, 75) == D("750.00")
     assert labor_extension(10, None) is None
+
+
+def test_effective_labor_rate_and_schedule_are_independent_of_cost_hours():
+    rate = effective_rate("68.53", "75")
+    assert rate == {
+        "controlled_rate": D("68.53"), "rate_override": D("75"),
+        "effective_rate": D("75"), "is_override": True,
+    }
+    schedule = labor_schedule("8", "2", "8", "5")
+    assert schedule["shift_configuration"] == "5x8"
+    assert schedule["working_days"] == D(".5")
+    assert schedule["calendar_weeks"] == D(".1")
+    assert schedule["calendar_days"] == D(".7")
+    assert labor_extension(schedule["man_hours"], rate["effective_rate"]) == D("600.00")
+
+
+def test_labor_schedule_bounds_and_blank_or_zero_denominators_are_safe():
+    assert labor_schedule("8", 0, "8", "5")["working_days"] is None
+    assert labor_schedule("8", None, None, None)["calendar_days"] is None
+    with pytest.raises(ValueError, match="between 0 and 24"):
+        labor_schedule("8", 2, "24.01", 5)
+    with pytest.raises(ValueError, match="between 0 and 7"):
+        labor_schedule("8", 2, 8, "7.01")
 
 
 def test_prevailing_wage_fringe_credit_and_escalation_override():

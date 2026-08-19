@@ -1,6 +1,6 @@
 # Murphy Window Bid Platform
 
-A local, browser-based estimating application controlled by **INF-4320 v2.0.0**. It uses FastAPI and a lightweight server-rendered shell/vanilla browser client—no Node production service and no external database. All authoritative data remains in human-readable JSON on this Windows computer.
+A local, browser-based estimating application controlled by **INF-4320 v2.1.0**. The current software release is **v1.2.0**. It uses FastAPI and a lightweight server-rendered shell/vanilla browser client—no Node production service and no external database. All authoritative data remains in human-readable JSON on this Windows computer.
 
 ## Launch
 
@@ -20,6 +20,8 @@ Stop cleanly with **Ctrl+C** in the launcher window. Project saves are discrete 
 - Primary projects: `data/projects/<stable-project-id>.json`
 - Automatic/manual snapshots: `data/backups/<stable-project-id>/`
 - Effective-dated configuration: `data/configurations/`
+- Reusable historical master data: `data/master-data/`
+- Local hash-backed application secrets: `data/secrets/` (ignored by Git)
 - Optional export workspace: `data/exports/`
 
 An actual committed form change marks the tab **Unsaved changes** and starts an immediate save after a 250 ms browser-event debounce. Rapid changes may share one atomic disk write, but every changed datapoint receives its own bid patch increment and audit event. The client shows **Saving**, **Saved**, **Unsaved changes**, **Save failed**, or **Save conflict** and never starts overlapping saves. Explicit Save uses the same transaction immediately.
@@ -33,6 +35,10 @@ Every project shows a bid-semantic version such as `B0.3.7`:
 - **Major** increments and minor/patch reset to zero when notice-to-proceed activation creates the awarded baseline.
 
 The independent JSON file `revision` is a concurrency/persistence counter; the `Bmajor.minor.patch` value is the user-facing bid/workflow version. A submitted estimate revision stores its exact bid version, and an award records both the accepted submitted version and activation version.
+
+### Software release version
+
+The platform itself follows Semantic Versioning (`MAJOR.MINOR.PATCH`). The authoritative value is in `app/version.py`, is used by FastAPI, and is returned by `/api/health`. Release history is maintained in [CHANGELOG.md](CHANGELOG.md). This software version is deliberately separate from project schema, job-data interchange, configuration, generator, JSON file revision, and the per-project `Bmajor.minor.patch` bid lifecycle.
 
 Before replacing an existing primary file, the server copies it to the project backup directory. It writes the new JSON to a temporary sibling, flushes and `fsync`s it, then uses atomic `os.replace`; a failed/interrupted write leaves the prior primary intact. Twenty backups are retained by default. **Backup** creates a labeled manual snapshot. **Refresh** warns before discarding dirty or failed changes. Expected file revisions detect concurrent-tab edits; reload one tab and reapply its changes rather than overwriting the other.
 
@@ -50,7 +56,7 @@ The calculation stores the input and matched addresses, origin/destination coord
 
 The home page includes **Generate realistic test project**. It creates and immediately persists a clearly labeled synthetic draft at `B0.0.0`. Leave the seed blank for a new scenario, or enter the same number or memorable text to reproduce the same profile and values in a distinct project file.
 
-Generation is curated rather than unconstrained randomness. A scenario contains aligned project information and dates, six contacts, nine owner-reference cost codes, four three-vendor quote groups, five frame sections with 40 dimensional rows, 18 linked doors and hardware assignments, five equipment records, eight borrowed lites, 14 field/shop/design labor lines, three disabled pending-policy travel assumptions, ALT1 sources, proposal language, and four bid-tab comparisons. Names and email domains are fictitious, the internal notes and project list identify test data, and no generated project is submitted or awarded. Travel, contingency, and bond remain disabled because generation must not silently assert unresolved policy. Each generated document records its seed, profile, generator version, purpose, and an audit event. Subsequent edits use normal live-save and bid-version behavior.
+Generation is curated rather than unconstrained randomness. A scenario contains aligned project information and dates, six contacts, owner-reference cost codes covering every generated source (including Equipment), four three-vendor quote groups, five frame sections with 40 dimensional rows, 18 linked doors and hardware assignments, five equipment records, eight borrowed lites, 14 field/shop/design labor lines, three disabled pending-policy travel assumptions, ALT1 sources, proposal language, and four bid-tab comparisons. Names and email domains are fictitious, the internal notes and project list identify test data, and no generated project is submitted or awarded. Travel, contingency, and bond remain disabled because generation must not silently assert unresolved policy. Each generated document records its seed, profile, generator version, purpose, and an audit event. Subsequent edits use normal live-save and bid-version behavior.
 
 ## Workflow and permissions
 

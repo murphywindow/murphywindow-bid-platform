@@ -3,8 +3,8 @@ from fastapi.testclient import TestClient
 
 from app.generator import GENERATOR_VERSION, generate_test_project
 from app.persistence import JsonStore
-from app.schema import default_configuration
-from app.services import calculate_project
+from app.schema import CONTRACT_TYPES, PROJECT_TYPES, WAGE_TYPES, default_configuration
+from app.services import calculate_project, submission_blockers
 
 
 @pytest.fixture()
@@ -42,7 +42,7 @@ def test_generator_populates_every_estimating_bucket_with_coherent_data():
     assert all(row["door_id"] in door_ids for row in doc["hardware_assignments"])
     groups = {row["group_id"] for row in doc["quotes"]}
     assert all(sum(bool(row["used"]) for row in doc["quotes"] if row["group_id"] == group) == 1 for group in groups)
-    assert not [warning for warning in doc["working_estimate"]["validation"] if warning["code"] in {"invalid_cost_code", "multiple_used_quotes", "missing_used_quote"}]
+    assert not [warning for warning in doc["working_estimate"]["validation"] if warning["code"] in {"invalid_cost_code", "invalid_source_cost_code", "multiple_used_quotes", "missing_used_quote"}]
     assert float(doc["working_estimate"]["totals"]["selling_value"]) > 100_000
 
 
@@ -70,6 +70,40 @@ def test_generator_starts_as_a_saved_editable_synthetic_draft():
     assert any(event["operation"] == "generate_test_project" for event in doc["audit_events"])
 
 
+def test_generator_uses_current_controlled_project_values_and_local_bid_deadline():
+    doc = _generated()
+    project = doc["project"]
+    assert project["project_type"] in PROJECT_TYPES and project["project_type_status"] == "current"
+    assert project["contract_type"] in CONTRACT_TYPES and project["contract_type_status"] == "current"
+    assert project["wage_type"] in WAGE_TYPES and project["wage_type_status"] == "current"
+    assert project["bid_due_date"].endswith("T14:00")
+    assert "+" not in project["bid_due_date"] and not project["bid_due_date"].endswith("Z")
+
+
+def test_generator_quote_selection_is_automatic_by_full_code_and_uses_adjusted_value():
+    doc = _generated()
+    grouped = {}
+    for quote in doc["quotes"]:
+        grouped.setdefault(quote["code"], []).append(quote)
+    for code, rows in grouped.items():
+        used = [row for row in rows if row["used"]]
+        assert len(used) == 1
+        assert used[0]["calculated_cost"] == min(row["calculated_cost"] for row in rows)
+        assert doc["working_estimate"]["quote_selection_by_code"][code]["mode"] == "automatic"
+
+
+def test_generator_does_not_invent_design_or_travel_money():
+    doc = _generated()
+    design_rows = [row for row in doc["labor_estimates"] if row["labor_type"] == "Design"]
+    assert design_rows
+    assert all(row["controlled_rate_snapshot"]["rate"] is None for row in design_rows)
+    assert all(row["calculated_cost"] is None for row in design_rows)
+    assert not [line for line in doc["working_estimate"]["lines"] if line["category"] == "design_labor"]
+    assert any(item["code"] == "unavailable_design_rate" for item in submission_blockers(doc))
+    assert all(not row["enabled"] for row in doc["travel_estimates"])
+    assert not [item for item in submission_blockers(doc) if item["code"] == "travel_policy_unavailable"]
+
+
 def test_generate_test_project_api_and_home_control(client):
     response = client.post("/api/projects/generate-test", headers={"X-Role": "Estimator", "X-Actor": "Generator Tester"}, json={"seed": "api-case"})
     assert response.status_code == 200
@@ -86,4 +120,3 @@ def test_generate_test_project_api_and_home_control(client):
     javascript = client.get("/assets/app.js").text
     assert "Generate realistic test project" in home
     assert '"generate-test":generateTestProject' in javascript
-

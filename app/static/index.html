@@ -11,7 +11,7 @@
   <div id="toast" role="status" aria-live="polite"></div>
   <header class="topbar">
     <button id="menuButton" class="icon-button mobile-only" aria-label="Open navigation">☰</button>
-    <div class="brand"><span class="brand-mark">MW</span><span><strong>Murphy Window</strong><small>Bid Platform</small></span></div>
+    <div class="brand"><span class="brand-mark">MW</span><span><strong>Murphy Window</strong><small>Bid Platform · <span id="softwareVersion">version…</span></small></span></div>
     <div class="project-switcher">
       <button id="openProject" class="ghost"><span id="projectLabel">No project open</span><small id="projectMeta">Open or create a project</small></button>
     </div>
@@ -56,6 +56,7 @@
 
   <dialog id="dialog"><form method="dialog"><div id="dialogBody"></div><div class="dialog-actions"><button value="cancel">Cancel</button><button id="dialogConfirm" class="primary" value="default">Continue</button></div></form></dialog>
   <input type="file" id="fileInput" accept="application/json,.json" hidden>
-  <script src="/assets/app.js?v=20260819-frame-functional-baseline"></script>
+  <script src="/assets/ui-core.js?v=20260819-shared-tables"></script>
+  <script src="/assets/app.js?v=20260819-shared-tables"></script>
 </body>
 </html>

@@ -6,8 +6,14 @@ data/projects/*.json
 data/backups/**/*.json
 data/exports/*
 data/configurations/*.json
+data/master-data/*.json
+data/master-data-backups/**/*.json
+data/secrets/*.json
 tmp/
 !data/projects/.gitkeep
 !data/backups/.gitkeep
 !data/exports/.gitkeep
 !data/configurations/.gitkeep
+!data/master-data/.gitkeep
+!data/master-data-backups/.gitkeep
+!data/secrets/.gitkeep

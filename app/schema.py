@@ -9,9 +9,32 @@ from uuid import uuid4
 
 from .rate_reference import owner_rate_reference
 
-SCHEMA_VERSION = "1.0.0"
-INTERCHANGE_VERSION = "1.0.0"
-CONFIG_VERSION = "cfg-2026-08-17-v4"
+SCHEMA_VERSION = "1.1.0"
+INTERCHANGE_VERSION = "1.1.0"
+CONFIG_VERSION = "cfg-2026-08-19-v5"
+
+PROJECT_TYPES = (
+    "New Construction - Curtainwall",
+    "New Construction - Exterior Storefront",
+    "New Construction - Interior Storefront",
+    "New Construction - Windows",
+    "Addition/Renovation - Curtainwall",
+    "Addition/Renovation - Exterior Storefront",
+    "Addition/Renovation - Interior Storefront",
+    "Addition/Renovation - Windows",
+    "Repair - Curtainwall",
+    "Repair - Exterior Storefront",
+    "Repair - Interior Storefront",
+    "Repair - Windows",
+    "Replacement - Curtainwall",
+    "Replacement - Exterior Storefront",
+    "Replacement - Interior Storefront",
+    "Replacement - Windows",
+)
+CONTRACT_TYPES = ("Bid to CM/GC", "Bid as GC")
+WAGE_TYPES = ("Non-PW", "PW")
+LABOR_TYPES = ("Field", "Shop", "Design")
+CONTACT_ROLES = ("Owner", "Architect", "Vendor", "Engineer", "GC", "CM")
 
 
 def now() -> str:
@@ -39,11 +62,11 @@ def default_configuration() -> dict:
     return {
         "schema_version": SCHEMA_VERSION,
         "id": CONFIG_VERSION,
-        "version": 4,
-        "effective_date": "2026-08-17",
+        "version": 5,
+        "effective_date": "2026-08-19",
         "status": "active",
         "created_at": now(),
-        "source": "INF-4320 v2.0.0 + owner-provided codes.xlsx + owner-provided rate tables received 2026-08-17",
+        "source": "INF-4320 v2.1.0 + owner-provided codes.xlsx + owner-provided rate tables received 2026-08-17",
         "cost_code_reference": {"reference_id": reference.get("reference_id"), "source": reference.get("source"), "record_count": len(reference.get("records", [])), "status": "owner_confirmed_reference"},
         "rate_reference": {"reference_id": rates["reference_id"], "received_date": rates["received_date"], "source": rates["source"], "status": rates["status"]},
         "rule_status_legend": {
@@ -52,7 +75,7 @@ def default_configuration() -> dict:
             "pending": "Not resolved; safe default is configurable and not policy."
         },
         "tax_rates": [{"id": "tax_default", "name": "Unconfigured local tax", "rate": "0", "status": "pending", "note": "Select and verify the correct project jurisdiction."}, *rates["tax_rates"]],
-        "markup_defaults": {"base_product": {"rate": "0", "status": "pending"}, "LAF": {"rate": "0", "status": "pending"}, "LAS": {"rate": "0", "status": "pending"}},
+        "markup_defaults": {"base_product": {"rate": "0", "status": "pending"}, "installation_material": {"rate": None, "inherits": "base_product", "status": "pending_distinct_rate"}, "LAF": {"rate": "0", "status": "pending"}, "LAS": {"rate": "0", "status": "pending"}},
         "contingency": {"enabled_default": False, "rate": "0.01", "minimum": "3000", "formula_status": "confirmed", "enablement_status": "pending"},
         "bond": {
             "enabled_default": False,
@@ -65,7 +88,7 @@ def default_configuration() -> dict:
         "labor_parameters": {"burden_1_038": {"value": "1.038", "status": "pending"}, "blend_52_percent": {"value": "0.52", "status": "pending"}, "blend_50_percent": {"value": "0.50", "status": "pending"}},
         "material_rules": [{"id": a, "name": b, "material_code": c, "source": d, "factor": e, "rate": f, "unit": g, "keyword": h, "taxable": True, "status": "verified"} for a, b, c, d, e, f, g, h in material_rules],
         "hardware_groups": [{"id": f"HW{i}", "name": f"Hardware Group {i}", "price": "1500" if i == 1 else ("3000" if i == 2 else "5000"), "status": "verified"} for i in range(1, 11)],
-        "equipment_rates": rates["equipment_rates"], "labor_rates": rates["labor_rates"], "labor_burden_records": rates["labor_burden_records"],
+        "equipment_rates": rates["equipment_rates"], "labor_rates": [*rates["labor_rates"], {"id": "labor_design_unavailable", "description": "Design Labor Cost / Rate", "category": "design", "base_rate": None, "rate_basis": "hour", "effective_date": None, "source": "No controlled owner rate supplied", "status": "unavailable_requires_configuration"}], "labor_burden_records": rates["labor_burden_records"],
         "overhead_cost_factors": rates["overhead_cost_factors"], "wage_records": rates["wage_records"], "material_rates": rates["material_rates"],
         "csi_references": reference.get("records", []), "cost_code_mappings": [],
         "schedule_definitions": [
@@ -75,7 +98,7 @@ def default_configuration() -> dict:
             {"id": "borrowed-lite-v1", "type": "borrowed_lite", "version": 1, "status": "verified"},
         ],
         "pending_rules": [
-            "Required fields and controlled enumerations", "Large-bid threshold and review evidence", "Activation reversal/correction authority",
+            "Remaining required fields, file naming/reuse, and submission evidence", "Large-bid threshold and review evidence", "Activation reversal/correction authority",
             "Contract re-estimate control total and approval", "Bond and contingency enable/override authority", "PCO markup rates and change authority",
             "Rate update cadence and effective-date policy", "Travel, per diem, excluded-day, lodging, and tax-exemption rules",
             "SOV operating approval roles", "Closeout gates, approval, archive, and retention"
@@ -92,9 +115,10 @@ def new_project(name: str, actor: str, role: str, configuration_id: str = CONFIG
         "interchange_version": INTERCHANGE_VERSION,
         "project": {
             "id": project_id, "revision": 0, "name": name, "abbreviation": "", "project_number": "", "mwd_po": "", "address": "",
-            "zip": "", "miles_from_rogers": None, "project_type": "", "building_type": "", "estimator": actor if role == "Estimator" else "",
+            "address_street": "", "address_city": "", "address_state": "", "zip": "", "county": "", "address_match_metadata": None,
+            "miles_from_rogers": None, "project_type": "", "project_type_status": "missing", "building_type": "", "estimator": actor if role == "Estimator" else "",
             "project_manager": "", "owner_name": "", "owner_address": "", "architect": "", "engineer": "", "general_contractor": "",
-            "construction_manager": "", "plan_source": "", "contract_type": "", "addenda_count": 0, "walkthrough": "", "frame_sealant_colors": "",
+            "construction_manager": "", "plan_source": "", "contract_type": "", "contract_type_status": "missing", "wage_type": "", "wage_type_status": "missing", "addenda_count": 0, "walkthrough": "", "frame_sealant_colors": "",
             "additional_information": "", "notes": "", "proposal_scope": "", "proposal_inclusions": "", "proposal_exclusions": "",
             "wage_data_id": None, "wage_selection_source": None, "wage_selected_at": None, "tax_exempt": False, "tax_rate_id": "tax_default",
             "tax_selection_source": None, "tax_selected_at": None, "bid_due_date": None, "start_date": None, "completion_date": None,
@@ -106,7 +130,9 @@ def new_project(name: str, actor: str, role: str, configuration_id: str = CONFIG
         "borrowed_lites": [], "labor_estimates": [], "travel_estimates": [], "working_estimate": {
             "id": uid("wrk"), "alternate_inclusion": {"ALT1": False, "ALT2": False, "ALT3": False, "ALT4": False},
             "markup_overrides": {}, "contingency_enabled": False, "contingency_override": None, "contingency_override_reason": "",
-            "bond_enabled": False, "bond_override": None, "bond_override_reason": "", "borrowed_lite_source_by_code": {}, "lines": [], "totals": {}
+            "bond_enabled": False, "bond_override": None, "bond_override_reason": "", "borrowed_lite_source_by_code": {},
+            "quote_selection_by_code": {}, "labor_suggestion_exclusions": [], "component_markup_overrides": {}, "pending_controlled_values": [],
+            "lines": [], "code_summaries": [], "category_subtotals": {}, "totals": {}
         },
         "estimate_revisions": [], "alternates": [], "reviews": [], "submissions": [], "proposal_artifacts": [], "bid_tabulations": [], "award": None,
         "contract_allocations": [], "change_orders": [], "sov_lines": [], "closeout": None,
@@ -141,13 +167,16 @@ def test_project(actor: str = "Test Estimator") -> dict:
     doc = new_project("MW Bid Platform Test Project", actor, "Estimator")
     doc["project"].update({
         "id": "prj_00000000000000000000000000004320", "project_number": "TEST-4320", "address": "Rogers, MN",
-        "project_type": "Training / Sandbox", "building_type": "Commercial", "proposal_scope": "Test storefront and frame scope for learning the local bid workflow.",
+        "address_city": "Rogers", "address_state": "MN", "project_type": "New Construction - Exterior Storefront", "project_type_status": "current", "building_type": "Commercial",
+        "contract_type": "Bid to CM/GC", "contract_type_status": "current", "wage_type": "Non-PW", "wage_type_status": "current", "bid_due_date": "2026-09-01T14:00",
+        "proposal_scope": "Test storefront and frame scope for learning the local bid workflow.",
         "proposal_exclusions": "Training data only. This is not a customer offer.", "notes": "Reusable sandbox seeded by the application. Safe to edit, duplicate, submit, and activate for testing."
     })
     doc["audit_events"][0]["entity_id"] = doc["project"]["id"]
     doc["cost_codes"] = [
         {"id": "ccd_test_frames", "code": "08 40 00", "description": "Entrances, Storefronts, and Curtain Walls", "mwd_code": "0840", "mwd_description": "Aluminum Entrances", "deduct": False, "status": "active"},
         {"id": "ccd_test_sealants", "code": "07 90 00", "description": "Joint Sealants", "mwd_code": "0790", "mwd_description": "Sealants", "deduct": False, "status": "active"},
+        {"id": "ccd_test_lifts", "code": "14 40 00", "description": "Lifts", "mwd_code": "", "mwd_description": "", "deduct": False, "status": "active"},
     ]
     doc["contacts"] = [{"id": "con_test_gc", "role": "General Contractor", "organization": "Test Construction", "name": "Taylor Example", "position": "Estimator", "email": "test@example.invalid", "phone": "555-0100", "active": True}]
     doc["quotes"] = [
