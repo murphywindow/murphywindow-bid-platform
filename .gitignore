@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+data/projects/*.json
+data/backups/**/*.json
+data/exports/*
+data/configurations/*.json
+tmp/
+!data/projects/.gitkeep
+!data/backups/.gitkeep
+!data/exports/.gitkeep
+!data/configurations/.gitkeep

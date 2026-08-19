@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://murphywindow.local/schemas/project-1.0.0.json",
+  "title": "Murphy Window Bid Project",
+  "description": "Versioned normalized local project document controlled by INF-4320.",
+  "type": "object",
+  "required": ["schema_version", "interchange_version", "project", "contacts", "cost_codes", "quotes", "takeoff_sections", "labor_estimates", "estimate_revisions", "audit_events"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "interchange_version": {"const": "1.0.0"},
+    "project": {"$ref": "#/$defs/project"},
+    "contacts": {"type": "array", "items": {"$ref": "#/$defs/entity"}},
+    "cost_codes": {"type": "array", "items": {"$ref": "#/$defs/entity"}},
+    "quotes": {"type": "array", "items": {"$ref": "#/$defs/entity"}},
+    "takeoff_sections": {"type": "array", "items": {"$ref": "#/$defs/takeoff_section"}},
+    "doors": {"type": "array", "items": {"$ref": "#/$defs/entity"}},
+    "hardware_assignments": {"type": "array", "items": {"$ref": "#/$defs/entity"}},
+    "equipment": {"type": "array", "items": {"$ref": "#/$defs/entity"}},
+    "borrowed_lites": {"type": "array", "items": {"$ref": "#/$defs/entity"}},
+    "labor_estimates": {"type": "array", "items": {"$ref": "#/$defs/entity"}},
+    "travel_estimates": {"type": "array", "items": {"$ref": "#/$defs/entity"}},
+    "working_estimate": {"type": "object"},
+    "estimate_revisions": {"type": "array", "items": {"$ref": "#/$defs/estimate_revision"}},
+    "alternates": {"type": "array", "items": {"$ref": "#/$defs/entity"}},
+    "reviews": {"type": "array", "items": {"$ref": "#/$defs/entity"}},
+    "submissions": {"type": "array", "items": {"$ref": "#/$defs/entity"}},
+    "proposal_artifacts": {"type": "array", "items": {"$ref": "#/$defs/entity"}},
+    "bid_tabulations": {"type": "array", "items": {"$ref": "#/$defs/entity"}},
+    "award": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/entity"}]},
+    "contract_allocations": {"type": "array", "items": {"$ref": "#/$defs/entity"}},
+    "change_orders": {"type": "array", "items": {"$ref": "#/$defs/entity"}},
+    "sov_lines": {"type": "array", "items": {"$ref": "#/$defs/entity"}},
+    "closeout": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/entity"}]},
+    "configuration_lineage": {"type": "array", "items": {"type": "object"}},
+    "audit_events": {"type": "array", "items": {"$ref": "#/$defs/audit"}}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "entity": {"type": "object", "required": ["id"], "properties": {"id": {"type": "string", "minLength": 5}}, "additionalProperties": true},
+    "project": {
+      "type": "object",
+      "required": ["id", "revision", "name", "configuration_id", "bid_version", "lifecycle_state", "created_at", "updated_at"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^prj_[a-f0-9]+$"}, "revision": {"type": "integer", "minimum": 0}, "name": {"type": "string"},
+        "configuration_id": {"type": "string"},
+        "bid_version": {"type": "object", "required": ["major", "minor", "patch", "display", "sequence", "last_event", "recorded_at"], "properties": {"major": {"type": "integer", "minimum": 0}, "minor": {"type": "integer", "minimum": 0}, "patch": {"type": "integer", "minimum": 0}, "display": {"type": "string", "pattern": "^B[0-9]+\\.[0-9]+\\.[0-9]+$"}, "sequence": {"type": "integer", "minimum": 0}, "last_event": {"type": "string"}, "recorded_at": {"type": "string", "format": "date-time"}}, "additionalProperties": false},
+        "lifecycle_state": {"enum": ["estimate_created", "scope_takeoff_in_progress", "estimate_review", "submitted", "revised_resubmitted", "award_pending", "awarded_activated", "contract_allocation", "change_order_management", "sov_management", "provisional_closeout"]},
+        "created_at": {"type": "string", "format": "date-time"}, "updated_at": {"type": "string", "format": "date-time"}
+      }, "additionalProperties": true
+    },
+    "takeoff_section": {"allOf": [{"$ref": "#/$defs/entity"}, {"type": "object", "required": ["definition_id", "lines"], "properties": {"definition_id": {"type": "string"}, "lines": {"type": "array", "items": {"$ref": "#/$defs/entity"}}}}]},
+    "estimate_revision": {"allOf": [{"$ref": "#/$defs/entity"}, {"type": "object", "required": ["revision_number", "bid_version", "configuration_id", "status", "estimate", "immutable"], "properties": {"revision_number": {"type": "integer", "minimum": 1}, "bid_version": {"type": "object"}, "configuration_id": {"type": "string"}, "status": {"type": "string"}, "estimate": {"type": "object"}, "immutable": {"type": "boolean"}}}]},
+    "audit": {"allOf": [{"$ref": "#/$defs/entity"}, {"type": "object", "required": ["timestamp", "actor", "role", "entity_type", "entity_id", "operation", "reason", "correlation_id"], "properties": {"timestamp": {"type": "string", "format": "date-time"}, "actor": {"type": "string"}, "role": {"type": "string"}, "entity_type": {"type": "string"}, "entity_id": {"type": "string"}, "operation": {"type": "string"}, "reason": {"type": "string"}, "correlation_id": {"type": "string"}}}]}
+  }
+}
