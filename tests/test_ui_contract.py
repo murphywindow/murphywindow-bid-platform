@@ -46,17 +46,16 @@ def test_frame_autosave_refreshes_in_place_and_enter_inserts_a_focused_row():
     assert "next.focus()" in source
 
 
-def test_frame_takeoff_uses_dense_section_grid_and_trailing_entry_row():
+def test_frame_takeoff_uses_basic_sections_and_trailing_entry_row():
     source = Path("app/static/app.js").read_text(encoding="utf-8")
     css = Path("app/static/styles.css").read_text(encoding="utf-8")
-    assert "framePageHead" in source and "frame-section-toolbar" in source
-    assert "frame-summary-item" in source and "frame-section-identity" in source
+    assert 'FRAME_TAKEOFF_PRESENTATION = "functional-baseline"' in source
+    assert "frame-basic-page-head" in source and "frame-basic-section" in source
     assert "ensureFrameTrailingRows" in source
     assert "Trailing frame entry row maintained" in source
     assert "trailing-row" in source and 'customized?"customized"' in source
-    assert ".frame-table table{min-width:1480px;table-layout:fixed" in css
-    assert ".frame-table td{height:29px" in css
-    assert "@media(max-width:900px)" in css
+    assert ".frame-functional .frame-table table{width:1870px;min-width:1870px" in css
+    assert ".frame-basic-section" in css
 
 
 def test_workspace_pages_have_project_urls_and_browser_history_support():
@@ -74,39 +73,46 @@ def test_frontend_assets_use_a_cache_busting_version():
     assert "/assets/app.js?v=" in html
 
 
-def test_frame_tables_use_bounded_intrinsic_widths_instead_of_stretching():
+def test_frame_tables_use_explicit_scrollable_working_widths():
     css = Path("app/static/styles.css").read_text(encoding="utf-8")
     assert "#workspace{width:min(100%,1760px);margin:0 auto}" in css
-    assert ".frame-table table{width:1660px;min-width:1660px" in css
-    assert ".frame-material-list{width:1120px;max-width:100%" in css
+    assert ".frame-functional .frame-table table{width:1870px;min-width:1870px" in css
+    assert ".frame-functional .frame-material-list{width:100%;max-width:100%" in css
 
 
 def test_frame_grid_follows_workbook_column_order_and_marks_calculated_cells():
     source = Path("app/static/app.js").read_text(encoding="utf-8")
-    expected = 'cols=["Spec / Mark","Qty","Width (in)","Height (in)","SF","Perim","Caulk Passes","Caulking LF","Head / Sill","Head","Jamb","Sill","Type","Material","Finish","Notes","Install Mats"]'
+    expected = 'cols=["Mark / Type","Quantity","Width","Height","Square Footage","Perimeter","Caulking Passes","Caulking LF","Head / Sill","Head","Sill","Jamb","Type","Material","Finish","Notes","Installation Materials"]'
     assert expected in source
     for key in ("square_feet", "perimeter_lf", "caulking_lf", "head_sill_qty"):
         assert f'data-frame-line-value="${{si}}:${{ri}}:{key}"' in source
     assert source.count('class="calculated numeric" data-frame-line-value=') >= 4
 
 
-def test_frame_workspace_uses_comfortable_100_percent_zoom_scale():
+def test_frame_workspace_is_plain_dense_and_scoped_from_shared_shell():
     css = Path("app/static/styles.css").read_text(encoding="utf-8")
     assert ".nav-item{font-size:14px" in css
-    assert ".frame-page-title h1{font-size:31px}" in css
-    assert ".frame-table table{width:1660px;min-width:1660px;font-size:12.5px}" in css
-    assert ".frame-table td{height:36px" in css
-    assert ".frame-table td input{height:30px" in css
-    assert ".frame-material-list td input{width:100%;height:27px" in css
+    assert ".frame-functional{display:block" in css
+    assert ".frame-basic-section" in css and "box-shadow:none" in css
+    assert ".frame-functional .frame-table td{height:32px" in css
+    assert ".frame-functional .frame-table td input{width:100%;height:27px" in css
 
 
-def test_installation_materials_use_a_compact_fixed_width_list():
+def test_installation_materials_expose_existing_inputs_and_results_in_a_basic_table():
     source = Path("app/static/app.js").read_text(encoding="utf-8")
     css = Path("app/static/styles.css").read_text(encoding="utf-8")
     assert 'class="frame-material-list"' in source
-    assert "<th>Installation material</th><th>Applicable source</th>" in source
-    assert ".frame-material-list table{width:1118px;min-width:1118px" in css
-    assert ".frame-material-list th:nth-child(3){width:90px}" in css
+    assert "<th>Installation material</th><th>Applicable quantity</th>" in source
+    assert "takeoff_sections.${si}.tie_back_qty" in source
+    assert "takeoff_sections.${si}.backpan_lf" in source
+    assert ".frame-functional .frame-material-list table{width:100%;min-width:960px" in css
+
+
+def test_frame_dimensions_accept_natural_units_and_rows_can_be_duplicated():
+    source = Path("app/static/app.js").read_text(encoding="utf-8")
+    assert "function normalizeFrameDimension" in source
+    assert "4f 6in" in source and "inputmode=\"decimal\"" in source
+    assert "data-duplicate-frame" in source and "Frame row duplicated" in source
 
 
 def test_frame_grid_has_live_workbook_aligned_subtotals():

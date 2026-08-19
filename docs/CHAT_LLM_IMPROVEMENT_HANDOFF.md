@@ -14,7 +14,7 @@ Keep three categories separate throughout the discussion. “Observed workbook b
 
 The project is a functioning local web application, not a mockup. It uses Python, FastAPI, a static HTML/CSS/vanilla JavaScript client, and JSON files as the authoritative data store. There is no production Node service and no external database. It runs on Windows at `http://127.0.0.1:8765` by default through `launch.ps1`, with a configurable local port. The server binds to localhost. The launcher creates or reuses `.venv`, installs pinned Python dependencies when their requirements hash changes, starts the server, and opens the browser.
 
-The repository currently has no commits. All source, documentation, tests, data scaffolding, launcher, and requirements are untracked on the `main` branch. This is an important operational risk: the application may work locally, but there is no recoverable source-history baseline, reviewed initial commit, release tag, or migration record. Before recommending large code changes, discuss establishing an intentional initial commit and separating generated/test/project data from source-controlled configuration.
+The repository received its first recoverable baseline on 2026-08-19. Commit `ef136ba` and tag `frame-takeoff-polished-baseline-2026-08-19` preserve the original polished Frame Takeoff and the full repository state before its temporary presentation simplification. Generated/test/project data remains excluded according to `.gitignore`. No remote publication is implied by this local baseline.
 
 The current automated test suite passes: 96 tests passed on August 18, 2026. Tests cover calculation services, rate and cost-code references, project generation, atomic persistence and recovery, API behavior, UI/autosave contracts, permissions and restricted PCO output, bid versions, lifecycle services, and mileage behavior. FastAPI emitted 27 dependency deprecation warnings involving `asyncio.iscoroutinefunction`; these are not current test failures but should enter dependency-maintenance planning.
 
@@ -106,7 +106,7 @@ Evaluate accessibility and usability. Review keyboard navigation, focus handling
 
 Evaluate administration. Rates, cost codes, tax, wage records, schedule definitions, material factors, labor parameters, markup defaults, bond bands, PCO markups, permissions, and application settings need understandable versioning and activation. Discuss draft versus active configuration, change preview, dependency impact, approval, effective date, rollback, and testing before activation.
 
-Evaluate source control and release management immediately. The repository has no commits, so recommend an initial baseline procedure, branch strategy proportional to the project, release/version convention, configuration/data exclusion rules, secret scanning, dependency locking, automated tests, and backup before the first real project is entrusted to it.
+Continue maturing source control and release management from the local baseline: establish a branch strategy proportional to the project, a release/version convention, remote backup, dependency locking, automated checks, and deployment records before the first real project is entrusted to it.
 
 ## How to conduct the discussion
 

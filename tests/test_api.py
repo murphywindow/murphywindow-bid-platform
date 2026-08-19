@@ -65,6 +65,49 @@ def test_duplicate_export_backup_import_and_job_data(client):
     assert imported.status_code == 200 and imported.json()["project"]["project"]["id"] != pid
 
 
+def test_frame_takeoff_round_trips_realistic_scale_and_downstream_material_costs(client):
+    doc = client.post("/api/projects", headers=h(), json={"name": "100 Row Frame Takeoff"}).json()["project"]
+    project_id = doc["project"]["id"]
+    doc["cost_codes"] = [
+        {"id": "ccd_frames", "code": "08 40 00", "description": "Aluminum Entrances", "deduct": False},
+        {"id": "ccd_storefront", "code": "08 41 13", "description": "Storefront", "deduct": False},
+    ]
+    all_materials = ["mat_bracing", "mat_membrane", "mat_flashing", "mat_backer", "mat_sealant", "mat_tieback", "mat_backpan"]
+    lines = [{
+        "id": f"frm_scale_{index}", "mark": f"F-{index + 1:03d}", "quantity": (index % 4) + 1,
+        "width_inches": 36 + index % 5 * 6, "height_inches": 84 + index % 3 * 6,
+        "caulking_passes": 3, "head": "H1", "sill": "S1", "jamb": "J1",
+        "type": "Storefront", "material": "Aluminum", "finish": "Clear anodized", "notes": "",
+        "installation_material_ids": all_materials if index % 2 else ["mat_bracing", "mat_flashing", "mat_sealant"],
+    } for index in range(100)]
+    doc["takeoff_sections"] = [
+        {"id": "sec_scale", "definition_id": "frame-v1", "name": "08 40 00 Aluminum Entrances Take Off",
+         "code": "08 40 00", "lines": lines, "material_overrides": {"mat_sealant": {"factor": ".08", "rate": "12"}},
+         "tie_back_qty": 18, "backpan_lf": 144},
+        {"id": "sec_second", "definition_id": "frame-v1", "name": "08 41 13 Storefront Take Off",
+         "code": "08 41 13", "lines": [{**lines[0], "id": "frm_second", "mark": "SF-1"}],
+         "material_overrides": {}, "tie_back_qty": 2, "backpan_lf": 20},
+    ]
+
+    saved = client.put(f"/api/projects/{project_id}", headers=h(), json={
+        "project": doc, "expected_revision": doc["project"]["revision"],
+        "changes": [{"path": "takeoff_sections", "prior": [], "new": "realistic-scale", "reason": "Scale workflow test"}],
+    })
+    assert saved.status_code == 200
+    calculated = saved.json()["project"]
+    assert len(calculated["takeoff_sections"][0]["lines"]) == 100
+    assert float(calculated["takeoff_sections"][0]["totals"]["square_feet"]) > 0
+    assert float(calculated["takeoff_sections"][0]["pre_tax_material_cost"]) > 0
+    assert any(line["category"] == "installation_material" and line["code"] == "08 40 00"
+               for line in calculated["working_estimate"]["lines"])
+
+    reopened = client.get(f"/api/projects/{project_id}", headers=h()).json()["project"]
+    assert reopened["takeoff_sections"][0]["lines"][50]["mark"] == "F-051"
+    assert reopened["takeoff_sections"][0]["tie_back_qty"] == 18
+    assert reopened["takeoff_sections"][0]["backpan_lf"] == 144
+    assert client.post(f"/api/projects/{project_id}/backup", headers=h(), json={}).status_code == 200
+
+
 def test_vertical_submission_activation_contract_pco_sov_closeout(client):
     doc=client.post("/api/projects",headers=h(),json={"name":"Vertical"}).json()["project"];pid=doc["project"]["id"]
     doc["cost_codes"]=[{"id":"ccd_api","code":"08 40 00","description":"Frames","deduct":False}]
