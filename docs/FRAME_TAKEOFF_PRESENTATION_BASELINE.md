@@ -33,8 +33,8 @@ The following capabilities remain active in the basic view:
 
 The prior badges, verification note, metric-card summary, decorative section identity, icon-only controls, and other polished Frame Takeoff treatments are intentionally absent from the active renderer. Their source remains available through the baseline tag. They are dormant presentation work, not evidence of obsolete product capability.
 
-Shared application navigation, project context, role context, save controls, and all non-Frame-Takeoff pages remain on their established presentation path.
+The shared application navigation, project context, role context, save controls, and non-Frame-Takeoff pages remain functionally active, but their polished styling is temporarily dormant as well. `app/static/index.html` loads `basic.css`; the preserved `styles.css` is intentionally not loaded. This exposes a visibly plain HTML application shell without removing the original presentation source.
 
 ## Later restoration or redesign
 
-Use the tag as a reference and selectively reintroduce presentation around the active functional path. Do not restore `app/static/app.js` wholesale from the tag, because doing so would also discard later functional fixes. Compare the tagged renderer and scoped Frame Takeoff CSS, then port only the presentation decisions deliberately selected for the next design.
+Use the tag as a reference and selectively reintroduce presentation around the active functional path. Do not restore `app/static/app.js` wholesale from the tag, because doing so would also discard later functional fixes. The preserved polished application stylesheet can be re-enabled by deliberately changing the stylesheet link in `app/static/index.html` from `basic.css` to `styles.css`. Compare the tagged Frame Takeoff renderer before selectively restoring its presentation markup.

@@ -28,6 +28,10 @@ def test_direct_workspace_routes_return_fresh_application_shell(client):
     asset = client.get("/assets/app.js")
     assert asset.status_code == 200
     assert asset.headers["cache-control"] == "no-store, no-cache, must-revalidate, max-age=0"
+    basic_css = client.get("/assets/basic.css")
+    assert basic_css.status_code == 200
+    assert "functional baseline" in basic_css.text
+    assert basic_css.headers["cache-control"] == "no-store, no-cache, must-revalidate, max-age=0"
 
 
 def test_health_static_and_project_crud_conflict(client):
