@@ -352,7 +352,7 @@ def search_master_data(
         results.append({
             "id": record.get("id"), "entity_kind": kind,
             "display_name": display_name, "secondary": secondary,
-            "match_type": best[1], "score": round(best[0], 4),
+            "match_type": best[1], "score": best[0],
             "matched_value": best[2]["raw"],
             "aliases": deepcopy(record.get("aliases", [])),
         })

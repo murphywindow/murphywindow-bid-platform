@@ -201,7 +201,7 @@ def test_bid_worksheet_exposes_components_subtotals_and_alt_navigation_without_b
     assert "bid-subtotal-row" in worksheet and "bid-grand-total" in source
     assert "effective_estimate" in worksheet
     assert "alternateTabs()+bidAlternateContext" in worksheet
-    assert 'if(page==="bid")return RENDER[page]();' in source
+    assert 'if(page==="bid"||page==="frames")return RENDER[page]();' in source
     assert 'alternateCommercialPanel("Alternate detail")' not in source
     assert "insertAlternateTabsAfterHeader(RENDER[page]())" in source
     assert "rerenderPreservingControl(\"data-alt-tab\",target)" in source
@@ -246,6 +246,42 @@ def test_frame_grid_has_live_section_totals_and_targeted_reconciliation():
         assert f'["{key}",' in source
     assert 'data-frame-section-value="${si}:${key}"' in source
     assert "querySelectorAll(`[data-frame-section-value=" in source
+
+
+def test_frame_base_and_alternate_share_section_workspace_and_full_grid_contracts():
+    source = Path("app/static/app.js").read_text(encoding="utf-8")
+    css = Path("app/static/styles.css").read_text(encoding="utf-8")
+    current = source[source.rindex("function renderFrames()") : source.index("function insertAlternateTabsAfterHeader")]
+    assert "frameSectionScenarioHtml" in current
+    assert "alternateFrameSectionModels" in source
+    assert "effective_takeoff_sections" in source
+    assert 'page==="bid"||page==="frames"' in source
+    for contract in (
+        "alternateFrameTable", "alternateMaterialTable", "alternateSectionCodePicker",
+        "data-alt-frame-add", "data-alt-section-add", "data-alt-restore",
+        "data-alt-frame-material", "data-alt-add-section-material",
+        "data-alt-remove-section-material", "changeAlternateMaterialField",
+        "bindAlternateFrameGrid", "pasteAlternateFrameGrid",
+    ):
+        assert contract in source
+    for field in (
+        "square_feet", "perimeter_lf", "caulking_lf", "head_sill_qty",
+        "installation_material_ids", "missing_quantity_acknowledged",
+    ):
+        assert f'["{field}"' in source
+    assert "data-alt-frame-output" in source and "refreshAlternateFrameCalculatedView" in source
+    assert "--frame-mark-width" in css and "--frame-qty-width" in css
+    assert ".scenario-frame-workspace .frame-grid td:nth-child(1)" in css
+    assert "position: sticky" in css and "var(--calculated)" in css and "var(--input)" in css
+
+
+def test_frame_fractional_outputs_use_semantic_admin_precision_without_local_rounding():
+    source = Path("app/static/app.js").read_text(encoding="utf-8")
+    frame = source[source.index("function frameTable") : source.index("function materialTable")]
+    assert 'number(r.calculated?.square_feet,"square_footage")' in frame
+    for field in ("perimeter_lf", "caulking_lf", "head_sill_qty"):
+        assert f'number(r.calculated?.{field},"linear_footage")' in frame
+    assert ".toFixed(" not in frame and "Math.round(" not in frame
 
 
 def test_shared_table_controller_contract_and_excel_paste_are_loaded():
@@ -346,11 +382,12 @@ def test_editable_table_number_cells_hide_native_spinner_controls():
     assert "-webkit-appearance: none" in styles
 
 
-def test_numeric_presentation_is_rounded_to_two_decimals_without_mutating_calculations():
+def test_numeric_presentation_uses_central_semantic_precision_without_mutating_calculations():
     source = Path("app/static/app.js").read_text(encoding="utf-8")
-    assert 'minimumFractionDigits:2,maximumFractionDigits:2' in source
-    assert 'type==="number"&&numeric?Number(shown).toFixed(2)' in source
-    assert 'column?.type==="number"&&parsed!==null' in source
+    core = Path("app/static/ui-core.js").read_text(encoding="utf-8")
+    assert "precisionSettings" in source and "numericCategory" in source
+    assert "MWUI.formatNumeric" in source and "DEFAULT_DECIMAL_PRECISION" in core
+    assert "data-raw-numeric" in source and "input.dataset.rawNumeric" in source
     assert 'type==="currency"||type==="number"?"text":type' in source
 
 

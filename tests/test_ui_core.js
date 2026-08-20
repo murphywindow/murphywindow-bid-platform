@@ -10,6 +10,8 @@ const {
   arrowNavigationIntent,
   activeHistoryBand,
   clampHistoryMarker,
+  normalizeDecimalPrecision,
+  formatNumeric,
   calculateTooltipPosition,
   DraftStore,
   PendingCellStore,
@@ -222,6 +224,16 @@ test("history markers remain visible at distribution extremes", () => {
     [0, 1, 25, 50, 75, 99, 100].map(value => clampHistoryMarker(value)),
     [2, 2, 25, 50, 75, 98, 98]
   );
+});
+
+test("semantic precision changes presentation without changing the raw number", () => {
+  const raw = "109.87654321";
+  const settings = normalizeDecimalPrecision({currency:0,percentage:3,quantity:1,square_footage:4});
+  assert.equal(formatNumeric(raw,"currency",settings,{currency:"USD"}), "$110");
+  assert.equal(formatNumeric(raw,"percentage",settings), "109.877");
+  assert.equal(formatNumeric(raw,"quantity",settings), "109.9");
+  assert.equal(formatNumeric(raw,"square_footage",settings), "109.8765");
+  assert.equal(raw, "109.87654321");
 });
 
 test("navigation remains deterministic with one hundred populated rows and a draft", () => {

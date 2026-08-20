@@ -45,6 +45,7 @@ from .project_commands import (
     strip_ui_working_rows, validate_project_inputs,
 )
 from .schema import CONFIG_VERSION, INTERCHANGE_VERSION, SCHEMA_VERSION, default_configuration, duplicate_project, new_project, now, test_project, uid
+from .numeric_precision import validate_decimal_precision
 from .version import SOFTWARE_RELEASE_DATE, SOFTWARE_VERSION
 from .services import (
     DomainError, ROLES, activate, audit, bump_bid_version, calculate_project, create_change_order,
@@ -529,23 +530,48 @@ def _historical_current_project(project_id: str) -> dict:
     return calculate_project(deepcopy(document), configuration)
 
 
+def _historical_scenario_project(project_id: str, alternate_id: str | None = None) -> dict:
+    """Return the selected scenario using the same calculated historical engine.
+
+    Alternate calculations remain authoritative in ``calculate_project``.  This
+    adapter only presents that effective estimate as the current comparison
+    state; it does not duplicate percentile or classification logic.
+    """
+    document = _historical_current_project(project_id)
+    if not alternate_id:
+        return document
+    alternate = next((row for row in document.get("alternates", []) if str(row.get("id")) == str(alternate_id)), None)
+    if not alternate:
+        raise DomainError("Alternate was not found.", "not_found")
+    effective = alternate.get("calculated", {}).get("effective_estimate")
+    if not isinstance(effective, dict):
+        raise DomainError("Alternate effective estimate is unavailable.", "alternate_not_calculated")
+    document["working_estimate"] = deepcopy(effective)
+    return document
+
+
 @app.get("/api/projects/{project_id}/historical/bid-cost-codes")
-def bid_cost_code_history(project_id: str, actor_role: tuple[str, str] = __import__("fastapi").Depends(identity)) -> dict:
+def bid_cost_code_history(project_id: str, alternate_id: str | None = None,
+                          actor_role: tuple[str, str] = __import__("fastapi").Depends(identity)) -> dict:
     try:
-        document = _historical_current_project(project_id)
-        return historical_index().comparisons(document)
+        document = _historical_scenario_project(project_id, alternate_id)
+        result = historical_index().comparisons(document)
+        result["alternate_id"] = alternate_id
+        return result
     except Exception as exc:
         fail(exc)
 
 
 @app.get("/api/projects/{project_id}/historical/bid-cost-code")
-def bid_cost_code_history_detail(project_id: str, code: str,
+def bid_cost_code_history_detail(project_id: str, code: str, alternate_id: str | None = None,
                                  actor_role: tuple[str, str] = __import__("fastapi").Depends(identity)) -> dict:
     try:
         if not str(code or "").strip():
             raise DomainError("Cost Code is required.", "missing_cost_code")
-        document = _historical_current_project(project_id)
-        return historical_index().detail(document, code)
+        document = _historical_scenario_project(project_id, alternate_id)
+        result = historical_index().detail(document, code)
+        result["alternate_id"] = alternate_id
+        return result
     except Exception as exc:
         fail(exc)
 
@@ -1526,6 +1552,8 @@ def create_configuration(payload: dict = Body(...), actor_role: tuple[str, str] 
         require(role, "configuration")
         source = store.load_configuration(payload.get("source_id", CONFIG_VERSION))
         config = deepcopy(payload.get("configuration", source))
+        settings = config.setdefault("application_settings", {})
+        settings["decimal_precision"] = validate_decimal_precision(settings.get("decimal_precision"))
         if "csi_references" not in config:
             config["csi_references"] = deepcopy(source.get("csi_references", []))
             config["cost_code_reference"] = deepcopy(source.get("cost_code_reference"))

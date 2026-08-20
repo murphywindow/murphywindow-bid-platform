@@ -123,6 +123,53 @@ def test_effective_commercial_delta_reconciles_and_downstream_materials_recalcul
     assert alternate["calculated"] == first  # no volatile values may alter proposal fingerprints
 
 
+def test_effective_frame_projection_preserves_section_structure_and_section_deltas():
+    document, configuration = alternate_project()
+    document["takeoff_sections"].append({
+        "id": "sec_curtainwall", "definition_id": "frame-v1", "code": "08 40 00",
+        "name": "Curtainwall", "lines": [{
+            "id": "frm_c1", "mark": "C1", "quantity": "2", "width_inches": "48",
+            "height_inches": "120", "caulking_passes": "3",
+        }], "material_overrides": {}, "additional_materials": [], "tie_back_qty": 0, "backpan_lf": 0,
+    })
+    calculate_project(document, configuration)
+    base_before = deepcopy(document["takeoff_sections"])
+    alternate = new_alternate(document, "Structured frame scenario")
+    set_override(alternate, "frames", "frm_f1", "width_inches", 60, "66.25")
+    set_override(alternate, "takeoff_sections", "sec_storefront", "material_overrides.mat_sealant.factor_override", None, ".137")
+    remove_record(alternate, "takeoff_sections", "sec_curtainwall")
+    add_record(alternate, "takeoff_sections", {
+        "id": "sec_alt_only", "definition_id": "frame-v1", "code": "08 40 00",
+        "name": "ALT-only frames", "lines": [], "material_overrides": {},
+        "additional_materials": [], "tie_back_qty": 0, "backpan_lf": 0,
+    })
+    add_record(alternate, "frames", {
+        "id": "frm_alt_only", "section_id": "sec_alt_only", "mark": "A1", "quantity": "1.5",
+        "width_inches": "42.75", "height_inches": "120.5", "caulking_passes": "3.11",
+    })
+    document["alternates"] = [alternate]
+
+    calculate_project(document, configuration)
+
+    projected = alternate["calculated"]["effective_takeoff_sections"]
+    assert [section["id"] for section in projected] == ["sec_storefront", "sec_alt_only"]
+    inherited = projected[0]
+    assert Decimal(inherited["lines"][0]["width_inches"]) == Decimal("66.25")
+    assert Decimal(inherited["material_overrides"]["mat_sealant"]["factor_override"]) == Decimal(".137")
+    added = projected[1]
+    assert added["lines"][0]["id"] == "frm_alt_only"
+    assert Decimal(added["lines"][0]["calculated"]["caulking_lf"]) != Decimal(
+        added["lines"][0]["calculated"]["caulking_lf"]
+    ).to_integral_value()
+    assert document["takeoff_sections"] == base_before
+
+    alternate["changes"]["takeoff_sections"]["removed"].remove("sec_curtainwall")
+    calculate_project(document, configuration)
+    assert [section["id"] for section in alternate["calculated"]["effective_takeoff_sections"]] == [
+        "sec_storefront", "sec_curtainwall", "sec_alt_only",
+    ]
+
+
 def test_mixed_content_uses_net_commercial_direction_without_manual_add_deduct_flag():
     document, configuration = alternate_project()
     alternate = new_alternate(document, "Mixed VE")

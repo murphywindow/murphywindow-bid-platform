@@ -602,10 +602,9 @@ def compare_values(current: Decimal | None, observations: list[dict[str, Any]], 
         })
         return result
     category, definition = _category(current, q1, q3)
-    percentile_text = "—" if result["percentile"] is None else f"{round(result['percentile'])}th percentile"
     result.update({
         "status": "classified", "category": category,
-        "readout": f"{category} · {percentile_text} · {sample_size} comparable bids",
+        "readout": f"{category} · {sample_size} comparable bids",
         "category_definition": definition,
     })
     return result

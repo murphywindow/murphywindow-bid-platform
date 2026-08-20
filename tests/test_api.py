@@ -31,6 +31,26 @@ def create_project(client, name="API Contract"):
     return response.json()["project"]
 
 
+def test_decimal_precision_configuration_is_admin_only_persisted_and_validated(client):
+    source = client.get("/api/configurations", headers=h()).json()["configurations"][0]
+    configured = deepcopy(source)
+    configured["application_settings"]["decimal_precision"].update({
+        "currency": 0, "percentage": 3, "quantity": 1, "square_footage": 4,
+    })
+    forbidden = client.post("/api/configurations", headers=h(), json={"source_id": source["id"], "configuration": configured})
+    assert forbidden.status_code == 403
+    created = client.post("/api/configurations", headers=h("Systems Administrator"), json={
+        "source_id": source["id"], "configuration": configured, "reason": "Display precision policy",
+    })
+    assert created.status_code == 200
+    precision = created.json()["configuration"]["application_settings"]["decimal_precision"]
+    assert precision["currency"] == 0 and precision["percentage"] == 3
+    assert precision["quantity"] == 1 and precision["square_footage"] == 4
+    configured["application_settings"]["decimal_precision"]["currency"] = 7
+    invalid = client.post("/api/configurations", headers=h("Systems Administrator"), json={"source_id": source["id"], "configuration": configured})
+    assert invalid.status_code == 422
+
+
 def first_controlled_cost_code():
     reference = next(row for row in default_configuration()["csi_references"] if row.get("active", True))
     return {
@@ -83,6 +103,16 @@ def test_base_plus_delta_alternate_api_creates_inherited_alt_and_applies_overrid
     assert override["base_value"] == 10 and override["value"] == 6
     assert alternate["calculated"]["classification"] == "deduct"
     assert "F1 quantity reduced from 10 to 6" in alternate["calculated"]["scope_of_change"][0]["changes"]
+    projected = alternate["calculated"]["effective_takeoff_sections"]
+    assert [section["id"] for section in projected] == ["sec_alt_api"]
+    assert projected[0]["lines"][0]["quantity"] == 6
+
+    history = client.get(
+        f"/api/projects/{document['project']['id']}/historical/bid-cost-codes",
+        headers=h(), params={"alternate_id": alternate["id"]},
+    )
+    assert history.status_code == 200
+    assert history.json()["alternate_id"] == alternate["id"]
 
 
 def test_direct_workspace_routes_return_fresh_application_shell(client):

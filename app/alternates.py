@@ -98,8 +98,13 @@ def materialize(document: dict[str, Any], alternate: dict[str, Any]) -> tuple[di
     effective["alternates"] = []
     effective.get("working_estimate", {}).pop("alternate_results", None)
     conflicts: list[dict[str, Any]] = []
-    for collection, bucket in alternate.get("changes", {}).items():
-        if collection not in COLLECTIONS or not isinstance(bucket, dict):
+    changes = alternate.get("changes", {})
+    # Materialization order is structural, never dependent on the order in
+    # which an estimator happened to make edits. Sections must exist before
+    # ALT-only frames are placed into them.
+    for collection in COLLECTIONS:
+        bucket = changes.get(collection, {})
+        if not isinstance(bucket, dict) or not bucket:
             continue
         removed = {str(value) for value in bucket.get("removed", [])}
         if collection == "frames":
@@ -247,7 +252,10 @@ def calculate_alternates(document: dict[str, Any], configuration: dict[str, Any]
                       # This lets every commercial workspace render the effective ALT
                       # through the same authoritative Bid outputs as Base.
                       "effective_estimate": deepcopy({key: effective.get("working_estimate", {}).get(key)
-                                                       for key in ("lines", "cost_code_summaries", "totals", "validation")})}
+                                                       for key in ("lines", "cost_code_summaries", "totals", "validation")}),
+                      # Read-only calculated projection for the shared Frame workspace.
+                      # Canonical ALT storage remains inheritance plus explicit deltas.
+                      "effective_takeoff_sections": deepcopy(effective.get("takeoff_sections", []))}
         alternate["calculated"] = calculated
         results.append(calculated)
     document.setdefault("working_estimate", {})["alternate_results"] = deepcopy(results)

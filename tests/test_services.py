@@ -56,6 +56,27 @@ def test_bid_assembly_tax_markups_lineage_and_alternates():
     assert not any(line.get("source_key") == "equipment:eqp_alt" for line in doc["working_estimate"]["lines"])
 
 
+def test_frame_calculated_quantities_retain_fractional_results_through_project_calculation():
+    doc, cfg = example()
+    frame = doc["takeoff_sections"][0]["lines"][0]
+    frame.update({
+        "quantity": "3.05", "width_inches": "42.75", "height_inches": "120.5",
+        "caulking_passes": "3.11",
+    })
+
+    calculate_project(doc, cfg)
+
+    calculated = frame["calculated"]
+    expected_perimeter = D("2") * (D("42.75") / D("12") + D("120.5") / D("12")) * D("3.05")
+    assert D(calculated["square_feet"]) == D("3.05") * D("42.75") * D("120.5") / D("144")
+    assert D(calculated["perimeter_lf"]) == expected_perimeter
+    assert D(calculated["caulking_lf"]) == expected_perimeter * D("3.11")
+    assert D(calculated["head_sill_qty"]) == D("3.05") * D("42.75") / D("6")
+    assert all(not D(calculated[key]) == D(calculated[key]).to_integral_value() for key in (
+        "square_feet", "perimeter_lf", "caulking_lf", "head_sill_qty",
+    ))
+
+
 def test_owner_reference_validates_code_preserves_invalid_and_fills_description():
     doc,cfg=example()
     doc["cost_codes"].append({"id":"ccd_invalid","code":"NOT A CODE","description":"","deduct":False})

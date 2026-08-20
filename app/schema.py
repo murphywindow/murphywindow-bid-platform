@@ -8,6 +8,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from .rate_reference import owner_rate_reference
+from .numeric_precision import default_decimal_precision
 
 SCHEMA_VERSION = "1.2.0"
 INTERCHANGE_VERSION = "1.2.0"
@@ -103,7 +104,7 @@ def default_configuration() -> dict:
             "Rate update cadence and effective-date policy", "Travel, per diem, excluded-day, lodging, and tax-exemption rules",
             "SOV operating approval roles", "Closeout gates, approval, archive, and retention"
         ],
-        "application_settings": {"autosave_seconds": 0, "autosave_debounce_ms": 250, "autosave_status": "confirmed_user_request", "backup_retention": 20, "default_port": 8765, "large_bid_threshold": None, "large_bid_threshold_status": "pending", "retention_days": None, "retention_status": "pending",
+        "application_settings": {"autosave_seconds": 0, "autosave_debounce_ms": 250, "autosave_status": "confirmed_user_request", "backup_retention": 20, "default_port": 8765, "large_bid_threshold": None, "large_bid_threshold_status": "pending", "retention_days": None, "retention_status": "pending", "decimal_precision": default_decimal_precision(),
                                  "mileage": {"origin_label": "Rogers, Minnesota 55374 city center", "origin_latitude": "45.1888596", "origin_longitude": "-93.5524563", "origin_status": "owner_requested_city_origin_configurable", "geocoder_primary": "US Census Geocoder Public_AR_Current", "geocoder_fallback": "OpenStreetMap Nominatim public service", "router": "OSRM public routing service", "online_required": True, "rounding": "nearest 0.1 mile, ROUND_HALF_UP"}}
     }
 

@@ -6,6 +6,29 @@
   "use strict";
 
   const meaningfulValue = value => value !== null && value !== undefined && value !== false && String(value).trim() !== "";
+  const DEFAULT_DECIMAL_PRECISION = Object.freeze({currency:2,currency_per_unit:2,percentage:2,quantity:2,dimension:2,square_footage:2,linear_footage:2,labor_hours:2,rate:2,multiplier:2,percentile:2});
+
+  function normalizeDecimalPrecision(settings = {}) {
+    const result = {...DEFAULT_DECIMAL_PRECISION};
+    for (const key of Object.keys(result)) {
+      const value = Number(settings?.[key]);
+      if (Number.isInteger(value) && value >= 0 && value <= 6) result[key] = value;
+    }
+    return result;
+  }
+
+  function formatNumeric(value, category="quantity", settings={}, options={}) {
+    if (value === null || value === undefined || value === "") return options.empty ?? "—";
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return String(value);
+    const precision = normalizeDecimalPrecision(settings)[category] ?? DEFAULT_DECIMAL_PRECISION.quantity;
+    return new Intl.NumberFormat(options.locale||"en-US",{
+      ...(options.currency?{style:"currency",currency:options.currency}:{}),
+      minimumFractionDigits:precision,
+      maximumFractionDigits:precision,
+      useGrouping:options.useGrouping!==false,
+    }).format(numeric);
+  }
 
   function correlationId(prefix = "cor") {
     const value = globalThis.crypto?.randomUUID?.() || `${Date.now()}_${Math.random().toString(16).slice(2)}`;
@@ -936,6 +959,9 @@
 
   return {
     meaningfulValue,
+    DEFAULT_DECIMAL_PRECISION,
+    normalizeDecimalPrecision,
+    formatNumeric,
     correlationId,
     parseClipboardMatrix,
     parseColumnValue,

@@ -396,7 +396,11 @@ def test_historical_api_contract(tmp_path, monkeypatch) -> None:
     bulk = client.get(f"/api/projects/{current['project']['id']}/historical/bid-cost-codes")
     assert bulk.status_code == 200
     payload = bulk.json()
-    assert set(payload) == {"project_revision", "metric_definition", "minimum_sample", "comparable_project_type", "comparisons"}
+    assert set(payload) == {
+        "project_revision", "metric_definition", "minimum_sample",
+        "comparable_project_type", "comparisons", "alternate_id",
+    }
+    assert payload["alternate_id"] is None
     assert payload["project_revision"] == 1
     assert payload["comparisons"][0]["status"] == "classified"
     assert {"minimum", "maximum", "current_value", "median", "q1", "q3", "percentile"} <= set(payload["comparisons"][0])
