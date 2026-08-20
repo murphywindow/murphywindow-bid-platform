@@ -5,13 +5,11 @@ All currency calculations use Decimal.  Functions intentionally distinguish None
 """
 from __future__ import annotations
 
-import math
 import re
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Any, Iterable
 
 D = Decimal
-CENT = D("0.01")
 WHOLE = D("1")
 
 
@@ -22,7 +20,12 @@ def dec(value: Any, default: Decimal | None = None) -> Decimal | None:
 
 
 def money(value: Decimal) -> Decimal:
-    return value.quantize(CENT, rounding=ROUND_HALF_UP)
+    """Return an exact monetary calculation value without display rounding.
+
+    The legacy name remains for API compatibility. Presentation code owns the
+    decision to render a value to two decimal places.
+    """
+    return value
 
 
 def project_abbreviation(name: str | None) -> str:
@@ -107,7 +110,7 @@ def quote_adjustment(
 
     Percentage values are stored as decimal rates (``0.05`` means five percent).
     Historical ``surcharge_percent`` values are accepted without changing their
-    meaning. Currency results round only at the named currency boundaries.
+    meaning. Returned values retain full Decimal precision.
     """
     base = dec(price)
     if base is None:
@@ -159,10 +162,6 @@ def taxed_cost(cost: Any, tax_rate: Any, *, taxable: bool, tax_included: bool = 
     return money(c if not taxable or tax_included else c * (D(1) + (dec(tax_rate, D(0)) or D(0))))
 
 
-def _ceil(value: Decimal) -> Decimal:
-    return D(math.ceil(value))
-
-
 def frame_quantities(quantity: Any, width_inches: Any, height_inches: Any, caulking_passes: Any = None) -> dict[str, Decimal | None]:
     q, w, h = dec(quantity), dec(width_inches), dec(height_inches)
     if q is None or q == 0:
@@ -172,9 +171,15 @@ def frame_quantities(quantity: Any, width_inches: Any, height_inches: Any, caulk
     passes = dec(caulking_passes, D(3))
     if passes is None or passes < 0:
         raise ValueError("Caulking passes must be nonnegative.")
-    area = _ceil(w * h * q / D(144))
-    perimeter = _ceil(D(2) * (w / D(12) + h / D(12)) * q)
-    return {"square_feet": area, "perimeter_lf": perimeter, "caulking_passes": passes, "caulking_lf": _ceil(perimeter * passes), "head_sill_qty": _ceil(q * w / D(6))}
+    raw_area = w * h * q / D(144)
+    raw_perimeter = D(2) * (w / D(12) + h / D(12)) * q
+    return {
+        "square_feet": raw_area,
+        "perimeter_lf": raw_perimeter,
+        "caulking_passes": passes,
+        "caulking_lf": raw_perimeter * passes,
+        "head_sill_qty": q * w / D(6),
+    }
 
 
 def installation_material(source_quantity: Any, factor: Any, rate: Any) -> Decimal | None:

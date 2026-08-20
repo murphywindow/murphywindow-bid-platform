@@ -389,7 +389,7 @@ def _project_master_fingerprint(document: dict[str, Any]) -> str:
         "project": {
             field: project.get(field)
             for field in (
-                "owner_name", "owner_address", "architect", "engineer",
+                "owner_name", "owner_legal_name", "owner_address", "owner_website", "owner_phone", "owner_email", "architect", "engineer",
                 "general_contractor", "construction_manager", "estimator", "plan_source",
             )
         },
@@ -429,10 +429,17 @@ def seed_master_data(
         for field, classification, address_field in organization_fields:
             name = str(project.get(field) or "").strip()
             if name:
+                owner_details = {
+                    "legal_name": project.get("owner_legal_name"),
+                    "website": project.get("owner_website"),
+                    "primary_phone": project.get("owner_phone"),
+                    "email": project.get("owner_email"),
+                } if field == "owner_name" else {}
                 upsert_organization(result, {
                     "display_name": name,
                     "classifications": [classification],
                     "address": project.get(address_field) if address_field else "",
+                    **owner_details,
                     "sources": [{"project_id": project_id, "field": f"project.{field}"}],
                 }, rebuild_index=False)
         for field, kind in (("estimator", "estimator"), ("plan_source", "plan_source")):

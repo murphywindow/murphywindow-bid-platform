@@ -68,14 +68,33 @@ def test_frame_dimension_conversions_and_boundaries():
     q = frame_quantities(1, 12, 12)
     assert q == {"square_feet": D(1), "perimeter_lf": D(4), "caulking_passes": D(3), "caulking_lf": D(12), "head_sill_qty": D(2)}
     q = frame_quantities(2, 35.5, 71.25, 4)
-    assert q["square_feet"] == D(36)
-    assert q["perimeter_lf"] == D(36)
-    assert q["caulking_lf"] == D(144)
-    assert q["head_sill_qty"] == D(12)
+    assert q["square_feet"] == D("35.5") * D("71.25") * D(2) / D(144)
+    assert q["perimeter_lf"] == D(2) * (D("35.5") / D(12) + D("71.25") / D(12)) * D(2)
+    assert q["caulking_lf"] == q["perimeter_lf"] * D(4)
+    assert q["head_sill_qty"] == D(2) * D("35.5") / D(6)
     assert frame_quantities(None, 12, 12)["square_feet"] is None
     assert frame_quantities(0, 12, 12)["square_feet"] is None
     with pytest.raises(ValueError):
         frame_quantities(1, -1, 12)
+
+
+def test_fractional_caulking_passes_preserve_fractional_linear_feet():
+    quantities = frame_quantities(1, 12, 12, "3.11")
+    assert quantities["perimeter_lf"] == D("4.00")
+    assert quantities["caulking_passes"] == D("3.11")
+    assert quantities["caulking_lf"] == D("12.44")
+
+
+def test_calculations_preserve_precision_across_chained_costs():
+    quantities = frame_quantities("3.7", "11.11", "22.22", "3.11")
+    expected_perimeter = D(2) * (D("11.11") / D(12) + D("22.22") / D(12)) * D("3.7")
+    assert quantities["perimeter_lf"] == expected_perimeter
+    assert quantities["caulking_lf"] == expected_perimeter * D("3.11")
+    material = installation_material(quantities["caulking_lf"], "0.137", "12.34567")
+    assert material == expected_perimeter * D("3.11") * D("0.137") * D("12.34567")
+    marked_up = markup(material, "0.1739")
+    assert marked_up["markup"] == material * D("0.1739")
+    assert marked_up["selling_value"] == material + material * D("0.1739")
 
 
 def test_installation_material_defaults_and_missing():

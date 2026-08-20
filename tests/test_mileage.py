@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+import httpx
 import pytest
 
 from app.mileage import MileageError, calculate_driving_mileage, search_addresses
@@ -24,6 +25,12 @@ class FakeClient:
     def get(self, url, **kwargs):
         self.calls.append((url, kwargs))
         return FakeResponse(self.responses.pop(0))
+
+
+class ConnectionBlockedClient:
+    def get(self, url, **kwargs):
+        request = httpx.Request("GET", url)
+        raise httpx.ConnectError("[WinError 10013] forbidden socket access", request=request)
 
 
 def test_driving_mileage_uses_census_then_osrm_and_rounds_to_one_decimal():
@@ -75,8 +82,8 @@ def test_address_search_returns_structured_census_results_and_echoes_request_id(
     assert result["provider"].startswith("US Census")
     assert result["results"] == [{
         "id": result["results"][0]["id"],
-        "label": "321 UNIQUE CENSUS SEARCH AVE, ROGERS, MN, 55374",
-        "matched_address": "321 UNIQUE CENSUS SEARCH AVE, ROGERS, MN, 55374",
+        "label": "321 Unique Census Search Ave., Rogers, MN 55374",
+        "matched_address": "321 Unique Census Search Ave., Rogers, MN 55374",
         "street": "321 UNIQUE CENSUS SEARCH AVE", "city": "ROGERS",
         "state": "MN", "zip": "55374", "county": "Hennepin",
         "latitude": "45.18", "longitude": "-93.55",
@@ -97,7 +104,7 @@ def test_address_search_falls_back_to_structured_nominatim_and_keeps_attribution
         {"result": {"addressMatches": []}},
         [{
             "lat": "45.2000", "lon": "-93.2000",
-            "display_name": "45 Example Road, Elk River, Minnesota 55330, USA",
+            "display_name": "45 Example Road, Elk River, Minnesota 55330, United States",
             "licence": "OpenStreetMap contributors",
             "address": {
                 "house_number": "45", "road": "Example Road", "city": "Elk River",
@@ -110,6 +117,8 @@ def test_address_search_falls_back_to_structured_nominatim_and_keeps_attribution
     )
     row = result["results"][0]
     assert row["street"] == "45 Example Road"
+    assert row["label"] == "45 Example Rd., Elk River, MN 55330"
+    assert "United States" not in row["matched_address"]
     assert row["city"] == "Elk River" and row["county"] == "Sherburne County"
     assert result["attribution"] == "OpenStreetMap contributors"
     assert client.calls[1][1]["params"]["addressdetails"] == 1
@@ -125,3 +134,60 @@ def test_address_search_short_query_fails_without_request_and_no_match_is_non_de
     )
     assert no_match["results"] == []
     assert no_match["request_id"] == "none"
+
+
+def test_mapping_connection_failure_is_actionable_and_does_not_leak_socket_details(monkeypatch):
+    monkeypatch.setattr("app.mileage._LAST_NOMINATIM_REQUEST", 0.0)
+    with pytest.raises(MileageError) as caught:
+        search_addresses(
+            "500 Network Test Avenue, Rogers, MN 55374",
+            client=ConnectionBlockedClient(),
+        )
+    message = str(caught.value)
+    assert "cannot reach the mapping providers" in message
+    assert "network or firewall" in message
+    assert "WinError" not in message
+    assert "10013" not in message
+
+
+def test_address_search_formats_unit_city_state_and_zip_without_destination_or_county():
+    query = "3900 Hoffman Rd., Apt 6, White Bear Lake, MN 55110"
+    client = FakeClient([{"result": {"addressMatches": [{
+        "matchedAddress": "3900 HOFFMAN RD, WHITE BEAR LAKE, MN, 55110",
+        "coordinates": {"x": -93.02, "y": 45.05},
+        "addressComponents": {
+            "fromAddress": "3900", "streetName": "HOFFMAN", "suffixType": "RD",
+            "city": "WHITE BEAR LAKE", "state": "MN", "zip": "55110",
+            "county": "Ramsey County",
+        },
+    }]}}])
+    result = search_addresses(query, client=client)
+    assert result["results"][0]["label"] == "3900 Hoffman Rd., Apt 6, White Bear Lake, MN 55110"
+
+
+def test_landmark_search_removes_provider_sensitive_filler_words(monkeypatch):
+    monkeypatch.setattr("app.mileage._LAST_NOMINATIM_REQUEST", 0.0)
+    client = FakeClient([
+        {"result": {"addressMatches": []}},
+        [{
+            "lat": "46.8208", "lon": "-100.7827",
+            "name": "North Dakota Capitol Building",
+            "display_name": "North Dakota Capitol Building, North 4th Street, Bismarck, North Dakota, 58502, United States",
+            "address": {"road": "North 4th Street", "city": "Bismarck", "state": "North Dakota", "postcode": "58502"},
+        }],
+    ])
+    result = search_addresses("North Dakota State Capitol", client=client)
+    assert client.calls[1][1]["params"]["q"] == "North Dakota Capitol"
+    assert result["results"][0]["label"] == "North Dakota Capitol Building, North 4th St., Bismarck, ND 58502"
+
+
+def test_address_search_deduplicates_provider_objects_with_the_same_postal_label(monkeypatch):
+    monkeypatch.setattr("app.mileage._LAST_NOMINATIM_REQUEST", 0.0)
+    duplicate = {
+        "lat": "45.060", "lon": "-93.030", "display_name": "Hoffman Road, White Bear Lake",
+        "address": {"road": "Hoffman Road", "city": "White Bear Lake", "state": "Minnesota", "postcode": "55110"},
+    }
+    client = FakeClient([{"result": {"addressMatches": []}}, [duplicate, {**duplicate, "lat": "45.061"}]])
+    result = search_addresses("Hoffman Road White Bear Lake unique dedupe", client=client)
+    assert [row["label"] for row in result["results"]] == ["Hoffman Rd., White Bear Lake, MN 55110"]
+    assert result["results"][0]["state"] == "MN"

@@ -2,9 +2,14 @@ from __future__ import annotations
 
 import io
 import json
+import logging
 import os
+import secrets
+import time
+import hashlib
 from copy import deepcopy
 from pathlib import Path
+from threading import Lock
 from typing import Any
 
 from fastapi import Body, FastAPI, Header, HTTPException, Request
@@ -17,8 +22,12 @@ from reportlab.lib.units import inch
 from reportlab.platypus import KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 from xml.sax.saxutils import escape
 
-from .api_models import BidSourceEditCommand, CustomCostCodeCommand, MasterRecordCommand, RemoveCostCodeCommand
-from .calculations import normalize_code, split_variant
+from .api_models import (
+    AddSectionMaterialCommand, BidSourceEditCommand, CustomCostCodeCommand,
+    MasterRecordCommand, RemoveCostCodeCommand, RemoveSectionMaterialCommand,
+)
+from .alternates import add_record as add_alternate_record, new_alternate, remove_record as remove_alternate_record, reset_override as reset_alternate_override, set_override as set_alternate_override
+from .calculations import dollars_in_words, normalize_code, split_variant
 from .custom_code_auth import verify_custom_code_credentials
 from .master_data import (
     MasterDataRepository, build_search_index, search_master_data, seed_master_data,
@@ -27,9 +36,11 @@ from .master_data import (
 from .migrations import MigrationError, migrate_project_document
 from .persistence import ConflictError, JsonStore, PersistenceError
 from .generator import generate_test_project
+from .historical import HistoricalMetricIndex
 from .mileage import MileageError, calculate_driving_mileage, search_addresses
 from .project_commands import (
-    cost_code_dependencies, new_custom_cost_code, remove_cost_code_cascade,
+    add_section_material, cost_code_dependencies, new_custom_cost_code, remove_cost_code_cascade,
+    remove_section_material,
     preserve_quote_square_feet_intent, refresh_labor_rate_selection,
     strip_ui_working_rows, validate_project_inputs,
 )
@@ -40,15 +51,37 @@ from .services import (
     edit_bid_source, job_data, provisional_closeout, redact, reestimate_contract, require,
     save_sov, submit, update_change_order_status,
 )
+from .proposals import (
+    branch_from_snapshot, compare_snapshots, create_proposal_snapshot,
+    historical_document, void_proposal,
+)
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = Path(os.environ.get("MURPHY_BID_DATA_DIR", BASE_DIR / "data"))
 STATIC_DIR = BASE_DIR / "app" / "static"
 store = JsonStore(DATA_DIR)
+logger = logging.getLogger(__name__)
+_override_sessions: dict[str, dict[str, Any]] = {}
+_override_lock = Lock()
+_OVERRIDE_TTL_SECONDS = 8 * 60 * 60
 
 
 def custom_code_secret_path() -> Path:
     return store.root / "secrets" / "custom-code.json"
+
+
+def _valid_override_token(token: str | None, *, actor: str, project_id: str, page: str) -> bool:
+    if not token:
+        return False
+    with _override_lock:
+        session = _override_sessions.get(token)
+        if not session or session["expires_at"] <= time.time():
+            _override_sessions.pop(token, None)
+            return False
+        return bool(
+            secrets.compare_digest(session["actor"], actor)
+            and session["project_id"] == project_id and session["page"] == page
+        )
 
 
 def ensure_seed() -> None:
@@ -82,6 +115,19 @@ def master_repository() -> MasterDataRepository:
     return MasterDataRepository(store)
 
 
+def historical_index() -> HistoricalMetricIndex:
+    """Bind the rebuildable historical index to the current (including test) store."""
+    return HistoricalMetricIndex(store)
+
+
+def refresh_historical_index(document: dict) -> None:
+    """Refresh derived evidence without making a completed commercial save fail."""
+    try:
+        historical_index().refresh_project(document)
+    except Exception:
+        logger.exception("Historical comparison index refresh failed for %s", document.get("project", {}).get("id"))
+
+
 def _reusable_projection(document: dict | None) -> dict:
     if not document:
         return {}
@@ -90,7 +136,8 @@ def _reusable_projection(document: dict | None) -> dict:
         "project": {
             key: project.get(key)
             for key in (
-                "estimator", "plan_source", "owner_name", "architect", "engineer",
+                "estimator", "plan_source", "owner_name", "owner_legal_name", "owner_address",
+                "owner_website", "owner_phone", "owner_email", "architect", "engineer",
                 "general_contractor", "construction_manager",
             )
         },
@@ -231,9 +278,9 @@ def identity(x_actor: str = Header("Local User"), x_role: str = Header("Estimato
 def fail(exc: Exception) -> None:
     if isinstance(exc, DomainError):
         status = (
-            403 if exc.code in {"forbidden", "custom_code_authorization_failed"}
+            403 if exc.code in {"forbidden", "custom_code_authorization_failed", "invalid_override_credentials", "override_required"}
             else 404 if exc.code == "not_found"
-            else 409 if exc.code in {"duplicate_activation"}
+            else 409 if exc.code in {"duplicate_activation", "duplicate_proposal", "proposal_already_voided", "immutable_snapshot"}
             else 422
         )
         raise HTTPException(status, detail={"code": exc.code, "message": str(exc), "details": exc.details}) from exc
@@ -307,6 +354,8 @@ def master_data_search(q: str, kind: str = "organizations", limit: int = 10,
         kind_map = {
             "organizations": ("organization", None),
             "organization": ("organization", None),
+            "owners": ("organization", None),
+            "owner": ("organization", None),
             "contacts": ("contact", None),
             "contact": ("contact", None),
             "estimators": ("text", "estimator"),
@@ -319,8 +368,12 @@ def master_data_search(q: str, kind: str = "organizations", limit: int = 10,
         entity_kind, text_kind = kind_map.get(kind, (None, None))
         if entity_kind is None:
             raise DomainError("Unknown reusable master-data kind.", "invalid_master_data_kind")
-        raw = search_master_data(directory, q, entity_kinds=[entity_kind], limit=100 if text_kind else limit)
+        raw = search_master_data(directory, q, entity_kinds=[entity_kind], limit=100 if text_kind or kind in {"owners", "owner"} else limit)
         results = [_master_result(directory, item) for item in raw["results"]]
+        if kind in {"owners", "owner"}:
+            results = [item for item in results if "owner" in {
+                str(value).strip().lower() for value in item.get("classifications", [])
+            }][:max(1, min(limit, 100))]
         if text_kind:
             results = [item for item in results if item.get("kind") == text_kind][:max(1, min(limit, 100))]
         return {**raw, "results": results, "kind": kind}
@@ -413,6 +466,7 @@ def create_project(payload: dict = Body(...), actor_role: tuple[str, str] = __im
         calculate_project(doc, config)
         saved = store.save_project(doc, -1)
         index_reusable_history(saved)
+        refresh_historical_index(saved)
         return {"project": redact(saved, role)}
     except Exception as exc:
         fail(exc)
@@ -429,15 +483,22 @@ def generate_project_for_testing(payload: dict = Body(default={}), actor_role: t
         calculate_project(doc, config)
         saved = store.save_project(doc, -1)
         index_reusable_history(saved)
+        refresh_historical_index(saved)
         generated = saved["project"].get("test_generation", {})
+        alternate_added = lambda collection: sum(len(alt.get("changes", {}).get(collection, {}).get("added", []))
+                                                 for alt in saved.get("alternates", []))
+        alternate_section_frames = sum(len(section.get("lines", [])) for alt in saved.get("alternates", [])
+                                       for section in alt.get("changes", {}).get("takeoff_sections", {}).get("added", []))
         return {
             "project": redact(saved, role),
             "generation": {
                 **generated,
                 "counts": {
                     "contacts": len(saved.get("contacts", [])), "cost_codes": len(saved.get("cost_codes", [])),
-                    "quotes": len(saved.get("quotes", [])), "frame_sections": len(saved.get("takeoff_sections", [])),
-                    "frame_rows": sum(len(section.get("lines", [])) for section in saved.get("takeoff_sections", [])),
+                    "quotes": len(saved.get("quotes", [])) + alternate_added("quotes"),
+                    "frame_sections": len(saved.get("takeoff_sections", [])) + alternate_added("takeoff_sections"),
+                    "frame_rows": sum(len(section.get("lines", [])) for section in saved.get("takeoff_sections", [])) +
+                                  alternate_section_frames + alternate_added("frames"),
                     "doors": len(saved.get("doors", [])), "equipment": len(saved.get("equipment", [])),
                     "borrowed_lites": len(saved.get("borrowed_lites", [])), "labor_lines": len(saved.get("labor_estimates", [])),
                 },
@@ -454,23 +515,197 @@ def get_project(project_id: str, recover: bool = False, actor_role: tuple[str, s
         doc, recovered_from = store.load_project(project_id, recover=recover)
         if recovered_from:
             audit(doc, actor, role, "project", project_id, "recovery_preview", None, {"backup": recovered_from}, "Primary JSON was invalid")
+        configuration = store.load_configuration(doc["project"]["configuration_id"])
+        calculate_project(doc, configuration)
         return {"project": redact(doc, role), "recovered_from": recovered_from, "backups": store.backup_names(project_id)}
     except Exception as exc:
         fail(exc)
 
 
-@app.put("/api/projects/{project_id}")
-def save_project(project_id: str, payload: dict = Body(...), actor_role: tuple[str, str] = __import__("fastapi").Depends(identity)) -> dict:
+def _historical_current_project(project_id: str) -> dict:
+    """Load and authoritatively recalculate only the current project."""
+    document, _ = store.load_project(project_id)
+    configuration = store.load_configuration(document["project"]["configuration_id"])
+    return calculate_project(deepcopy(document), configuration)
+
+
+@app.get("/api/projects/{project_id}/historical/bid-cost-codes")
+def bid_cost_code_history(project_id: str, actor_role: tuple[str, str] = __import__("fastapi").Depends(identity)) -> dict:
+    try:
+        document = _historical_current_project(project_id)
+        return historical_index().comparisons(document)
+    except Exception as exc:
+        fail(exc)
+
+
+@app.get("/api/projects/{project_id}/historical/bid-cost-code")
+def bid_cost_code_history_detail(project_id: str, code: str,
+                                 actor_role: tuple[str, str] = __import__("fastapi").Depends(identity)) -> dict:
+    try:
+        if not str(code or "").strip():
+            raise DomainError("Cost Code is required.", "missing_cost_code")
+        document = _historical_current_project(project_id)
+        return historical_index().detail(document, code)
+    except Exception as exc:
+        fail(exc)
+
+
+@app.post("/api/projects/{project_id}/alternates")
+def create_alternate(project_id: str, payload: dict = Body(...), actor_role: tuple[str, str] = __import__("fastapi").Depends(identity)) -> dict:
     actor, role = actor_role
     try:
         require(role, "edit_estimate")
+        document, configuration = load(project_id)
+        expected = int(payload.get("expected_revision", document["project"]["revision"]))
+        alternate = new_alternate(document, payload.get("name"))
+        document.setdefault("alternates", []).append(alternate)
+        calculate_project(document, configuration)
+        audit(document, actor, role, "alternate", alternate["id"], "alternate_create", None, deepcopy(alternate), "Created Base-plus-delta alternate")
+        saved = store.save_project(document, expected)
+        return {"project": redact(saved, role), "alternate": deepcopy(next(row for row in saved["alternates"] if row["id"] == alternate["id"]))}
+    except Exception as exc:
+        fail(exc)
+
+
+@app.post("/api/projects/{project_id}/frame-sections/{section_id}/materials")
+def create_frame_section_material(project_id: str, section_id: str, payload: AddSectionMaterialCommand,
+                                  actor_role: tuple[str, str] = __import__("fastapi").Depends(identity)) -> dict:
+    actor, role = actor_role
+    try:
+        require(role, "edit_estimate")
+        document, configuration = load(project_id)
+        material = add_section_material(document, section_id, payload.model_dump())
+        calculate_project(document, configuration)
+        audit(document, actor, role, "frame_installation_material", material["id"], "material_add", None,
+              deepcopy(material), "Added project-specific Frame Spec Section Installation Material")
+        saved = store.save_project(document, payload.expected_revision)
+        return {"project": redact(saved, role), "material": deepcopy(material)}
+    except Exception as exc:
+        fail(exc)
+
+
+@app.delete("/api/projects/{project_id}/frame-sections/{section_id}/materials/{material_id}")
+def delete_frame_section_material(project_id: str, section_id: str, material_id: str,
+                                  payload: RemoveSectionMaterialCommand = Body(...),
+                                  actor_role: tuple[str, str] = __import__("fastapi").Depends(identity)) -> dict:
+    actor, role = actor_role
+    try:
+        require(role, "edit_estimate")
+        document, configuration = load(project_id)
+        result = remove_section_material(document, section_id, material_id,
+                                         confirm_dependencies=payload.confirm_dependencies)
+        calculate_project(document, configuration)
+        audit(document, actor, role, "frame_installation_material", material_id, "material_remove",
+              result["material"], None, payload.reason)
+        saved = store.save_project(document, payload.expected_revision)
+        return {"project": redact(saved, role), "removed": result}
+    except Exception as exc:
+        fail(exc)
+
+
+@app.post("/api/projects/{project_id}/alternates/{alternate_id}/change")
+def change_alternate(project_id: str, alternate_id: str, payload: dict = Body(...), actor_role: tuple[str, str] = __import__("fastapi").Depends(identity)) -> dict:
+    actor, role = actor_role
+    try:
+        require(role, "edit_estimate")
+        document, configuration = load(project_id)
+        expected = int(payload.get("expected_revision", document["project"]["revision"]))
+        alternate = next((row for row in document.get("alternates", []) if row.get("id") == alternate_id), None)
+        if not alternate:
+            raise DomainError("Alternate was not found.", "not_found")
+        operation, collection = payload.get("operation"), str(payload.get("collection") or "")
+        if operation == "add":
+            add_alternate_record(alternate, collection, payload.get("record") or {})
+        elif operation == "remove":
+            remove_alternate_record(alternate, collection, str(payload.get("record_id") or ""))
+        elif operation == "override":
+            record_id, field = str(payload.get("record_id") or ""), str(payload.get("field") or "")
+            base_record = next((row for row in document.get(collection, []) if str(row.get("id")) == record_id), None)
+            if collection == "frames":
+                base_record = next((line for section in document.get("takeoff_sections", []) for line in section.get("lines", []) if str(line.get("id")) == record_id), None)
+            if not base_record or not field:
+                raise DomainError("The Base record or override field was not found.", "not_found")
+            current: Any = base_record
+            for part in field.split("."):
+                current = current.get(part) if isinstance(current, dict) else None
+            set_alternate_override(alternate, collection, record_id, field, current, payload.get("value"))
+        elif operation == "reset":
+            reset_alternate_override(alternate, collection, str(payload.get("record_id") or ""), str(payload.get("field") or ""))
+        else:
+            raise DomainError("Alternate operation must be add, remove, override, or reset.", "invalid_alternate_operation")
+        if "name" in payload:
+            alternate["name"] = str(payload.get("name") or "").strip() or alternate["name"]
+        if "customer_description" in payload:
+            alternate["customer_description"] = str(payload.get("customer_description") or "")
+        calculate_project(document, configuration)
+        audit(document, actor, role, "alternate", alternate_id, f"alternate_{operation}", None,
+              {"collection": collection, "record_id": payload.get("record_id"), "field": payload.get("field")}, "Updated Base-plus-delta alternate")
+        saved = store.save_project(document, expected)
+        return {"project": redact(saved, role), "alternate": deepcopy(next(row for row in saved["alternates"] if row["id"] == alternate_id))}
+    except Exception as exc:
+        fail(exc)
+
+
+@app.post("/api/session-overrides")
+def create_session_override(payload: dict = Body(...), actor_role: tuple[str, str] = __import__("fastapi").Depends(identity)) -> dict:
+    actor, role = actor_role
+    try:
+        require(role, "configuration")
+        project_id, page = str(payload.get("project_id") or ""), str(payload.get("page") or "")
+        if page != "project" or not store.project_path(project_id).exists():
+            raise DomainError("This page does not support a session override.", "invalid_override_scope")
+        if not verify_custom_code_credentials(
+            str(payload.get("username") or ""), str(payload.get("password") or ""),
+            secret_file=custom_code_secret_path(),
+        ):
+            raise DomainError("The Administrator override credential was not accepted.", "invalid_override_credentials")
+        token = secrets.token_urlsafe(32)
+        with _override_lock:
+            _override_sessions[token] = {
+                "actor": actor, "project_id": project_id, "page": page,
+                "expires_at": time.time() + _OVERRIDE_TTL_SECONDS,
+            }
+        return {"token": token, "page": page, "expires_in_seconds": _OVERRIDE_TTL_SECONDS}
+    except Exception as exc:
+        fail(exc)
+
+
+@app.delete("/api/session-overrides")
+def revoke_session_override(x_override_token: str | None = Header(default=None),
+                            actor_role: tuple[str, str] = __import__("fastapi").Depends(identity)) -> dict:
+    with _override_lock:
+        if x_override_token:
+            _override_sessions.pop(x_override_token, None)
+    return {"revoked": True}
+
+
+@app.put("/api/projects/{project_id}")
+def save_project(project_id: str, payload: dict = Body(...), x_override_token: str | None = Header(default=None),
+                 actor_role: tuple[str, str] = __import__("fastapi").Depends(identity)) -> dict:
+    actor, role = actor_role
+    try:
         incoming = strip_ui_working_rows(deepcopy(payload["project"]))
         if incoming.get("project", {}).get("id") != project_id:
             raise DomainError("Project identifier does not match route.")
         expected = int(payload.get("expected_revision", incoming["project"].get("revision", 0)))
         current, config = load(project_id)
+        override_active = role == "Systems Administrator" and _valid_override_token(
+            x_override_token, actor=actor, project_id=project_id, page="project"
+        )
+        if role == "Systems Administrator":
+            if not override_active:
+                raise DomainError("Administrator editing requires an active page override.", "override_required")
+            changed_paths = {str(change.get("path") or "") for change in payload.get("changes") or []}
+            if changed_paths - {"project.miles_from_rogers"}:
+                raise DomainError("This page override permits only Drive miles from Rogers.", "invalid_override_field")
+        else:
+            require(role, "edit_estimate")
+        if incoming["project"].get("miles_from_rogers") != current["project"].get("miles_from_rogers") and not override_active:
+            raise DomainError("Drive miles are calculated from the selected address and are locked.", "calculated_field_locked")
         # Client editing never receives authority to mutate immutable/lifecycle collections.
-        protected = ("estimate_revisions", "reviews", "submissions", "proposal_artifacts", "award", "contract_allocations", "change_orders", "sov_lines", "closeout", "audit_events", "configuration_lineage")
+        if incoming.get("project", {}).get("historical_proposal"):
+            raise DomainError("Historical proposal snapshots cannot be saved directly. Begin a working branch first.", "immutable_snapshot")
+        protected = ("estimate_revisions", "reviews", "submissions", "proposal_artifacts", "proposal_history", "working_branch", "award", "contract_allocations", "change_orders", "sov_lines", "closeout", "audit_events", "configuration_lineage")
         for key in protected:
             incoming[key] = deepcopy(current.get(key))
         incoming["project"]["configuration_id"] = current["project"]["configuration_id"]
@@ -495,6 +730,8 @@ def save_project(project_id: str, payload: dict = Body(...), actor_role: tuple[s
         if len(changes) > 10000:
             raise DomainError("A single save cannot record more than 10,000 datapoint changes.")
         apply_manual_quote_selection_changes(incoming, changes)
+        if changes and incoming.get("working_branch"):
+            incoming["working_branch"]["has_unpublished_changes"] = True
         apply_line_acknowledgement_metadata(incoming, changes, actor)
         calculate_project(incoming, config)
         count = len(changes) or max(1, int(payload.get("data_point_changes", 1)))
@@ -517,6 +754,7 @@ def save_project(project_id: str, payload: dict = Body(...), actor_role: tuple[s
                   payload.get("reason", "Project inputs changed"), correlation)
         saved = store.save_project(incoming, expected)
         index_reusable_history(saved, current)
+        refresh_historical_index(saved)
         return {"project": redact(saved, role), "saved_at": saved["project"]["updated_at"]}
     except Exception as exc:
         fail(exc)
@@ -643,7 +881,22 @@ def calculate_project_mileage(project_id: str, payload: dict = Body(default={}),
             return {"project": redact(doc, role), "mileage": prior_result, "cached": True}
         latest_config = store.load_configuration(CONFIG_VERSION)
         settings = latest_config.get("application_settings", {}).get("mileage", {})
-        result = calculate_driving_mileage(query, settings)
+        match = doc["project"].get("address_match_metadata") or {}
+        selected_destination = None
+        if (
+            str(match.get("label") or "").strip().casefold() == address.casefold()
+            and match.get("latitude") is not None and match.get("longitude") is not None
+        ):
+            selected_destination = {
+                "matched_address": address,
+                "latitude": str(match["latitude"]), "longitude": str(match["longitude"]),
+                "provider": str(match.get("provider") or "selected address provider"),
+                "attribution": match.get("attribution"),
+            }
+        result = (
+            calculate_driving_mileage(query, settings, destination=selected_destination)
+            if selected_destination else calculate_driving_mileage(query, settings)
+        )
         prior = {"miles_from_rogers": doc["project"].get("miles_from_rogers"), "mileage_calculation": prior_result}
         doc["project"]["miles_from_rogers"] = result["miles"]
         doc["project"]["mileage_calculation"] = {**result, "settings_configuration_id": latest_config["id"]}
@@ -669,6 +922,7 @@ def duplicate(project_id: str, payload: dict = Body(...), actor_role: tuple[str,
         calculate_project(doc, config)
         saved = store.save_project(doc, -1)
         index_reusable_history(saved)
+        refresh_historical_index(saved)
         return {"project": redact(saved, role)}
     except Exception as exc:
         fail(exc)
@@ -710,6 +964,7 @@ def import_project(payload: dict = Body(...), actor_role: tuple[str, str] = __im
         audit(doc, actor, role, "project", doc["project"]["id"], "import", None, {"source": payload.get("source", "JSON upload")}, "Project JSON import")
         saved = store.save_project(doc, -1)
         index_reusable_history(saved)
+        refresh_historical_index(saved)
         return {"project": redact(saved, role)}
     except Exception as exc:
         fail(exc)
@@ -762,6 +1017,7 @@ def recover(project_id: str, payload: dict = Body(...), actor_role: tuple[str, s
         bump_bid_version(recovered, "recovery")
         audit(recovered, actor, role, "project", project_id, "recover", None, {"backup": payload["backup"]}, payload.get("reason", "Recover valid backup"))
         recovered = store.save_project(recovered, expected)
+        refresh_historical_index(recovered)
         return {"project": redact(recovered, role)}
     except Exception as exc:
         fail(exc)
@@ -790,7 +1046,325 @@ def submit_project(project_id: str, payload: dict = Body(...), actor_role: tuple
         doc, config = load(project_id)
         expected = doc["project"]["revision"]
         result = submit(doc, config, actor, role, payload)
-        return {"project": redact(store.save_project(doc, expected), role), "submission": result}
+        saved = store.save_project(doc, expected)
+        refresh_historical_index(saved)
+        return {"project": redact(saved, role), "submission": result}
+    except Exception as exc:
+        fail(exc)
+
+
+def _proposal_index(document: dict[str, Any]) -> list[dict[str, Any]]:
+    return [deepcopy(item) for item in sorted(document.get("proposal_history", []), key=lambda row: int(row.get("sequence", 0)), reverse=True)]
+
+
+def _render_frozen_proposal_pdf(artifact: dict[str, Any]) -> bytes:
+    """Render once from the frozen artifact body; committed bytes are authoritative."""
+    stream = io.BytesIO()
+    dark, accent, rule, wash = (colors.HexColor(value) for value in ("#333333", "#2D6756", "#B9C2BF", "#F3F5F4"))
+
+    def clean(value: Any) -> str:
+        return escape(str(value or "").replace("\u2014", "-").replace("\u2013", "-").replace("\u2011", "-"))
+
+    def para(value: Any, style: ParagraphStyle) -> Paragraph:
+        return Paragraph(clean(value).replace("\n", "<br/>"), style)
+
+    styles = getSampleStyleSheet()
+    body = ParagraphStyle("ProposalBody", parent=styles["BodyText"], fontName="Helvetica", fontSize=9, leading=12,
+                          textColor=colors.HexColor("#202624"), spaceAfter=3)
+    small = ParagraphStyle("ProposalSmall", parent=body, fontSize=7.4, leading=9, textColor=colors.HexColor("#5C6461"))
+    label = ParagraphStyle("ProposalLabel", parent=small, fontName="Helvetica-Bold", fontSize=7, leading=8,
+                           textColor=colors.HexColor("#454B49"), uppercase=True)
+    section_text = ParagraphStyle("ProposalSectionText", parent=body, fontName="Helvetica-Bold", fontSize=9,
+                                  leading=11, textColor=colors.white, alignment=1)
+    document_title = ParagraphStyle("ProposalDocumentTitle", parent=styles["Title"], fontName="Helvetica-Bold",
+                                    fontSize=22, leading=24, textColor=dark, alignment=2)
+    brand_mark = ParagraphStyle("ProposalBrandMark", parent=body, fontName="Helvetica-Bold", fontSize=25,
+                                leading=26, textColor=dark)
+    brand_sub = ParagraphStyle("ProposalBrandSub", parent=small, fontName="Helvetica-Bold", fontSize=7.2,
+                               leading=8, textColor=dark)
+    amount_words = ParagraphStyle("ProposalAmountWords", parent=body, fontName="Helvetica-Bold", fontSize=9.2,
+                                  leading=12, textColor=dark)
+    alt_heading = ParagraphStyle("ProposalAlternateHeading", parent=body, fontName="Helvetica-Bold", fontSize=9.3,
+                                 leading=11, textColor=accent)
+
+    pdf = SimpleDocTemplate(stream, pagesize=LETTER, leftMargin=.58*inch, rightMargin=.58*inch,
+                            topMargin=.48*inch, bottomMargin=.58*inch,
+                            title=f"Proposal - {artifact.get('project_name') or ''}", author="Murphy Window & Door Commercial")
+    width = LETTER[0] - pdf.leftMargin - pdf.rightMargin
+
+    def section_bar(title: str) -> Table:
+        table = Table([[para(title, section_text)]], colWidths=[width], repeatRows=1)
+        table.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), dark), ("BOX", (0, 0), (-1, -1), .65, dark),
+                                   ("TOPPADDING", (0, 0), (-1, -1), 4), ("BOTTOMPADDING", (0, 0), (-1, -1), 4)]))
+        return table
+
+    def grid(rows: list[list[Any]], widths: list[float], *, labels: tuple[int, ...] = ()) -> Table:
+        converted = [[cell if isinstance(cell, Paragraph) else para(cell, label if column in labels else body)
+                      for column, cell in enumerate(row)] for row in rows]
+        table = Table(converted, colWidths=widths, hAlign="LEFT")
+        commands = [("GRID", (0, 0), (-1, -1), .5, rule), ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 6), ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                    ("TOPPADDING", (0, 0), (-1, -1), 4), ("BOTTOMPADDING", (0, 0), (-1, -1), 4)]
+        for column in labels:
+            commands.append(("BACKGROUND", (column, 0), (column, -1), wash))
+        table.setStyle(TableStyle(commands))
+        return table
+
+    generated = str(artifact.get("generated_at") or "")[:10] or "Current preview"
+    identity = Table([
+        [[Paragraph("MWD", brand_mark), Paragraph("MURPHY WINDOW &amp; DOOR", brand_sub)],
+         para("Commercial", ParagraphStyle("ProposalDivision", parent=small, fontSize=8, textColor=accent)),
+         para("PROPOSAL", document_title)],
+    ], colWidths=[2.2*inch, 1.35*inch, width-3.55*inch], hAlign="LEFT")
+    identity.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "MIDDLE"), ("ALIGN", (2, 0), (2, 0), "RIGHT"),
+                                  ("LINEBELOW", (0, 0), (-1, -1), 1.2, dark), ("BOTTOMPADDING", (0, 0), (-1, -1), 14)]))
+    company = grid([
+        ["COMPANY", "Murphy Window & Door Commercial", "DATE", generated],
+        ["ADDRESS", "12536 314th Ave NW, Princeton, MN 55371", "VALIDITY", "30 days from proposal date"],
+        ["CONTACT", "estimating@murphywindow.com", "PROPOSAL", f"{artifact.get('proposal_number') or 'PREVIEW'} - {artifact.get('proposal_name') or 'Current Working Bid'}"],
+        ["ESTIMATOR", artifact.get("estimator") or artifact.get("generated_by") or "Estimating Department", "PROJECT NO.", artifact.get("project_number") or "Not assigned"],
+    ], [.75*inch, 3.18*inch, .72*inch, width-4.65*inch], labels=(0, 2))
+    project = grid([
+        ["ATTENTION", artifact.get("attention") or "Estimating Department", "PROJECT ADDRESS", artifact.get("project_address") or "Not provided"],
+        ["COMPANY", artifact.get("attention_company") or artifact.get("general_contractor") or artifact.get("owner_name") or "Not provided",
+         "PROJECT NAME", artifact.get("project_name") or "Untitled project"],
+    ], [.78*inch, 2.42*inch, 1.12*inch, width-4.32*inch], labels=(0, 2))
+    story: list[Any] = [identity, Spacer(1, 6), company, Spacer(1, 7), section_bar("Project Information"), project]
+
+    scope_codes = artifact.get("scope_codes") or []
+    if scope_codes:
+        cells = [Paragraph(f"<b>{clean(row.get('code'))}</b>  {clean(row.get('description'))}", body) for row in scope_codes]
+        pairs = [cells[index:index + 2] for index in range(0, len(cells), 2)]
+        if len(pairs[-1]) == 1:
+            pairs[-1].append("")
+        scope_table = Table(pairs, colWidths=[width / 2, width / 2])
+        scope_table.setStyle(TableStyle([("GRID", (0, 0), (-1, -1), .5, rule), ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                                         ("LEFTPADDING", (0, 0), (-1, -1), 7), ("RIGHTPADDING", (0, 0), (-1, -1), 7),
+                                         ("TOPPADDING", (0, 0), (-1, -1), 5), ("BOTTOMPADDING", (0, 0), (-1, -1), 5)]))
+        story.extend([Spacer(1, 7), section_bar("Scope of Work"), scope_table])
+
+    proposal_sections = [("Scope", "scope"), ("Inclusions", "inclusions"), ("Exclusions", "exclusions"),
+                         ("Additional Information", "additional_information")]
+    for title, key in proposal_sections:
+        value = artifact.get(key)
+        if value:
+            story.extend([Spacer(1, 5), section_bar(title), grid([[value]], [width])])
+
+    statement = ("Murphy Window & Door Commercial proposes to complete the scope of work stated above for the sum of "
+                 f"{str(artifact.get('written_amount') or '').upper()} (${float(artifact.get('amount') or 0):,.2f}).")
+    story.extend([Spacer(1, 7), section_bar("Company Proposal"), grid([[para(statement, amount_words)]], [width])])
+
+    alternates = artifact.get("alternates") or []
+    if alternates:
+        alt_rows = []
+        for alternate in alternates:
+            delta = float(alternate.get("selling_value_delta") or 0)
+            classification = "ADD" if delta > 0 else "DEDUCT" if delta < 0 else "NO CHANGE"
+            title = f"{alternate.get('key') or 'ALT'} - {alternate.get('name') or 'Alternate'}"
+            descriptions = []
+            if alternate.get("customer_description"):
+                descriptions.append(str(alternate["customer_description"]))
+            for group in alternate.get("scope_of_change", []):
+                descriptions.append(f"{group.get('area')}: " + "; ".join(group.get("changes", [])))
+            alt_rows.append([para(title, alt_heading), Paragraph("<br/>".join(clean(item) for item in descriptions) or "No scope difference.", small),
+                             Paragraph(f"{clean(classification)}<br/><b>${abs(delta):,.2f}</b>", ParagraphStyle("ProposalAltAmount", parent=body, alignment=2))])
+        alt_table = Table([[para("Alternates", section_text), "", ""], *alt_rows],
+                          colWidths=[1.72*inch, width-3.05*inch, 1.33*inch], repeatRows=1)
+        alt_table.setStyle(TableStyle([("SPAN", (0, 0), (-1, 0)), ("BACKGROUND", (0, 0), (-1, 0), dark),
+                                       ("GRID", (0, 0), (-1, -1), .5, rule), ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                                       ("LEFTPADDING", (0, 0), (-1, -1), 7), ("RIGHTPADDING", (0, 0), (-1, -1), 7),
+                                       ("TOPPADDING", (0, 0), (-1, -1), 6), ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                                       ("TOPPADDING", (0, 0), (-1, 0), 4), ("BOTTOMPADDING", (0, 0), (-1, 0), 4)]))
+        story.extend([Spacer(1, 7), alt_table])
+
+    story.extend([
+        Spacer(1, 7), section_bar("General Contractor Acceptance"),
+        grid([["As an authorized representative of the recipient contractor, I accept this proposal at the amount specified, without alteration."]], [width]),
+        Spacer(1, 10),
+        Table([[para("Signature:", small), "", para("Date:", small), ""],
+               ["", "", "", ""]], colWidths=[.82*inch, 2.55*inch, .48*inch, width-3.85*inch],
+              style=TableStyle([("LINEBELOW", (1, 0), (1, 0), .75, dark), ("LINEBELOW", (3, 0), (3, 0), .75, dark),
+                                ("BOTTOMPADDING", (0, 0), (-1, -1), 6)])),
+    ])
+
+    trace = f"{artifact.get('proposal_number') or 'PREVIEW'} | Artifact {artifact.get('id') or 'current-working-preview'} | Snapshot {artifact.get('snapshot_fingerprint') or 'NOT CREATED'}"
+    def footer(canvas: Any, document: Any) -> None:
+        canvas.saveState()
+        canvas.setStrokeColor(rule)
+        canvas.line(pdf.leftMargin, .38*inch, LETTER[0] - pdf.rightMargin, .38*inch)
+        canvas.setFont("Helvetica", 6.5)
+        canvas.setFillColor(colors.HexColor("#68706D"))
+        canvas.drawString(pdf.leftMargin, .22*inch, clean(trace).replace("&amp;", "&")[:120])
+        canvas.drawRightString(LETTER[0] - pdf.rightMargin, .22*inch, f"Page {document.page}")
+        canvas.restoreState()
+
+    pdf.build(story, onFirstPage=footer, onLaterPages=footer)
+    return stream.getvalue()
+
+
+@app.get("/api/projects/{project_id}/proposals")
+def list_proposals(project_id: str, actor_role: tuple[str, str] = __import__("fastapi").Depends(identity)) -> dict:
+    try:
+        document, _ = store.load_project(project_id)
+        return {"proposals": _proposal_index(document), "working_branch": deepcopy(document.get("working_branch"))}
+    except Exception as exc:
+        fail(exc)
+
+
+@app.get("/api/projects/{project_id}/proposal-preview.pdf")
+def preview_working_proposal(project_id: str, actor_role: tuple[str, str] = __import__("fastapi").Depends(identity)) -> Response:
+    """Render the current calculated state without creating history or committing an artifact."""
+    try:
+        document, configuration = load(project_id)
+        calculate_project(document, configuration)
+        project, totals = document.get("project", {}), document.get("working_estimate", {}).get("totals", {})
+        amount = totals.get("selling_value") or 0
+        artifact = {
+            "id": "current-working-preview", "proposal_number": "PREVIEW", "proposal_name": "Current Working Bid",
+            "generated_at": now(), "generated_by": actor_role[0],
+            "project_name": project.get("name"), "project_number": project.get("project_number"),
+            "project_address": project.get("address"), "owner_name": project.get("owner_name"),
+            "general_contractor": project.get("general_contractor", ""), "estimator": project.get("estimator", ""),
+            "attention": next((row.get("name") for row in document.get("contacts", []) if row.get("active", True)), ""),
+            "attention_company": next((row.get("organization") for row in document.get("contacts", []) if row.get("active", True)), ""),
+            "scope_codes": [{"code": row.get("code", ""), "description": row.get("description", "")}
+                            for row in document.get("cost_codes", []) if row.get("code")],
+            "amount": amount, "written_amount": dollars_in_words(amount), "scope": project.get("proposal_scope", ""),
+            "inclusions": project.get("proposal_inclusions", ""), "exclusions": project.get("proposal_exclusions", ""),
+            "additional_information": project.get("additional_information", ""), "snapshot_fingerprint": "NOT CREATED",
+            "alternates": [{"key": row.get("key"), "name": row.get("name"), "customer_description": row.get("customer_description"),
+                            "scope_of_change": row.get("calculated", {}).get("scope_of_change", []),
+                            "classification": row.get("calculated", {}).get("classification"),
+                            "selling_value_delta": row.get("calculated", {}).get("selling_value_delta")}
+                           for row in document.get("alternates", [])],
+        }
+        return Response(_render_frozen_proposal_pdf(artifact), media_type="application/pdf", headers={
+            "Content-Disposition": 'inline; filename="proposal-current-working-preview.pdf"',
+            "X-Proposal-Preview": "current-working", "Cache-Control": "no-store",
+        })
+    except Exception as exc:
+        fail(exc)
+
+
+@app.post("/api/projects/{project_id}/proposals")
+def generate_proposal(project_id: str, payload: dict = Body(...), actor_role: tuple[str, str] = __import__("fastapi").Depends(identity)) -> dict:
+    actor, role = actor_role
+    snapshot = None
+    try:
+        require(role, "submit")
+        document, configuration = load(project_id)
+        expected = int(payload.get("expected_revision", document["project"]["revision"]))
+        if expected != int(document["project"]["revision"]):
+            raise ConflictError(f"Concurrent edit detected: expected revision {expected}, current revision {document['project']['revision']}.")
+        snapshot = create_proposal_snapshot(document, configuration, actor, role, payload.get("proposal_name", ""))
+        proposal_id = snapshot["metadata"]["id"]
+        artifact_id = snapshot["artifact"]["id"]
+        artifact_bytes = _render_frozen_proposal_pdf(snapshot["artifact"])
+        artifact_hash = hashlib.sha256(artifact_bytes).hexdigest()
+        snapshot["artifact"]["sha256"] = artifact_hash
+        next(item for item in document["proposal_artifacts"] if item["id"] == artifact_id)["sha256"] = artifact_hash
+        store.save_proposal_artifact(project_id, artifact_id, artifact_bytes)
+        try:
+            store.save_proposal_snapshot(project_id, snapshot)
+            saved = store.save_project(document, expected, force_snapshot=True)
+        except Exception:
+            store.discard_unindexed_proposal(project_id, proposal_id)
+            store.discard_unindexed_artifact(project_id, artifact_id)
+            raise
+        refresh_historical_index(saved)
+        return {"project": redact(saved, role), "proposal": deepcopy(snapshot["metadata"]), "artifact": deepcopy(snapshot["artifact"])}
+    except Exception as exc:
+        fail(exc)
+
+
+@app.get("/api/projects/{project_id}/proposals/{proposal_id}")
+def read_proposal(project_id: str, proposal_id: str, actor_role: tuple[str, str] = __import__("fastapi").Depends(identity)) -> dict:
+    try:
+        live, _ = store.load_project(project_id)
+        snapshot = store.load_proposal_snapshot(project_id, proposal_id)
+        indexed = next((item for item in live.get("proposal_history", []) if item.get("id") == proposal_id), None)
+        if not indexed:
+            raise DomainError("Proposal was not found in this project.", "not_found")
+        # Status/void metadata lives in the index; the frozen commercial payload and
+        # originally generated metadata remain append-only in the snapshot file.
+        view_snapshot = deepcopy(snapshot)
+        view_snapshot["metadata"].update({"status": indexed.get("status"), "void": deepcopy(indexed.get("void"))})
+        return {"proposal": deepcopy(view_snapshot["metadata"]), "project": historical_document(view_snapshot, live),
+                "configuration": deepcopy(snapshot["state"]["effective_configuration"]), "artifact": deepcopy(snapshot["artifact"])}
+    except Exception as exc:
+        fail(exc)
+
+
+@app.get("/api/projects/{project_id}/proposals/{proposal_id}/ancestry")
+def proposal_ancestry(project_id: str, proposal_id: str, actor_role: tuple[str, str] = __import__("fastapi").Depends(identity)) -> dict:
+    try:
+        document, _ = store.load_project(project_id)
+        index = {item.get("id"): item for item in document.get("proposal_history", [])}
+        item = index.get(proposal_id)
+        if not item:
+            raise DomainError("Proposal was not found.", "not_found")
+        return {"proposal": deepcopy(item), "ancestors": [deepcopy(index[item_id]) for item_id in item.get("ancestor_ids", []) if item_id in index]}
+    except Exception as exc:
+        fail(exc)
+
+
+@app.post("/api/projects/{project_id}/proposals/{proposal_id}/branch")
+def begin_proposal_branch(project_id: str, proposal_id: str, payload: dict = Body(...), actor_role: tuple[str, str] = __import__("fastapi").Depends(identity)) -> dict:
+    actor, role = actor_role
+    try:
+        require(role, "edit_estimate")
+        live, _ = store.load_project(project_id)
+        expected = int(payload.get("expected_revision", live["project"]["revision"]))
+        if expected != int(live["project"]["revision"]):
+            raise ConflictError(f"Concurrent edit detected: expected revision {expected}, current revision {live['project']['revision']}.")
+        snapshot = store.load_proposal_snapshot(project_id, proposal_id)
+        indexed = next((item for item in live.get("proposal_history", []) if item.get("id") == proposal_id), None)
+        if not indexed:
+            raise DomainError("Proposal was not found in this project.", "not_found")
+        snapshot["metadata"]["status"] = indexed.get("status", snapshot["metadata"].get("status"))
+        snapshot["metadata"]["void"] = deepcopy(indexed.get("void"))
+        correlation = str(payload.get("correlation_id") or uid("cor"))
+        result, inherited_configuration = branch_from_snapshot(live, snapshot, payload.get("changes") or [], actor, role, correlation)
+        historical_prior = deepcopy(snapshot["state"])
+        historical_prior.pop("effective_configuration", None)
+        validate_project_inputs(result, historical_prior, inherited_configuration)
+        saved = store.save_project(result, expected, force_snapshot=True)
+        refresh_historical_index(saved)
+        return {"project": redact(saved, role), "working_branch": deepcopy(saved.get("working_branch"))}
+    except Exception as exc:
+        fail(exc)
+
+
+@app.post("/api/projects/{project_id}/proposals/{proposal_id}/void")
+def void_generated_proposal(project_id: str, proposal_id: str, payload: dict = Body(...), actor_role: tuple[str, str] = __import__("fastapi").Depends(identity)) -> dict:
+    actor, role = actor_role
+    try:
+        require(role, "submit")
+        document, _ = store.load_project(project_id)
+        expected = int(payload.get("expected_revision", document["project"]["revision"]))
+        item = void_proposal(document, proposal_id, actor, role, payload.get("reason", ""))
+        saved = store.save_project(document, expected, force_snapshot=True)
+        return {"project": redact(saved, role), "proposal": deepcopy(item)}
+    except Exception as exc:
+        fail(exc)
+
+
+@app.get("/api/projects/{project_id}/proposals/compare/{left_id}/{right_id}")
+def compare_proposals(project_id: str, left_id: str, right_id: str, show_unchanged: bool = False,
+                      actor_role: tuple[str, str] = __import__("fastapi").Depends(identity)) -> dict:
+    actor, role = actor_role
+    try:
+        document, _ = store.load_project(project_id)
+        known = {item.get("id") for item in document.get("proposal_history", [])}
+        if left_id not in known or right_id not in known:
+            raise DomainError("Both proposals must belong to this project.", "not_found")
+        left = store.load_proposal_snapshot(project_id, left_id)
+        right = store.load_proposal_snapshot(project_id, right_id)
+        result = compare_snapshots(left, right, show_unchanged=show_unchanged)
+        # Comparison is read-only; follow existing conventions and do not advance
+        # the live project revision merely to log a view operation.
+        logger.info("proposal comparison project=%s left=%s right=%s actor=%s role=%s", project_id, left_id, right_id, actor, role)
+        return {"comparison": result}
     except Exception as exc:
         fail(exc)
 
@@ -802,7 +1376,9 @@ def activate_project(project_id: str, payload: dict = Body(...), actor_role: tup
         doc, _ = load(project_id)
         expected = doc["project"]["revision"]
         result = activate(doc, actor, role, payload)
-        return {"project": redact(store.save_project(doc, expected), role), "award": result}
+        saved = store.save_project(doc, expected)
+        refresh_historical_index(saved)
+        return {"project": redact(saved, role), "award": result}
     except Exception as exc:
         fail(exc)
 
@@ -876,6 +1452,19 @@ def proposal_pdf(project_id: str, artifact_id: str, download: bool = False, acto
         artifact = next((a for a in doc["proposal_artifacts"] if a["id"] == artifact_id), None)
         if not artifact:
             raise DomainError("Proposal artifact not found.")
+        committed_path = store.proposal_artifact_path(project_id, artifact_id)
+        if committed_path.exists():
+            content = committed_path.read_bytes()
+            if artifact.get("sha256") and hashlib.sha256(content).hexdigest() != artifact["sha256"]:
+                raise PersistenceError("Stored proposal artifact failed its immutable SHA-256 verification.")
+            disposition = "attachment" if download else "inline"
+            version = artifact.get("proposal_number") or (artifact.get("bid_version") or {}).get("display", "bid").replace(".", "-")
+            project_label = artifact.get("project_number") or doc["project"].get("abbreviation") or project_id
+            safe_label = "".join(c for c in str(project_label) if c.isalnum() or c in "_-") or "project"
+            return Response(content, media_type="application/pdf", headers={
+                "Content-Disposition": f'{disposition}; filename="proposal-{safe_label}-{version}.pdf"',
+                "X-Proposal-Artifact": artifact["id"], "X-Proposal-Snapshot": str(artifact.get("proposal_id") or ""),
+            })
         stream = io.BytesIO()
         pdf = SimpleDocTemplate(stream, pagesize=LETTER, leftMargin=.65*inch, rightMargin=.65*inch, topMargin=.55*inch, bottomMargin=.65*inch,
                                 title=f"Proposal - {artifact['project_name']}", author="Murphy Window & Sunroom")
@@ -891,7 +1480,7 @@ def proposal_pdf(project_id: str, artifact_id: str, download: bool = False, acto
         brand.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,-1),colors.HexColor("#164A3D")),("BOX",(0,0),(-1,-1),0,colors.HexColor("#164A3D")),("LEFTPADDING",(0,0),(-1,-1),16),("RIGHTPADDING",(0,0),(-1,-1),16),("TOPPADDING",(0,0),(-1,-1),14),("BOTTOMPADDING",(0,0),(-1,-1),14),("VALIGN",(0,0),(-1,-1),"MIDDLE")]))
         story += [brand, Paragraph(escape(artifact["project_name"]), styles["ProposalTitle"])]
         info = [
-            ["PROJECT NUMBER", artifact.get("project_number") or "Not assigned", "BID VERSION", artifact.get("bid_version", {}).get("display", "Not versioned")],
+            ["PROJECT NUMBER", artifact.get("project_number") or "Not assigned", "BID VERSION", (artifact.get("bid_version") or {}).get("display", artifact.get("proposal_number", "Not versioned"))],
             ["PROJECT ADDRESS", artifact.get("project_address") or "Not provided", "BID DUE", artifact.get("bid_due_date") or "Not provided"],
             ["OWNER", artifact.get("owner_name") or "Not provided", "ADDENDA", str(artifact.get("addenda", 0))],
         ]
@@ -908,10 +1497,10 @@ def proposal_pdf(project_id: str, artifact_id: str, download: bool = False, acto
                   Paragraph(f"Immutable artifact: {escape(artifact['id'])}<br/>Source revision: {escape(artifact['revision_id'])}<br/>SHA-256: {escape(artifact['sha256'])}", ParagraphStyle("Verification", parent=styles["BodySmall"], fontSize=7, leading=10, textColor=colors.HexColor("#75837E"), wordWrap="CJK"))]
         def footer(canvas, document):
             canvas.saveState(); canvas.setStrokeColor(colors.HexColor("#D6E0DC")); canvas.line(document.leftMargin, .42*inch, LETTER[0]-document.rightMargin, .42*inch)
-            canvas.setFont("Helvetica", 7); canvas.setFillColor(colors.HexColor("#66766F")); canvas.drawString(document.leftMargin, .25*inch, f"{artifact.get('bid_version',{}).get('display','BID')} - Immutable proposal {artifact['id']}")
+            canvas.setFont("Helvetica", 7); canvas.setFillColor(colors.HexColor("#66766F")); canvas.drawString(document.leftMargin, .25*inch, f"{(artifact.get('bid_version') or {}).get('display',artifact.get('proposal_number','BID'))} - Immutable proposal {artifact['id']}")
             canvas.drawRightString(LETTER[0]-document.rightMargin, .25*inch, f"Page {document.page}"); canvas.restoreState()
         pdf.build(story, onFirstPage=footer, onLaterPages=footer)
-        version = artifact.get("bid_version", {}).get("display", "bid").replace(".", "-")
+        version = (artifact.get("bid_version") or {}).get("display", artifact.get("proposal_number", "bid")).replace(".", "-")
         project_label = artifact.get("project_number") or doc["project"].get("abbreviation") or project_id
         safe_label = "".join(c for c in str(project_label) if c.isalnum() or c in "_-") or project_id
         disposition = "attachment" if download else "inline"

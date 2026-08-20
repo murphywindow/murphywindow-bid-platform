@@ -56,8 +56,8 @@ def test_active_project_migration_is_lossless_idempotent_and_leaves_history_froz
     migrated = migrate_project_document(source)
 
     assert source == source_before
-    assert migrated["schema_version"] == "1.1.0"
-    assert migrated["interchange_version"] == "1.1.0"
+    assert migrated["schema_version"] == "1.2.0"
+    assert migrated["interchange_version"] == "1.2.0"
     assert migrated["project"]["project_type"] == "Legacy Renovation"
     assert migrated["project"]["project_type_status"] == "legacy_unsupported"
     assert migrated["project"]["contract_type_status"] == "legacy_unsupported"
@@ -132,7 +132,37 @@ def test_json_store_migrates_on_load_without_rewriting_the_source(tmp_path):
     loaded, recovered_from = store.load_project(source["project"]["id"])
 
     assert recovered_from is None
-    assert loaded["schema_version"] == "1.1.0"
+    assert loaded["schema_version"] == "1.2.0"
     assert loaded["project"]["revision"] == 7
     assert path.read_bytes() == raw_before
     assert json.loads(path.read_text(encoding="utf-8"))["schema_version"] == "1.0.0"
+
+
+def test_legacy_prefixed_alternate_sources_migrate_to_explicit_alt_additions():
+    source = migrate_project_document(legacy_document(), target_version="1.1.0")
+    source["quotes"].append({"id": "quo_alt", "code": "ALT1-08 41 13", "vendor": "Alternate Glass",
+                             "price": "750", "used": True})
+    source["takeoff_sections"][0]["code"] = "08 41 13"
+    source["takeoff_sections"].append({"id": "sec_alt", "code": "ALT1-08 41 13", "name": "ALT frames",
+                                       "definition_id": "frame-v1", "lines": [{"id": "frm_alt", "mark": "F8", "quantity": 3}],
+                                       "material_overrides": {}, "tie_back_qty": 0, "backpan_lf": 0})
+    source["working_estimate"]["alternate_inclusion"] = {"ALT1": True}
+    source["working_estimate"]["quote_selection_by_code"]["ALT1-08 41 13"] = {
+        "mode": "legacy_manual", "selected_quote_ids": ["quo_alt"],
+    }
+    source["working_estimate"]["labor_suggestion_exclusions"] = ["08 41 13", "ALT1-08 41 13"]
+    frozen = deepcopy(source["estimate_revisions"])
+
+    migrated = migrate_project_document(source)
+
+    assert [row["id"] for row in migrated["quotes"]] == ["quo_legacy"]
+    alternate = migrated["alternates"][0]
+    assert alternate["key"] == "ALT1" and alternate["selected_for_proposal"] is True
+    assert alternate["changes"]["quotes"]["added"][0]["code"] == "08 41 13"
+    assert alternate["changes"]["frames"]["added"][0]["section_id"] == "sec_legacy"
+    assert alternate["changes"]["frames"]["added"][0]["mark"] == "F8"
+    assert [row["id"] for row in migrated["takeoff_sections"]] == ["sec_legacy"]
+    assert "alternate_inclusion" not in migrated["working_estimate"]
+    assert "ALT1-08 41 13" not in migrated["working_estimate"]["quote_selection_by_code"]
+    assert migrated["working_estimate"]["labor_suggestion_exclusions"] == ["08 41 13"]
+    assert migrated["estimate_revisions"] == frozen

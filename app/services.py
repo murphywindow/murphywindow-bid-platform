@@ -14,6 +14,8 @@ from .calculations import (
     project_abbreviation, quote_adjustment, quote_unit_cost, sequential_pco, sov_values,
     split_variant, taxed_cost,
 )
+from .historical import BID_COST_CODE_SELL_PER_SF_METRIC
+from .alternates import calculate_alternates
 from .schema import CONTRACT_TYPES, INTERCHANGE_VERSION, PROJECT_TYPES, WAGE_TYPES, now, uid
 
 
@@ -105,7 +107,7 @@ def _sign(doc: dict, code: str) -> Decimal:
 
 def _active(doc: dict, code: str) -> bool:
     variant, _ = split_variant(code)
-    return variant is None or bool(doc["working_estimate"].get("alternate_inclusion", {}).get(variant))
+    return variant is None
 
 
 def _stable_line_id(item: dict) -> str:
@@ -334,7 +336,7 @@ def submission_blockers(doc: dict) -> list[dict]:
     return [item for item in doc.get("working_estimate", {}).get("validation", []) if item.get("blocking")]
 
 
-def calculate_project(doc: dict, config: dict) -> dict:
+def calculate_project(doc: dict, config: dict, *, include_alternates: bool = True) -> dict:
     """Build normalized estimate lines and traceable totals from stored raw inputs."""
     ensure_ids(doc)
     doc["project"]["abbreviation"] = project_abbreviation(doc["project"].get("name"))
@@ -443,7 +445,31 @@ def calculate_project(doc: dict, config: dict) -> dict:
         if code_key:
             frame_area_by_code[code_key] = frame_area_by_code.get(code_key, Decimal(0)) + totals["square_feet"]
         material_results = []
-        for rule in config.get("material_rules", []):
+        section_material_rules = [deepcopy(rule) for rule in config.get("material_rules", [])]
+        controlled_rules = {str(rule.get("id")): rule for rule in config.get("material_rules", [])}
+        controlled_rates = {str(rule.get("id")): rule for rule in config.get("material_rates", [])}
+        for custom in section.get("additional_materials", []):
+            rule = deepcopy(custom)
+            reference_id = str(rule.get("controlled_rate_id") or "")
+            reference = controlled_rules.get(reference_id) or controlled_rates.get(reference_id)
+            if reference:
+                rule.setdefault("name", reference.get("name") or reference.get("description"))
+                rule.setdefault("factor", reference.get("factor"))
+                rule.setdefault("unit", reference.get("unit") or reference.get("rate_unit"))
+                rule.setdefault("material_code", reference.get("material_code") or reference.get("code") or "PROJECT")
+                rule["rate"] = reference.get("rate", reference.get("base_rate"))
+                rule["controlled_reference_status"] = "controlled"
+            else:
+                rule["rate"] = None
+                rule["controlled_reference_status"] = "project_specific"
+            rule.setdefault("source", "manual_quantity")
+            rule.setdefault("factor", "1")
+            rule.setdefault("unit", "each")
+            rule.setdefault("material_code", "PROJECT")
+            rule.setdefault("taxable", True)
+            rule["project_specific"] = True
+            section_material_rules.append(rule)
+        for rule in section_material_rules:
             if rule["source"] in totals:
                 # A missing selection list is the backward-compatible equivalent of
                 # "all materials selected".  New rows write the list explicitly.
@@ -451,7 +477,10 @@ def calculate_project(doc: dict, config: dict) -> dict:
                 for row in section.get("lines", []):
                     selections = row.get("installation_material_ids")
                     if selections is None or rule["id"] in selections:
-                        source += dec(row.get("calculated", {}).get(rule["source"]), Decimal(0)) or Decimal(0)
+                        value = row.get("quantity") if rule["source"] == "quantity" else row.get("calculated", {}).get(rule["source"])
+                        source += dec(value, Decimal(0)) or Decimal(0)
+            elif rule.get("source") == "manual_quantity":
+                source = dec(rule.get("manual_quantity"), Decimal(0)) or Decimal(0)
             else:
                 # The workbook's Tie Back and Backpan inputs remain section-level
                 # until their future line-level placement is confirmed.
@@ -470,7 +499,13 @@ def calculate_project(doc: dict, config: dict) -> dict:
             rate = rate_values["effective_rate"]
             cost = installation_material(source, factor, rate)
             material_results.append({
-                "material_rule_id": rule["id"], "source_quantity": jsonable(source),
+                "material_rule_id": rule["id"], "name": rule.get("name"), "source": rule.get("source"),
+                "unit": rule.get("unit"), "material_code": rule.get("material_code"),
+                "section_id": section.get("id"), "section_name": section.get("name"),
+                "project_specific": bool(rule.get("project_specific")),
+                "controlled_rate_id": rule.get("controlled_rate_id"),
+                "controlled_reference_status": rule.get("controlled_reference_status", "controlled"),
+                "source_quantity": jsonable(source),
                 "controlled_factor": jsonable(dec(controlled_factor)), "factor_override": jsonable(dec(factor_override)) if factor_override not in (None, "") else None,
                 "factor": jsonable(dec(factor)), "controlled_rate": jsonable(rate_values["controlled_rate"]),
                 "rate_override": jsonable(rate_values["rate_override"]), "effective_rate": jsonable(rate),
@@ -479,11 +514,14 @@ def calculate_project(doc: dict, config: dict) -> dict:
                 "pre_tax_cost": str(cost) if cost is not None else None,
             })
             if cost is not None and code:
-                raw.append({"code": code, "category": "installation_material", "description": f"{_cost_code(doc, code).get('description', code)} — {rule['name']}",
+                material_cost_code = rule.get("cost_code") or code
+                raw.append({"code": material_cost_code, "category": "installation_material", "description": f"{_cost_code(doc, material_cost_code).get('description', material_cost_code)} — {rule['name']}",
                             "cost": taxed_cost(cost, tax_rate, taxable=taxable and rule.get("taxable", True)), "area": totals["square_feet"],
                             "tax_treatment": "taxed" if taxable and rule.get("taxable", True) else "exempt", "markup_type": "installation_material",
                             "source_key": f"frame_material:{section['id']}:{rule['id']}",
                             "lineage": [{"source_type": "frame_material", "source_id": section["id"], "material_rule_id": rule["id"], "source_quantity": jsonable(source),
+                                         "material_name": rule.get("name"), "unit": rule.get("unit"), "section_name": section.get("name"),
+                                         "project_specific": bool(rule.get("project_specific")), "controlled_rate_id": rule.get("controlled_rate_id"),
                                          "controlled_factor": jsonable(dec(controlled_factor)), "factor_override": jsonable(dec(factor_override)) if factor_override not in (None, "") else None,
                                          "effective_factor": jsonable(dec(factor)), "controlled_rate": jsonable(rate_values["controlled_rate"]),
                                          "rate_override": jsonable(rate_values["rate_override"]), "effective_rate": jsonable(rate),
@@ -775,7 +813,7 @@ def calculate_project(doc: dict, config: dict) -> dict:
 
     component_labels = {
         "base_product": "Base Product", "installation_material": "Installation Materials",
-        "field_labor": "Labor", "shop_labor": "Labor", "design_labor": "Labor",
+        "field_labor": "LAF", "shop_labor": "LAS", "design_labor": "Design Labor",
         "equipment": "Equipment", "borrowed_lite": "Borrowed Lites", "door": "Doors",
         "contingency": "Contingency", "bond": "Bond",
     }
@@ -786,18 +824,26 @@ def calculate_project(doc: dict, config: dict) -> dict:
         value = sum((dec(line.get("selling_value"), Decimal(0)) or Decimal(0) for line in source_lines), Decimal(0))
         margin_value = value - cost
         area = area_by_code.get(code_key, Decimal(0))
-        component_groups: dict[str, list[dict]] = {}
+        component_groups: dict[str, dict[str, Any]] = {}
         for line in source_lines:
             label = component_labels.get(line.get("category"), str(line.get("category", "Other")).replace("_", " ").title())
-            component_groups.setdefault(label, []).append(line)
+            group = component_groups.setdefault(label, {"category": line.get("category"), "lines": []})
+            group["lines"].append(line)
         components = []
-        for label, component_lines in component_groups.items():
+        component_order = {"Base Product": 0, "LAF": 1, "LAS": 2, "Design Labor": 3, "Installation Materials": 4}
+        for label, group in sorted(component_groups.items(), key=lambda item: (component_order.get(item[0], 20), item[0])):
+            component_lines = group["lines"]
             component_cost = sum((dec(line.get("direct_cost"), Decimal(0)) or Decimal(0) for line in component_lines), Decimal(0))
             component_value = sum((dec(line.get("selling_value"), Decimal(0)) or Decimal(0) for line in component_lines), Decimal(0))
+            markup_rates = sorted({str(line.get("markup_rate")) for line in component_lines if line.get("markup_rate") is not None})
             components.append({
-                "name": label, "direct_cost": money_string(component_cost),
+                "name": label, "category": group["category"], "direct_cost": money_string(component_cost),
                 "margin_dollars": money_string(component_value - component_cost),
                 "selling_value": money_string(component_value),
+                "markup_rate": markup_rates[0] if len(markup_rates) == 1 else None,
+                "markup_state": "mixed" if len(markup_rates) > 1 else "uniform",
+                "override_count": sum(1 for line in component_lines if line.get("markup_override_rate") is not None),
+                "source_count": len(component_lines),
                 "source_line_ids": [line["id"] for line in component_lines],
             })
         description = _cost_code(doc, display).get("description", display)
@@ -809,6 +855,7 @@ def calculate_project(doc: dict, config: dict) -> dict:
             "selling_value": money_string(value), "value": money_string(value),
             "total_square_feet": jsonable(area), "square_feet": jsonable(area),
             "dollars_per_square_foot": None if area == 0 else money_string(value / area),
+            "metric_definition": BID_COST_CODE_SELL_PER_SF_METRIC,
             "components": components, "source_line_ids": [line["id"] for line in source_lines],
         })
     totals = {"direct_cost": money_string(direct_total), "markup_profit": money_string(markup_total), "selling_value": money_string(selling_total),
@@ -819,11 +866,14 @@ def calculate_project(doc: dict, config: dict) -> dict:
     doc["working_estimate"]["cost_code_summaries"] = jsonable(summaries)
     doc["working_estimate"]["totals"] = totals
     doc["working_estimate"]["validation"] = warnings
+    if include_alternates:
+        calculate_alternates(doc, config, calculate_project)
     return doc
 
 
 def money_string(value: Decimal) -> str:
-    return format(value.quantize(Decimal("0.01")), "f")
+    """Serialize an exact Decimal without imposing display precision."""
+    return format(value, "f")
 
 
 def _special_line(code: str, description: str, amount: Decimal, config_id: str, category: str, extra: dict | None = None) -> dict:
@@ -982,7 +1032,7 @@ def make_revision(doc: dict, actor: str, role: str, status: str, reason: str) ->
         "project_snapshot": deepcopy(doc["project"]), "cost_codes": deepcopy(doc["cost_codes"]), "source_snapshot": {
             key: deepcopy(doc[key]) for key in ("quotes", "takeoff_sections", "doors", "hardware_assignments", "equipment", "borrowed_lites", "labor_estimates", "travel_estimates")
         },
-        "estimate": deepcopy(doc["working_estimate"]), "immutable": status == "submitted"
+        "estimate": deepcopy(doc["working_estimate"]), "alternates": deepcopy(doc.get("alternates", [])), "immutable": status == "submitted"
     }
     doc.setdefault("estimate_revisions", []).append(snapshot)
     return snapshot
@@ -995,7 +1045,12 @@ def proposal_artifact(doc: dict, revision: dict, actor: str) -> dict:
             "project_address": revision["project_snapshot"].get("address", ""), "owner_name": revision["project_snapshot"].get("owner_name", ""),
             "bid_due_date": revision["project_snapshot"].get("bid_due_date"),
             "scope": revision["project_snapshot"].get("proposal_scope", ""), "inclusions": revision["project_snapshot"].get("proposal_inclusions", ""),
-            "exclusions": revision["project_snapshot"].get("proposal_exclusions", ""), "addenda": revision["project_snapshot"].get("addenda_count", 0)}
+            "exclusions": revision["project_snapshot"].get("proposal_exclusions", ""), "addenda": revision["project_snapshot"].get("addenda_count", 0),
+            "alternates": [{"key": row.get("key"), "name": row.get("name"), "customer_description": row.get("customer_description"),
+                            "scope_of_change": deepcopy(row.get("calculated", {}).get("scope_of_change", [])),
+                            "classification": row.get("calculated", {}).get("classification"),
+                            "selling_value_delta": row.get("calculated", {}).get("selling_value_delta")}
+                           for row in revision.get("alternates", [])]}
     artifact = {"id": uid("art"), "template_version": "proposal-1.0.0", "revision_id": revision["id"], "generated_at": now(), "generated_by": actor,
                 **body, "sha256": hashlib.sha256(json.dumps(body, sort_keys=True).encode()).hexdigest(), "immutable": True}
     doc.setdefault("proposal_artifacts", []).append(artifact)

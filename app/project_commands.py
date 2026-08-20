@@ -22,6 +22,70 @@ SOURCE_CODE_COLLECTIONS = (
 )
 
 
+MATERIAL_BASIS_TYPES = {
+    "perimeter_lf", "head_sill_qty", "caulking_lf", "quantity",
+    "tie_back_qty", "backpan_lf", "manual_quantity",
+}
+
+
+def add_section_material(document: dict[str, Any], section_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    section = next((row for row in document.get("takeoff_sections", []) if str(row.get("id")) == str(section_id)), None)
+    if not section:
+        raise DomainError("Frame Spec Section was not found.", "not_found")
+    source = str(payload.get("source") or "")
+    if source not in MATERIAL_BASIS_TYPES:
+        raise DomainError("Installation Material calculation basis is not supported.", "invalid_material_basis")
+    material = {
+        "id": uid("matp"), "name": str(payload.get("name") or "").strip(), "source": source,
+        "manual_quantity": payload.get("manual_quantity"), "factor": str(payload.get("factor", 1)),
+        "unit": str(payload.get("unit") or "each"), "controlled_rate_id": payload.get("controlled_rate_id"),
+        "cost_code": payload.get("cost_code") or section.get("code"),
+        "material_code": str(payload.get("material_code") or "PROJECT"), "notes": str(payload.get("notes") or ""),
+        "taxable": True, "project_specific": True, "status": "project_specific",
+        "created_at": now(),
+    }
+    if not material["name"]:
+        raise DomainError("Installation Material name is required.", "missing_material_name")
+    section.setdefault("additional_materials", []).append(material)
+    rate = payload.get("project_rate")
+    if rate is not None:
+        section.setdefault("material_overrides", {})[material["id"]] = {
+            "rate_override": str(rate), "rate_override_reason": "Project-specific Installation Material rate",
+        }
+    if payload.get("apply_to_existing", True):
+        for frame in section.get("lines", []):
+            selections = frame.get("installation_material_ids")
+            if selections is not None and material["id"] not in selections:
+                frame["installation_material_ids"] = [*selections, material["id"]]
+    return material
+
+
+def remove_section_material(document: dict[str, Any], section_id: str, material_id: str,
+                            *, confirm_dependencies: bool = False) -> dict[str, Any]:
+    section = next((row for row in document.get("takeoff_sections", []) if str(row.get("id")) == str(section_id)), None)
+    if not section:
+        raise DomainError("Frame Spec Section was not found.", "not_found")
+    materials = section.get("additional_materials", [])
+    material = next((row for row in materials if str(row.get("id")) == str(material_id)), None)
+    if not material:
+        raise DomainError("Project-specific Installation Material was not found.", "not_found")
+    selected_frames = [row.get("id") for row in section.get("lines", [])
+                       if row.get("installation_material_ids") is None
+                       or material_id in row.get("installation_material_ids", [])]
+    result = next((row for row in section.get("material_results", []) if str(row.get("material_rule_id")) == str(material_id)), {})
+    has_cost = str(result.get("pre_tax_cost") or "0") not in {"0", "0.0", "0.00", ""}
+    dependencies = {"selected_frame_ids": selected_frames, "pre_tax_cost": result.get("pre_tax_cost"), "has_cost": has_cost}
+    if (selected_frames or has_cost) and not confirm_dependencies:
+        raise DomainError("Confirm removal because this material has frame applicability or downstream cost.",
+                          "material_dependencies", [dependencies])
+    section["additional_materials"] = [row for row in materials if str(row.get("id")) != str(material_id)]
+    section.setdefault("material_overrides", {}).pop(str(material_id), None)
+    for frame in section.get("lines", []):
+        if frame.get("installation_material_ids") is not None:
+            frame["installation_material_ids"] = [value for value in frame["installation_material_ids"] if str(value) != str(material_id)]
+    return {"material": deepcopy(material), "dependencies": dependencies}
+
+
 def _base_code(value: Any) -> str:
     _, base = split_variant(str(value or ""))
     return normalize_code(base)

@@ -23,7 +23,7 @@ def test_seeded_test_project_is_rich_editable_draft():
     assert doc["project"]["id"] == "prj_00000000000000000000000000004320"
     assert doc["project"]["project_number"] == "TEST-4320"
     assert doc["project"]["bid_version"]["display"] == "B0.0.0"
-    assert len(doc["quotes"]) >= 3
+    assert len(doc["quotes"]) + sum(len(alt.get("changes", {}).get("quotes", {}).get("added", [])) for alt in doc["alternates"]) >= 3
     assert doc["takeoff_sections"][0]["lines"]
     assert {row["category"] for row in doc["labor_estimates"]} == {"field", "shop"}
     assert doc["estimate_revisions"] == [] and doc["award"] is None

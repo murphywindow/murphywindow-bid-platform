@@ -27,11 +27,16 @@ class JsonStore:
         self.configurations = root / "configurations"
         self.master_data = root / "master-data"
         self.master_data_backups = root / "master-data-backups"
+        self.historical_indexes = root / "historical-index"
+        self.historical_reference = root / "historical-reference"
+        self.proposals = root / "proposals"
+        self.proposal_artifacts = root / "proposal-artifacts"
         self.backup_retention = backup_retention
         self._locks: dict[str, threading.Lock] = {}
         for path in (
             self.projects, self.backups, self.exports, self.configurations,
-            self.master_data, self.master_data_backups,
+            self.master_data, self.master_data_backups, self.historical_indexes, self.historical_reference,
+            self.proposals, self.proposal_artifacts,
         ):
             path.mkdir(parents=True, exist_ok=True)
 
@@ -171,6 +176,62 @@ class JsonStore:
     def backup_names(self, project_id: str) -> list[str]:
         return [p.name for p in sorted((self.backups / project_id).glob("*.json"), reverse=True)]
 
+    def proposal_path(self, project_id: str, proposal_id: str) -> Path:
+        """Return a validated path in the append-only proposal snapshot store."""
+        safe_project = self._safe_document_name(project_id)
+        safe_proposal = self._safe_document_name(proposal_id)
+        return self.proposals / safe_project / f"{safe_proposal}.json"
+
+    def save_proposal_snapshot(self, project_id: str, snapshot: dict[str, Any]) -> Path:
+        """Commit a new immutable snapshot; an existing identity is never replaced."""
+        proposal_id = str(snapshot.get("metadata", {}).get("id") or "")
+        path = self.proposal_path(project_id, proposal_id)
+        with self._lock(f"proposal:{project_id}:{proposal_id}"):
+            if path.exists():
+                raise ConflictError("Immutable proposal snapshot already exists.")
+            self.atomic_write(path, json.loads(json.dumps(snapshot)))
+        return path
+
+    def load_proposal_snapshot(self, project_id: str, proposal_id: str) -> dict[str, Any]:
+        """Load a detached copy so callers cannot mutate persisted history by reference."""
+        return json.loads(json.dumps(self._read(self.proposal_path(project_id, proposal_id))))
+
+    def discard_unindexed_proposal(self, project_id: str, proposal_id: str) -> None:
+        """Rollback only a newly-created snapshot after its project-index commit failed."""
+        path = self.proposal_path(project_id, proposal_id)
+        with self._lock(f"proposal:{project_id}:{proposal_id}"):
+            path.unlink(missing_ok=True)
+
+    def list_proposal_snapshot_ids(self, project_id: str) -> list[str]:
+        folder = self.proposals / self._safe_document_name(project_id)
+        return [path.stem for path in sorted(folder.glob("*.json"))]
+
+    def proposal_artifact_path(self, project_id: str, artifact_id: str) -> Path:
+        return self.proposal_artifacts / self._safe_document_name(project_id) / f"{self._safe_document_name(artifact_id)}.pdf"
+
+    def save_proposal_artifact(self, project_id: str, artifact_id: str, content: bytes) -> Path:
+        path = self.proposal_artifact_path(project_id, artifact_id)
+        with self._lock(f"proposal-artifact:{project_id}:{artifact_id}"):
+            if path.exists():
+                raise ConflictError("Immutable proposal artifact already exists.")
+            path.parent.mkdir(parents=True, exist_ok=True)
+            temp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+            try:
+                with temp.open("xb") as handle:
+                    handle.write(content)
+                    handle.flush()
+                    os.fsync(handle.fileno())
+                os.replace(temp, path)
+            except OSError as exc:
+                temp.unlink(missing_ok=True)
+                raise PersistenceError(f"Atomic artifact save failed for {path.name}: {exc}") from exc
+        return path
+
+    def discard_unindexed_artifact(self, project_id: str, artifact_id: str) -> None:
+        path = self.proposal_artifact_path(project_id, artifact_id)
+        with self._lock(f"proposal-artifact:{project_id}:{artifact_id}"):
+            path.unlink(missing_ok=True)
+
     def save_configuration(self, config: dict[str, Any]) -> None:
         self.atomic_write(self.configurations / f"{config['id']}.json", config)
 
@@ -268,6 +329,45 @@ class JsonStore:
             saved = json.loads(json.dumps(recovered))
             basis_revision = int((current or recovered).get("revision", 0))
             saved["revision"] = basis_revision + 1
+            saved["updated_at"] = datetime.now(UTC).isoformat()
+            self.atomic_write(path, saved)
+            return saved
+
+    def historical_index_path(self, name: str) -> Path:
+        return self.historical_indexes / f"{self._safe_document_name(name)}.json"
+
+    def load_historical_index(self, name: str) -> dict[str, Any]:
+        """Load a derived historical index without touching project evidence."""
+        return self._read(self.historical_index_path(name))
+
+    def save_historical_index(
+        self,
+        document: dict[str, Any],
+        name: str,
+        expected_revision: int | None = None,
+    ) -> dict[str, Any]:
+        """Atomically replace a rebuildable historical index.
+
+        Unlike project and master-data writes, this derived cache has no backup
+        stream.  A malformed or missing index is safely rebuilt from immutable
+        project snapshots.
+        """
+        safe_name = self._safe_document_name(name)
+        path = self.historical_index_path(safe_name)
+        with self._lock(f"historical-index:{safe_name}"):
+            current_revision = 0
+            if path.exists():
+                try:
+                    current_revision = int(self._read(path).get("revision", 0))
+                except (PersistenceError, TypeError, ValueError):
+                    current_revision = 0
+            if expected_revision is not None and int(expected_revision) != current_revision:
+                raise ConflictError(
+                    f"Concurrent historical-index refresh detected: expected revision "
+                    f"{expected_revision}, current revision {current_revision}."
+                )
+            saved = json.loads(json.dumps(document))
+            saved["revision"] = current_revision + 1
             saved["updated_at"] = datetime.now(UTC).isoformat()
             self.atomic_write(path, saved)
             return saved

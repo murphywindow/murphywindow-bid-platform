@@ -1,6 +1,6 @@
 # Murphy Window Bid Platform
 
-A local, browser-based estimating application controlled by **INF-4320 v2.1.0**. The current software release is **v1.2.0**. It uses FastAPI and a lightweight server-rendered shell/vanilla browser client—no Node production service and no external database. All authoritative data remains in human-readable JSON on this Windows computer.
+A local, browser-based estimating application controlled by **INF-4320 v2.2.0**. The current software release is **v2.2.0**. It uses FastAPI and a lightweight server-rendered shell/vanilla browser client—no Node production service and no external database. All authoritative data remains in human-readable JSON on this Windows computer.
 
 ## Launch
 
@@ -21,8 +21,11 @@ Stop cleanly with **Ctrl+C** in the launcher window. Project saves are discrete 
 - Automatic/manual snapshots: `data/backups/<stable-project-id>/`
 - Effective-dated configuration: `data/configurations/`
 - Reusable historical master data: `data/master-data/`
+- Controlled historical comparison fixtures: `data/historical-reference/` (kept out of the normal project picker)
 - Local hash-backed application secrets: `data/secrets/` (ignored by Git)
 - Optional export workspace: `data/exports/`
+- Immutable proposal snapshots: `data/proposals/<stable-project-id>/<proposal-id>.json`
+- Original proposal PDFs: `data/proposal-artifacts/<stable-project-id>/<artifact-id>.pdf`
 
 An actual committed form change marks the tab **Unsaved changes** and starts an immediate save after a 250 ms browser-event debounce. Rapid changes may share one atomic disk write, but every changed datapoint receives its own bid patch increment and audit event. The client shows **Saving**, **Saved**, **Unsaved changes**, **Save failed**, or **Save conflict** and never starts overlapping saves. Explicit Save uses the same transaction immediately.
 
@@ -35,6 +38,8 @@ Every project shows a bid-semantic version such as `B0.3.7`:
 - **Major** increments and minor/patch reset to zero when notice-to-proceed activation creates the awarded baseline.
 
 The independent JSON file `revision` is a concurrency/persistence counter; the `Bmajor.minor.patch` value is the user-facing bid/workflow version. A submitted estimate revision stores its exact bid version, and an award records both the accepted submitted version and activation version.
+
+Those counters are not proposal identities. Autosave revision ≠ Proposal version, and current editable state ≠ historical Proposal snapshot. Explicit generation assigns an immutable `P1`, `P2`, … identity plus a separately editable Proposal Name. The complete normalized project and effective configuration are canonicalized with sorted object keys and hashed with SHA-256. Operational metadata (file revision, autosave/update time, bid patch counter, audit/history IDs, UI state, proposal/artifact identity, and branch metadata) is excluded; all commercial inputs, descriptions, source selection, calculated results, proposal language, and frozen effective configuration are included. Exact fingerprints are rejected as duplicates even when a different name is entered; the same price is permitted when any included state differs.
 
 ### Software release version
 
@@ -56,7 +61,21 @@ The calculation stores the input and matched addresses, origin/destination coord
 
 The home page includes **Generate realistic test project**. It creates and immediately persists a clearly labeled synthetic draft at `B0.0.0`. Leave the seed blank for a new scenario, or enter the same number or memorable text to reproduce the same profile and values in a distinct project file.
 
-Generation is curated rather than unconstrained randomness. A scenario contains aligned project information and dates, six contacts, owner-reference cost codes covering every generated source (including Equipment), four three-vendor quote groups, five frame sections with 40 dimensional rows, 18 linked doors and hardware assignments, five equipment records, eight borrowed lites, 14 field/shop/design labor lines, three disabled pending-policy travel assumptions, ALT1 sources, proposal language, and four bid-tab comparisons. Names and email domains are fictitious, the internal notes and project list identify test data, and no generated project is submitted or awarded. Travel, contingency, and bond remain disabled because generation must not silently assert unresolved policy. Each generated document records its seed, profile, generator version, purpose, and an audit event. Subsequent edits use normal live-save and bid-version behavior.
+Generation is curated rather than unconstrained randomness. A scenario contains aligned project information and dates, six contacts, owner-reference cost codes covering every generated source (including Equipment), Base quote/frame/door/equipment/borrowed-lite/labor data, and inherited ALT1 differences migrated into the canonical Base-plus-delta model. Across Base and ALT-specific additions it includes four three-vendor quote groups, five frame sections with 40 dimensional rows, and the other documented test buckets. Names and email domains are fictitious, the internal notes and project list identify test data, and no generated project is submitted or awarded. Travel, contingency, and bond remain disabled because generation must not silently assert unresolved policy.
+
+### Base-plus-delta alternates
+
+Base is the primary estimate. Creating an alternate immediately exposes inherited Base records on each applicable estimating page; unchanged fields continue to inherit future Base corrections. Alternate edits store explicit Added records, Removed Base IDs, or Modified field overrides. If Base later changes an overridden field, the alternate retains the override, shows Original Base / Current Base / ALT override, and offers reset-to-inherit. The Bid engine recalculates the effective alternate through the same authoritative services as Base, then reports effective ALT minus Base by Cost Code, source category, and total. Add/Deduct/Zero is derived from the net selling-value delta. The deterministic Scope of Change and separate customer description flow into Bid, Proposal, immutable snapshots, PDFs, and comparisons.
+
+### Frame Installation Materials and Bid detail
+
+Each Frame Spec Section can add project-specific Installation Materials alongside controlled defaults. Added lines use the same basis/factor/rate/cost-code calculation path, may reference a controlled Rate without modifying it, and participate in per-frame applicability, alternates, Bid, Proposal snapshots, comparison, and audit. Removal requires confirmation when applicability or downstream cost exists.
+
+The Bid Cost Code row expands into Base Product, LAF (Field Labor), LAS (Shop Labor), Design Labor where applicable, and Installation Materials. Each component expands again to canonical source rows; material detail retains its originating Frame Spec Section, quantity, unit, effective rate, markup, cost, and selling value.
+
+The primary Bid view is a cohesive financial worksheet. Cost Code component rows are visible by default with Direct Cost, Markup %, Markup $, and Selling Value; source rows expand only on demand. Cost Code subtotals and a compact grand-total band reconcile the worksheet. Base and ALT tabs remain directly beneath the page header, and an ALT renders its authoritative effective commercial estimate in the same worksheet rather than as a report below Base.
+
+For historical comparison testing, run `.\.venv\Scripts\python.exe scripts\seed_historical_bids.py --count 240`. The deterministic archive contains clearly classified, immutable submitted reference bids spanning every supported Project Type, dated takeoffs, Cost Code value/SF, costs, and margins. It is intentionally separate from `data/projects`; the Historical drawer identifies how many controlled reference fixtures are included. Use 100–500 records and replace these fixtures with completed company evidence before treating the benchmark as production history.
 
 ## Workflow and permissions
 
@@ -70,7 +89,9 @@ The local role selector is an authentication abstraction for testing, not enterp
 
 PCO markup stages are removed from responses to unauthorized roles, not merely hidden with CSS. Every server command records actor, selected role, UTC time, entity/action, prior/new value, reason, and correlation ID. The local selector is intentionally suitable for workflow testing only; deployment to a shared/multi-user host requires real authentication and operating authorization.
 
-Submission creates an immutable estimate revision and proposal artifact. Activation requires NTP evidence/date and an accepted submitted revision, is idempotent for an identical retry, creates one immutable awarded snapshot, and initializes contract allocation. PM re-estimates never rewrite the award. PCOs use sequential markup stages. SOV shows under/exact/over status. Closeout is provisional because INF-4320 does not define controlled completion.
+Proposal generation creates a dedicated immutable snapshot and one-to-one artifact binding without interrupting live autosave. Proposal History opens any snapshot across the complete estimating workspace. Its persistent banner distinguishes `Viewing Pn` from `Current Working Bid`; the first actual edit atomically creates a new live branch, retains the first edit and frozen configuration, and records the true source proposal. Chronological order does not imply ancestry. Generated proposals are never deleted: Void requires a reason and retains snapshot, artifact, ancestry, audit evidence, branching, and comparison. Proposal comparison uses two frozen snapshots and reports summary, Cost Code, source-record, and proposal-language changes.
+
+Submission continues to create its existing immutable estimate revision and submission artifact. Activation requires NTP evidence/date and an accepted submitted revision, is idempotent for an identical retry, creates one immutable awarded snapshot, and initializes contract allocation. PM re-estimates never rewrite the award. PCOs use sequential markup stages. SOV shows under/exact/over status. Closeout is provisional because INF-4320 does not define controlled completion.
 
 ## Schema and rule documentation
 
@@ -80,7 +101,7 @@ Submission creates an immutable estimate revision and proposal artifact. Activat
 - [Owner rate reference](docs/RATE_REFERENCE.md)
 - [Unresolved commercial rules](docs/UNRESOLVED_RULES.md)
 
-All currency inputs retain cent precision. Submitted revisions copy raw source data, normalized estimate lines, calculation lineage, configuration ID, alternate inclusion, and totals so future configuration edits cannot change history. Stable IDs replace workbook cell coordinates.
+All currency inputs retain cent precision. Submitted revisions and proposal snapshots freeze raw Base data, alternate differences and calculated results, normalized estimate lines, calculation lineage, configuration ID, and totals so future Base, alternate, or configuration edits cannot change history. Stable IDs replace workbook cell coordinates.
 
 ## Tests
 
@@ -100,7 +121,7 @@ The suite covers named calculation services, boundaries, tax/quote behavior, fri
 - **Missing rate:** configure an effective rate or enter a versioned working assumption. The engine never silently substitutes a missing rate with zero.
 - **Save conflict:** another tab saved first. Keep this tab open, use Export/Copy if needed, reload, and reapply intentional changes.
 - **Malformed JSON:** use Open recovery, inspect backups, and restore the newest valid snapshot. Never edit the primary while the server is running.
-- **Proposal PDF:** only submitted artifacts have immutable PDFs; working preview is intentionally not an issued artifact.
+- **Proposal PDF:** explicitly generated proposals and submitted revisions have immutable artifact identities; a historical PDF is always rendered from its frozen artifact body, never current project data.
 
 The app intentionally excludes the erroneous SharePoint dependency, dormant GPT extension, broken Excel references, missing tool-panel/dispatcher targets, wrong reset targets, former separate ALT worksheets, and deprecated SOV PDF button.
 
@@ -110,4 +131,4 @@ In **Scope and Cost Codes**, begin typing either a code or description to receiv
 
 Submitted proposal artifacts provide **Preview PDF** and **Download PDF** actions, reproducing the supported Excel proposal-export outcome without depending on Excel or macros. Filenames include the project identifier and frozen bid version; the PDF response also carries the immutable artifact ID.
 
-On first startup the app creates **MW Bid Platform Test Project** (`TEST-4320`) with sample codes, competing quotes, a disabled ALT1 preview, frame takeoff, equipment, borrowed-lite, field labor, and shop labor. It is an ordinary persistent project: edit it freely, duplicate it for another scenario, and run it through submission/activation. Startup never overwrites it after creation.
+On first startup the app creates **MW Bid Platform Test Project** (`TEST-4320`) with sample codes, competing quotes, a canonical inherited ALT1, frame takeoff, equipment, borrowed-lite, field labor, and shop labor. It is an ordinary persistent project: edit it freely, duplicate it for another scenario, and run it through submission/activation. Startup never overwrites it after creation.

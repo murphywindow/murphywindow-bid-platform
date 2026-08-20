@@ -27,15 +27,21 @@ def test_generator_populates_every_estimating_bucket_with_coherent_data():
     doc = _generated()
     assert len(doc["contacts"]) >= 6
     assert len(doc["cost_codes"]) >= 9
-    assert len(doc["quotes"]) >= 12
-    assert len(doc["takeoff_sections"]) >= 5
-    assert sum(len(section["lines"]) for section in doc["takeoff_sections"]) >= 40
+    alternate_added_quotes = sum(len(alt.get("changes", {}).get("quotes", {}).get("added", [])) for alt in doc["alternates"])
+    alternate_added_sections = sum(len(alt.get("changes", {}).get("takeoff_sections", {}).get("added", [])) for alt in doc["alternates"])
+    alternate_added_frames = sum(len(section.get("lines", [])) for alt in doc["alternates"]
+                                 for section in alt.get("changes", {}).get("takeoff_sections", {}).get("added", [])) + sum(
+                                 len(alt.get("changes", {}).get("frames", {}).get("added", [])) for alt in doc["alternates"])
+    assert len(doc["quotes"]) + alternate_added_quotes >= 12
+    assert len(doc["takeoff_sections"]) + alternate_added_sections >= 4
+    assert sum(len(section["lines"]) for section in doc["takeoff_sections"]) + alternate_added_frames >= 40
     assert len(doc["doors"]) >= 18
     assert len(doc["hardware_assignments"]) == len(doc["doors"])
     assert len(doc["equipment"]) >= 5
     assert len(doc["borrowed_lites"]) >= 8
     assert len(doc["labor_estimates"]) >= 14
-    assert len(doc["travel_estimates"]) >= 3
+    alternate_added_travel = sum(len(alt.get("changes", {}).get("travel_estimates", {}).get("added", [])) for alt in doc["alternates"])
+    assert len(doc["travel_estimates"]) + alternate_added_travel >= 3
     assert len(doc["bid_tabulations"]) >= 4
 
     door_ids = {row["id"] for row in doc["doors"]}

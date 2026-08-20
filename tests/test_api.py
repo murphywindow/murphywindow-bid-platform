@@ -1,6 +1,7 @@
 import json
 import re
 from copy import deepcopy
+from decimal import Decimal
 
 import pytest
 from fastapi.testclient import TestClient
@@ -40,6 +41,50 @@ def first_controlled_cost_code():
     }
 
 
+def test_base_plus_delta_alternate_api_creates_inherited_alt_and_applies_override(client):
+    document = create_project(client, "Alternate API")
+    code = first_controlled_cost_code()
+    document["project"].update({
+        "project_type": "New Construction - Exterior Storefront", "project_type_status": "current",
+        "contract_type": "Bid to CM/GC", "contract_type_status": "current",
+        "wage_type": "Non-PW", "wage_type_status": "current",
+    })
+    document["cost_codes"] = [code]
+    document["takeoff_sections"] = [{
+        "id": "sec_alt_api", "definition_id": "frame-v1", "code": code["code"], "name": "Frames",
+        "lines": [{"id": "frm_alt_api", "mark": "F1", "quantity": 10, "width_inches": 60,
+                   "height_inches": 96, "caulking_passes": 2}], "material_overrides": {},
+        "tie_back_qty": 0, "backpan_lf": 0,
+    }]
+    saved = client.put(f"/api/projects/{document['project']['id']}", headers=h(), json={
+        "expected_revision": document["project"]["revision"], "project": document,
+    })
+    assert saved.status_code == 200
+    document = saved.json()["project"]
+
+    created = client.post(f"/api/projects/{document['project']['id']}/alternates", headers=h(), json={
+        "expected_revision": document["project"]["revision"], "name": "VE Storefront",
+    })
+    assert created.status_code == 200
+    alternate = created.json()["alternate"]
+    assert alternate["key"] == "ALT1" and alternate["calculated"]["classification"] == "zero"
+    reopened = client.get(f"/api/projects/{document['project']['id']}", headers=h()).json()["project"]
+    reopened_alt = next(row for row in reopened["alternates"] if row["id"] == alternate["id"])
+    assert reopened_alt["calculated"]["effective_estimate"]["totals"] == reopened_alt["calculated"]["effective_totals"]
+    document = created.json()["project"]
+
+    changed = client.post(f"/api/projects/{document['project']['id']}/alternates/{alternate['id']}/change", headers=h(), json={
+        "expected_revision": document["project"]["revision"], "operation": "override", "collection": "frames",
+        "record_id": "frm_alt_api", "field": "quantity", "value": 6,
+    })
+    assert changed.status_code == 200
+    alternate = changed.json()["alternate"]
+    override = alternate["changes"]["frames"]["overrides"]["frm_alt_api"]["quantity"]
+    assert override["base_value"] == 10 and override["value"] == 6
+    assert alternate["calculated"]["classification"] == "deduct"
+    assert "F1 quantity reduced from 10 to 6" in alternate["calculated"]["scope_of_change"][0]["changes"]
+
+
 def test_direct_workspace_routes_return_fresh_application_shell(client):
     response = client.get("/projects/prj_00000000000000000000000000004320/frames")
     assert response.status_code == 200
@@ -59,7 +104,7 @@ def test_health_static_and_project_crud_conflict(client):
     assert health.status_code == 200
     assert health.json()["software_version"] == SOFTWARE_VERSION
     assert re.fullmatch(r"(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)", health.json()["software_version"])
-    assert health.json()["schema_version"] == SCHEMA_VERSION == "1.1.0"
+    assert health.json()["schema_version"] == SCHEMA_VERSION == "1.2.0"
     assert client.get("/openapi.json").json()["info"]["version"] == SOFTWARE_VERSION
     assert "Murphy Window" in client.get("/").text
     created=client.post("/api/projects",headers=h(),json={"name":"API Job"})
@@ -210,7 +255,7 @@ def test_quote_square_feet_manual_edit_is_not_replaced_by_later_frame_calculatio
     )
     assert first.status_code == 200
     saved = first.json()["project"]
-    assert saved["quotes"][0]["square_feet"] == "1"
+    assert Decimal(saved["quotes"][0]["square_feet"]) == Decimal("1")
     assert saved["quotes"][0]["square_feet_source"] == "frame_default"
 
     saved["quotes"][0]["square_feet"] = "25"
@@ -346,6 +391,45 @@ def test_material_rate_override_audit_retains_controlled_override_and_effective_
     assert client.get("/api/configurations", headers=h()).json()["configurations"] == configuration_before
 
 
+def test_project_specific_section_material_api_adds_applies_and_removes_dependencies(client):
+    doc = create_project(client, "Custom section material")
+    project_id = doc["project"]["id"]
+    code = first_controlled_cost_code()
+    doc["cost_codes"] = [code]
+    doc["takeoff_sections"] = [{
+        "id": "sec_custom_material", "definition_id": "frame-v1", "code": code["code"], "name": "Storefront",
+        "lines": [{"id": "frm_custom_material", "mark": "F1", "quantity": 2, "width_inches": 60, "height_inches": 96}],
+        "material_overrides": {}, "tie_back_qty": 0, "backpan_lf": 0,
+    }]
+    saved = client.put(f"/api/projects/{project_id}", headers=h(), json={"project": doc, "expected_revision": doc["project"]["revision"]}).json()["project"]
+    configuration_before = client.get("/api/configurations", headers=h()).json()["configurations"]
+    created = client.post(f"/api/projects/{project_id}/frame-sections/sec_custom_material/materials", headers=h(), json={
+        "expected_revision": saved["project"]["revision"], "name": "Custom sill pan", "source": "head_sill_qty",
+        "factor": "1.25", "unit": "LF", "project_rate": "4.50", "cost_code": code["code"], "apply_to_existing": True,
+    })
+    assert created.status_code == 200
+    saved = created.json()["project"]
+    material = created.json()["material"]
+    selections = saved["takeoff_sections"][0]["lines"][0].get("installation_material_ids")
+    assert selections is None or material["id"] in selections  # missing list canonically means all selected
+    result = next(row for row in saved["takeoff_sections"][0]["material_results"] if row["material_rule_id"] == material["id"])
+    assert Decimal(result["pre_tax_cost"]) > 0
+    assert client.get("/api/configurations", headers=h()).json()["configurations"] == configuration_before
+
+    blocked = client.request("DELETE", f"/api/projects/{project_id}/frame-sections/sec_custom_material/materials/{material['id']}", headers=h(), json={
+        "expected_revision": saved["project"]["revision"], "confirm_dependencies": False, "reason": "Dependency check",
+    })
+    assert blocked.status_code == 422 and blocked.json()["error"]["code"] == "material_dependencies"
+    removed = client.request("DELETE", f"/api/projects/{project_id}/frame-sections/sec_custom_material/materials/{material['id']}", headers=h(), json={
+        "expected_revision": saved["project"]["revision"], "confirm_dependencies": True, "reason": "Confirmed removal",
+    })
+    assert removed.status_code == 200
+    final = removed.json()["project"]["takeoff_sections"][0]
+    assert final["additional_materials"] == []
+    assert material["id"] not in (final["lines"][0].get("installation_material_ids") or [])
+    assert removed.json()["project"]["audit_events"][-1]["operation"] == "material_remove"
+
+
 def test_duplicate_export_backup_import_and_job_data(client):
     doc=client.post("/api/projects",headers=h(),json={"name":"Portable"}).json()["project"];pid=doc["project"]["id"]
     dup=client.post(f"/api/projects/{pid}/duplicate",headers=h(),json={"name":"Portable Copy"})
@@ -353,7 +437,7 @@ def test_duplicate_export_backup_import_and_job_data(client):
     export=client.get(f"/api/projects/{pid}/export",headers=h()); assert export.status_code == 200
     assert export.headers["content-type"].startswith("application/json")
     assert client.post(f"/api/projects/{pid}/backup",headers=h(),json={}).status_code == 200
-    data=client.get(f"/api/projects/{pid}/job-data",headers=h()).json();assert data["version"] == "1.1.0"
+    data=client.get(f"/api/projects/{pid}/job-data",headers=h()).json();assert data["version"] == "1.2.0"
     imported=client.post("/api/projects/import",headers=h(),json={"project_document":json.loads(export.text),"as_duplicate":True})
     assert imported.status_code == 200 and imported.json()["project"]["project"]["id"] != pid
 
@@ -381,6 +465,35 @@ def test_master_data_add_and_search_returns_canonical_record(client):
     assert exact.json()["resolved_id"] == record["id"]
     assert exact.json()["results"][0]["display_name"] == "Steinier Glass"
     assert alias.json()["results"][0]["id"] == record["id"]
+
+
+def test_owner_search_returns_owner_organizations_with_fill_details(client):
+    owner = client.post(
+        "/api/master-data/organizations", headers=h(), json={
+            "display_name": "North Star Property Holdings",
+            "legal_name": "North Star Property Holdings, LLC",
+            "classifications": ["Owner"],
+            "address": "100 Civic Plaza, Minneapolis, MN 55401",
+            "website": "https://northstar.example.invalid",
+            "primary_phone": "612-555-0100",
+            "email": "facilities@example.invalid",
+        },
+    ).json()["record"]
+    client.post(
+        "/api/master-data/organizations", headers=h(), json={
+            "display_name": "North Star Glass Vendor", "classifications": ["Vendor"],
+        },
+    )
+
+    response = client.get(
+        "/api/master-data/search", headers=h(), params={"kind": "owners", "q": "North Star"},
+    )
+    assert response.status_code == 200
+    results = response.json()["results"]
+    assert [row["id"] for row in results] == [owner["id"]]
+    assert results[0]["legal_name"] == "North Star Property Holdings, LLC"
+    assert results[0]["address"] == "100 Civic Plaza, Minneapolis, MN 55401"
+    assert results[0]["primary_phone"] == "612-555-0100"
 
 
 def test_structured_address_search_proxies_existing_provider_and_request_identity(client, monkeypatch):
@@ -486,6 +599,51 @@ def test_custom_cost_code_requires_hashed_local_secret_and_never_persists_passwo
         assert "password_hash" not in text
 
 
+def test_mileage_is_locked_except_for_scoped_administrator_session_override(client):
+    import app.main as main
+
+    secret_path = main.custom_code_secret_path()
+    secret_path.parent.mkdir(parents=True, exist_ok=True)
+    username, password = "override-test-admin", "session-only-test-password"
+    secret_path.write_text(json.dumps({
+        "username": username,
+        "password_hash": hash_password(password, iterations=MINIMUM_ITERATIONS, salt=b"override-api-salt"),
+    }), encoding="utf-8")
+    doc = create_project(client, "Session override contract")
+    project_id = doc["project"]["id"]
+    doc["project"]["miles_from_rogers"] = "47.5"
+    body = {"project": doc, "expected_revision": doc["project"]["revision"], "changes": [{
+        "path": "project.miles_from_rogers", "prior": None, "new": "47.5",
+    }]}
+    locked = client.put(f"/api/projects/{project_id}", headers=h(), json=body)
+    assert locked.status_code == 422, locked.text
+    assert locked.json()["error"]["code"] == "calculated_field_locked"
+
+    unlocked = client.post("/api/session-overrides", headers=h("Systems Administrator"), json={
+        "project_id": project_id, "page": "project", "username": username, "password": password,
+    })
+    assert unlocked.status_code == 200
+    token = unlocked.json()["token"]
+    saved = client.put(f"/api/projects/{project_id}", headers={
+        **h("Systems Administrator"), "X-Override-Token": token,
+    }, json=body)
+    assert saved.status_code == 200
+    assert saved.json()["project"]["project"]["miles_from_rogers"] == "47.5"
+    assert password not in saved.text
+
+    client.delete("/api/session-overrides", headers={
+        **h("Systems Administrator"), "X-Override-Token": token,
+    })
+    body["project"] = saved.json()["project"]
+    body["expected_revision"] = body["project"]["project"]["revision"]
+    body["project"]["project"]["miles_from_rogers"] = "48.0"
+    relocked = client.put(f"/api/projects/{project_id}", headers={
+        **h("Systems Administrator"), "X-Override-Token": token,
+    }, json=body)
+    assert relocked.status_code == 403
+    assert relocked.json()["error"]["code"] == "override_required"
+
+
 def test_cost_code_dependency_preview_does_not_mutate_then_confirmed_cascade_removes_working_detail(client):
     doc = create_project(client, "Cascade contract")
     project_id = doc["project"]["id"]
@@ -564,15 +722,15 @@ def test_import_migrates_supported_legacy_project_document_to_current_schema(cli
 
     assert imported.status_code == 200
     migrated = imported.json()["project"]
-    assert migrated["schema_version"] == SCHEMA_VERSION == "1.1.0"
-    assert migrated["interchange_version"] == "1.1.0"
+    assert migrated["schema_version"] == SCHEMA_VERSION == "1.2.0"
+    assert migrated["interchange_version"] == "1.2.0"
     assert migrated["project"]["project_type"] == "Training / Sandbox"
     assert migrated["project"]["project_type_status"] == "legacy_unsupported"
     assert migrated["project"]["contract_type"] == "Legacy negotiated contract"
     assert migrated["project"]["contract_type_status"] == "legacy_unsupported"
     assert migrated["project"]["bid_due_date"] == "2026-09-01"
     assert migrated["project"]["bid_due_date_status"] == "legacy_date_only"
-    assert migrated["schema_migrations"][-1]["id"] == "project-1.0.0-to-1.1.0"
+    assert migrated["schema_migrations"][-1]["id"] == "project-1.1.0-to-1.2.0"
 
 
 def test_bid_source_edit_requires_confirmation_and_updates_only_canonical_record(client):

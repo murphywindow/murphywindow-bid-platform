@@ -1,0 +1,182 @@
+from copy import deepcopy
+from decimal import Decimal
+
+from app.alternates import (
+    add_record, materialize, new_alternate, remove_record, reset_override,
+    scope_of_change, set_override,
+)
+from app.proposals import compare_snapshots, create_proposal_snapshot
+from app.schema import default_configuration, new_project
+from app.services import calculate_project
+
+
+def alternate_project():
+    configuration = default_configuration()
+    document = new_project("Alternate Test", "Estimator", "Estimator")
+    document["project"].update({
+        "project_type": "New Construction - Exterior Storefront", "project_type_status": "current",
+        "contract_type": "Bid to CM/GC", "contract_type_status": "current",
+        "wage_type": "Non-PW", "wage_type_status": "current",
+    })
+    document["cost_codes"] = [{"id": "ccd_storefront", "code": "08 40 00", "description": "Storefront", "deduct": False}]
+    document["takeoff_sections"] = [{
+        "id": "sec_storefront", "definition_id": "frame-v1", "code": "08 40 00", "name": "Storefront Frames",
+        "lines": [{"id": "frm_f1", "mark": "F1", "quantity": 10, "width_inches": 60,
+                   "height_inches": 96, "caulking_passes": 2}],
+        "material_overrides": {}, "tie_back_qty": 0, "backpan_lf": 0,
+    }]
+    document["equipment"] = [{"id": "eqp_lift", "code": "08 40 00", "description": "Boom Lift",
+                               "quantity": 1, "duration": 2, "rate": 500, "delivery": 100, "taxable": False}]
+    document["labor_estimates"] = [{
+        "id": "lbr_field", "code": "08 40 00", "description": "Field Labor", "labor_type": "Field",
+        "man_hours": "80", "man_hours_source": "manual", "crew_size": "2", "hours_per_worker_per_day": "8",
+        "workdays_per_week": "5", "controlled_rate_snapshot": {"rate": "68.53", "rate_id": "test",
+        "configuration_id": configuration["id"], "status": "owner_provided"}, "rate_override": None,
+        "origin": "manual", "source_links": [], "source_status": "unclassified",
+    }]
+    calculate_project(document, configuration)
+    return document, configuration
+
+
+def test_inheritance_override_conflict_and_reset_to_current_base():
+    document, _ = alternate_project()
+    alternate = new_alternate(document, "Reduced frame count")
+    set_override(alternate, "frames", "frm_f1", "quantity", 10, 6)
+
+    document["takeoff_sections"][0]["lines"][0]["width_inches"] = 66
+    effective, conflicts = materialize(document, alternate)
+    frame = effective["takeoff_sections"][0]["lines"][0]
+    assert frame["width_inches"] == 66  # unrelated Base correction flows through
+    assert frame["quantity"] == 6
+    assert conflicts == []
+
+    document["takeoff_sections"][0]["lines"][0]["quantity"] = 12
+    effective, conflicts = materialize(document, alternate)
+    assert effective["takeoff_sections"][0]["lines"][0]["quantity"] == 6
+    assert conflicts == [{
+        "collection": "frames", "record_id": "frm_f1", "field": "quantity",
+        "original_base": 10, "current_base": 12, "alternate_override": 6,
+        "reason": "base_changed_since_override",
+    }]
+
+    reset_override(alternate, "frames", "frm_f1", "quantity")
+    effective, conflicts = materialize(document, alternate)
+    assert effective["takeoff_sections"][0]["lines"][0]["quantity"] == 12
+    assert conflicts == []
+
+
+def test_added_removed_modified_records_and_deterministic_scope_of_change():
+    document, _ = alternate_project()
+    alternate = new_alternate(document, "VE Storefront")
+    set_override(alternate, "frames", "frm_f1", "quantity", 10, 6)
+    set_override(alternate, "frames", "frm_f1", "caulking_passes", 2, 3)
+    set_override(alternate, "labor_estimates", "lbr_field", "man_hours", "80", "56")
+    remove_record(alternate, "equipment", "eqp_lift")
+    add_record(alternate, "frames", {"id": "frm_f8", "section_id": "sec_storefront", "mark": "F8",
+                                      "quantity": 3, "width_inches": 48, "height_inches": 96, "caulking_passes": 2})
+
+    effective, _ = materialize(document, alternate)
+    assert not effective["equipment"]
+    assert {row["id"] for row in effective["takeoff_sections"][0]["lines"]} == {"frm_f1", "frm_f8"}
+    grouped = {group["area"]: group["changes"] for group in scope_of_change(document, alternate)}
+    assert grouped["Frame Takeoff"] == [
+        "Added F8 frames (Qty 3)", "F1 quantity reduced from 10 to 6", "F1 caulking passes changed from 2 to 3",
+    ]
+    assert grouped["Equipment"] == ["Removed Boom Lift"]
+    assert grouped["Labor"] == ["Field Labor reduced by 24 man-hours"]
+    assert all("[object Object]" not in text for values in grouped.values() for text in values)
+
+
+def test_effective_commercial_delta_reconciles_and_downstream_materials_recalculate():
+    document, configuration = alternate_project()
+    document["takeoff_sections"][0]["additional_materials"] = [{
+        "id": "matp_alt", "name": "Custom perimeter trim", "source": "perimeter_lf",
+        "factor": "1", "unit": "LF", "cost_code": "08 40 00",
+    }]
+    document["takeoff_sections"][0]["material_overrides"]["matp_alt"] = {"rate_override": "2"}
+    calculate_project(document, configuration)
+    alternate = new_alternate(document, "Wider F1")
+    set_override(alternate, "frames", "frm_f1", "width_inches", 60, 66)
+    effective, _ = materialize(document, alternate)
+    assert effective["takeoff_sections"][0]["additional_materials"][0]["id"] == "matp_alt"
+    document["alternates"] = [alternate]
+    base_total = Decimal(document["working_estimate"]["totals"]["selling_value"])
+
+    calculate_project(document, configuration)
+    calculated = alternate["calculated"]
+    assert calculated["classification"] == "add"
+    assert Decimal(calculated["direct_cost_delta"]) > 0
+    assert Decimal(calculated["selling_value_delta"]) > 0
+    assert Decimal(calculated["effective_totals"]["selling_value"]) - base_total == Decimal(calculated["selling_value_delta"])
+    assert sum(Decimal(row["direct_cost_delta"]) for row in calculated["cost_code_impacts"]) == Decimal(calculated["direct_cost_delta"])
+    assert sum(Decimal(row["selling_value_delta"]) for row in calculated["cost_code_impacts"]) == Decimal(calculated["selling_value_delta"])
+    assert any(row["category"] == "installation_material" for row in calculated["cost_code_impacts"])
+    effective = calculated["effective_estimate"]
+    assert effective["totals"] == calculated["effective_totals"]
+    assert effective["cost_code_summaries"]
+    assert {component["name"] for component in effective["cost_code_summaries"][0]["components"]} >= {
+        "Installation Materials", "LAF",
+    }
+    assert "alternate_results" not in effective
+    first = deepcopy(calculated)
+    calculate_project(document, configuration)
+    assert alternate["calculated"] == first  # no volatile values may alter proposal fingerprints
+
+
+def test_mixed_content_uses_net_commercial_direction_without_manual_add_deduct_flag():
+    document, configuration = alternate_project()
+    alternate = new_alternate(document, "Mixed VE")
+    remove_record(alternate, "equipment", "eqp_lift")
+    add_record(alternate, "equipment", {"id": "eqp_small", "code": "08 40 00", "description": "Small Lift",
+                                         "quantity": 1, "duration": 1, "rate": 100, "delivery": 0, "taxable": False})
+    document["alternates"] = [alternate]
+    calculate_project(document, configuration)
+    assert alternate["calculated"]["classification"] == "deduct"
+    assert Decimal(alternate["calculated"]["selling_value_delta"]) < 0
+    assert "classification" not in {key for key in alternate if key != "calculated"}
+
+
+def test_alternate_quote_selection_is_explicit_and_does_not_change_base_selection():
+    document, configuration = alternate_project()
+    document["quotes"] = [{"id": "quo_base", "code": "08 40 00", "vendor": "Base Glass", "price": "1000",
+                           "credit_type": "dollar", "credit_value": 0, "surcharge_type": "dollar", "surcharge_value": 0,
+                           "tax_included": True, "used": True}]
+    document["working_estimate"]["quote_selection_by_code"] = {
+        "08 40 00": {"mode": "manual", "selected_quote_ids": ["quo_base"]},
+    }
+    calculate_project(document, configuration)
+    alternate = new_alternate(document, "Supplier substitution")
+    set_override(alternate, "quotes", "quo_base", "used", True, False)
+    add_record(alternate, "quotes", {"id": "quo_alt", "code": "08 40 00", "vendor": "Alternate Glass", "price": "800",
+                                      "credit_type": "dollar", "credit_value": 0, "surcharge_type": "dollar", "surcharge_value": 0,
+                                      "tax_included": True, "used": True})
+    document["alternates"] = [alternate]
+    calculate_project(document, configuration)
+
+    assert document["working_estimate"]["quote_selection_by_code"]["08 40 00"]["selected_quote_ids"] == ["quo_base"]
+    assert alternate["calculated"]["classification"] == "deduct"
+    effective, _ = materialize(document, alternate)
+    calculate_project(effective, configuration, include_alternates=False)
+    assert [row["id"] for row in effective["quotes"] if row["used"]] == ["quo_alt"]
+
+
+def test_proposal_snapshot_freezes_alternate_state_and_comparison_is_business_aware():
+    document, configuration = alternate_project()
+    alternate = new_alternate(document, "Frame Quantity")
+    alternate["customer_description"] = "Reduce the west elevation frame count."
+    set_override(alternate, "frames", "frm_f1", "quantity", 10, 6)
+    document["alternates"] = [alternate]
+    calculate_project(document, configuration)
+    first = create_proposal_snapshot(document, configuration, "Estimator", "Estimator", "Original")
+    frozen = deepcopy(first["state"]["alternates"])
+
+    set_override(document["alternates"][0], "frames", "frm_f1", "quantity", 10, 4)
+    calculate_project(document, configuration)
+    second = create_proposal_snapshot(document, configuration, "Estimator", "Estimator", "Revision 1")
+    comparison = compare_snapshots(first, second)
+
+    assert first["state"]["alternates"] == frozen
+    alternate_changes = comparison["alternates"]["changes"]
+    assert alternate_changes[0]["status"] == "changed"
+    assert "F1 quantity reduced from 10 to 4" in alternate_changes[0]["scope_added"]
+    assert "[object Object]" not in str(comparison)

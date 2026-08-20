@@ -9,8 +9,8 @@ from uuid import uuid4
 
 from .rate_reference import owner_rate_reference
 
-SCHEMA_VERSION = "1.1.0"
-INTERCHANGE_VERSION = "1.1.0"
+SCHEMA_VERSION = "1.2.0"
+INTERCHANGE_VERSION = "1.2.0"
 CONFIG_VERSION = "cfg-2026-08-19-v5"
 
 PROJECT_TYPES = (
@@ -117,7 +117,8 @@ def new_project(name: str, actor: str, role: str, configuration_id: str = CONFIG
             "id": project_id, "revision": 0, "name": name, "abbreviation": "", "project_number": "", "mwd_po": "", "address": "",
             "address_street": "", "address_city": "", "address_state": "", "zip": "", "county": "", "address_match_metadata": None,
             "miles_from_rogers": None, "project_type": "", "project_type_status": "missing", "building_type": "", "estimator": actor if role == "Estimator" else "",
-            "project_manager": "", "owner_name": "", "owner_address": "", "architect": "", "engineer": "", "general_contractor": "",
+            "project_manager": "", "owner_name": "", "owner_organization_id": None, "owner_legal_name": "", "owner_address": "",
+            "owner_website": "", "owner_phone": "", "owner_email": "", "architect": "", "engineer": "", "general_contractor": "",
             "construction_manager": "", "plan_source": "", "contract_type": "", "contract_type_status": "missing", "wage_type": "", "wage_type_status": "missing", "addenda_count": 0, "walkthrough": "", "frame_sealant_colors": "",
             "additional_information": "", "notes": "", "proposal_scope": "", "proposal_inclusions": "", "proposal_exclusions": "",
             "wage_data_id": None, "wage_selection_source": None, "wage_selected_at": None, "tax_exempt": False, "tax_rate_id": "tax_default",
@@ -128,13 +129,14 @@ def new_project(name: str, actor: str, role: str, configuration_id: str = CONFIG
         },
         "contacts": [], "cost_codes": [], "quotes": [], "takeoff_sections": [], "doors": [], "hardware_assignments": [], "equipment": [],
         "borrowed_lites": [], "labor_estimates": [], "travel_estimates": [], "working_estimate": {
-            "id": uid("wrk"), "alternate_inclusion": {"ALT1": False, "ALT2": False, "ALT3": False, "ALT4": False},
+            "id": uid("wrk"),
             "markup_overrides": {}, "contingency_enabled": False, "contingency_override": None, "contingency_override_reason": "",
             "bond_enabled": False, "bond_override": None, "bond_override_reason": "", "borrowed_lite_source_by_code": {},
             "quote_selection_by_code": {}, "labor_suggestion_exclusions": [], "component_markup_overrides": {}, "pending_controlled_values": [],
-            "lines": [], "code_summaries": [], "category_subtotals": {}, "totals": {}
+            "lines": [], "code_summaries": [], "cost_code_summaries": [], "category_subtotals": {}, "totals": {}
         },
-        "estimate_revisions": [], "alternates": [], "reviews": [], "submissions": [], "proposal_artifacts": [], "bid_tabulations": [], "award": None,
+        "estimate_revisions": [], "alternates": [], "reviews": [], "submissions": [], "proposal_artifacts": [],
+        "proposal_history": [], "working_branch": None, "bid_tabulations": [], "award": None,
         "contract_allocations": [], "change_orders": [], "sov_lines": [], "closeout": None,
         "configuration_lineage": [{"configuration_id": configuration_id, "adopted_at": ts, "actor": actor}],
         "audit_events": [{"id": uid("aud"), "timestamp": ts, "actor": actor, "role": role, "entity_type": "project", "entity_id": project_id,
@@ -152,6 +154,8 @@ def duplicate_project(source: dict, name: str, actor: str, role: str) -> dict:
     result["reviews"] = []
     result["submissions"] = []
     result["proposal_artifacts"] = []
+    result["proposal_history"] = []
+    result["working_branch"] = None
     result["award"] = None
     result["contract_allocations"] = []
     result["change_orders"] = []
@@ -181,8 +185,7 @@ def test_project(actor: str = "Test Estimator") -> dict:
     doc["contacts"] = [{"id": "con_test_gc", "role": "General Contractor", "organization": "Test Construction", "name": "Taylor Example", "position": "Estimator", "email": "test@example.invalid", "phone": "555-0100", "active": True}]
     doc["quotes"] = [
         {"id": "quo_test_a", "group_id": "test-frames", "code": "08 40 00", "date": "2026-08-17", "vendor": "Example Glass A", "price": "12500", "surcharge_percent": "0.03", "tax_included": True, "used": True, "notes": "Selected training quote"},
-        {"id": "quo_test_b", "group_id": "test-frames", "code": "08 40 00", "date": "2026-08-17", "vendor": "Example Glass B", "price": "13200", "surcharge_percent": "0", "tax_included": False, "used": False, "notes": "Comparison training quote"},
-        {"id": "quo_test_alt", "group_id": "test-alt", "code": "ALT1-08 40 00", "date": "2026-08-17", "vendor": "Example Glass A", "price": "11000", "surcharge_percent": "0", "tax_included": True, "used": True, "notes": "Disabled ALT1 preview"}
+        {"id": "quo_test_b", "group_id": "test-frames", "code": "08 40 00", "date": "2026-08-17", "vendor": "Example Glass B", "price": "13200", "surcharge_percent": "0", "tax_included": False, "used": False, "notes": "Comparison training quote"}
     ]
     doc["takeoff_sections"] = [{
         "id": "sec_test_main", "definition_id": "frame-v1", "name": "Main Entry Frames", "code": "08 40 00", "material_overrides": {}, "tie_back_qty": 2, "backpan_lf": 12,
@@ -198,4 +201,10 @@ def test_project(actor: str = "Test Estimator") -> dict:
         {"id": "lbr_test_shop", "category": "shop", "code": "08 40 00", "description": "Shop preparation", "quantity": 40, "quantity_unit": "units", "crew": 1, "productivity": 5, "rate": "38.85", "rate_id": "labor_shop_2025", "rate_version": CONFIG_VERSION, "notes": "Owner-provided 2025 shop rate"}
     ]
     doc["working_estimate"]["markup_overrides"] = {"base_product": "0.10", "LAF": "0.15", "LAS": "0.12"}
+    doc["alternates"] = [{
+        "id": "alt_test_1", "sequence": 1, "key": "ALT1", "name": "Value-engineered storefront quote",
+        "customer_description": "Optional storefront supplier substitution.", "created_at": now(), "base_created_revision": 0,
+        "changes": {"quotes": {"added": [{"id": "quo_test_alt", "group_id": "test-alt", "code": "08 40 00", "date": "2026-08-17", "vendor": "Example Glass A", "price": "11000", "surcharge_percent": "0", "tax_included": True, "used": True, "notes": "ALT-only quote"}], "removed": ["quo_test_a"], "overrides": {}}},
+        "calculated": {},
+    }]
     return doc

@@ -3,6 +3,7 @@ from decimal import Decimal as D
 
 import pytest
 
+from app.alternates import add_record, new_alternate
 from app.schema import INTERCHANGE_VERSION, default_configuration, new_project
 from app.services import (
     DomainError, activate, calculate_project, create_change_order, job_data,
@@ -28,7 +29,6 @@ def example():
     doc["cost_codes"] = [{"id":"ccd_1","code":"08 40 00","description":"Entrances","deduct":False},{"id":"ccd_2","code":"07 90 00","description":"Sealants","deduct":True}]
     doc["quotes"] = [
         {"id":"quo_base","group_id":"g1","code":"08 40 00","price":"1000","surcharge_percent":".10","tax_included":False,"used":True},
-        {"id":"quo_alt","group_id":"g2","code":"ALT1-08 40 00","price":"500","surcharge_percent":"0","tax_included":True,"used":True},
     ]
     doc["takeoff_sections"] = [{"id":"sec_1","definition_id":"frame-v1","code":"08 40 00","name":"Frames","lines":[{"id":"frm_1","quantity":1,"width_inches":12,"height_inches":12,"caulking_passes":3}],"material_overrides":{},"tie_back_qty":0,"backpan_lf":0}]
     doc["labor_estimates"] = [{"id":"lbr_1","category":"field","code":"08 40 00","description":"Install","quantity":100,"crew":2,"productivity":5,"rate":50}]
@@ -37,23 +37,23 @@ def example():
 
 def test_bid_assembly_tax_markups_lineage_and_alternates():
     doc, cfg = example()
+    alternate = new_alternate(doc, "Added supplier scope")
+    add_record(alternate, "equipment", {"id": "eqp_alt", "code": "08 40 00", "description": "Alternate lift",
+                                         "quantity": 1, "duration": 1, "rate": 500, "delivery": 0, "taxable": False})
+    doc["alternates"] = [alternate]
     calculate_project(doc, cfg)
     quote = next(x for x in doc["working_estimate"]["lines"] if x["category"] == "base_product")
-    assert quote["direct_cost"] == "1210.00"  # quote cost 1100 plus 10% tax
-    assert quote["selling_value"] == "1452.00"
+    assert D(quote["direct_cost"]) == D("1210")  # quote cost 1100 plus 10% tax
+    assert D(quote["selling_value"]) == D("1452")
     labor = next(x for x in doc["working_estimate"]["lines"] if x["category"] == "field_labor")
-    assert labor["direct_cost"] == "500.00"
-    assert labor["selling_value"] == "650.00"
+    assert D(labor["direct_cost"]) == D("500")
+    assert D(labor["selling_value"]) == D("650")
     assert quote["lineage"][0]["source_id"] == "quo_base"
-    disabled = next(x for x in doc["working_estimate"]["lines"] if x["code"].startswith("ALT1"))
-    assert disabled["included"] is False
-    total_without_alt = doc["working_estimate"]["totals"]["selling_value"]
-    doc["working_estimate"]["alternate_inclusion"]["ALT1"] = True
-    calculate_project(doc, cfg)
-    alt = next(x for x in doc["working_estimate"]["lines"] if x["code"].startswith("ALT1"))
-    assert alt["included"] is True
-    assert alt["direct_cost"] == "500.00"  # tax already included
-    assert D(doc["working_estimate"]["totals"]["selling_value"]) > D(total_without_alt)
+    assert not any(x["code"].startswith("ALT1") for x in doc["working_estimate"]["lines"])
+    assert alternate["calculated"]["classification"] == "add"
+    assert D(alternate["calculated"]["direct_cost_delta"]) == D("500.00")
+    assert D(alternate["calculated"]["selling_value_delta"]) > D("500.00")
+    assert not any(line.get("source_key") == "equipment:eqp_alt" for line in doc["working_estimate"]["lines"])
 
 
 def test_owner_reference_validates_code_preserves_invalid_and_fills_description():
@@ -93,20 +93,20 @@ def test_frame_line_material_applicability_and_pre_tax_section_summary():
     section["lines"][0]["installation_material_ids"] = ["mat_sealant"]
     calculate_project(doc, cfg)
     results = {row["material_rule_id"]: row for row in section["material_results"]}
-    assert results["mat_bracing"]["source_quantity"] == "4"
-    assert results["mat_sealant"]["source_quantity"] == "12"
+    assert D(results["mat_bracing"]["source_quantity"]) == D("4")
+    assert D(results["mat_sealant"]["source_quantity"]) == D("12")
     assert results["mat_membrane"]["source_quantity"] == "0"
-    assert results["mat_sealant"]["pre_tax_cost"] == "11.52"
-    assert section["pre_tax_material_cost"] == "17.52"
-    assert section["pre_tax_material_cost_per_sf"] == "8.76"
+    assert D(results["mat_sealant"]["pre_tax_cost"]) == D("11.52")
+    assert D(section["pre_tax_material_cost"]) == D("17.52")
+    assert D(section["pre_tax_material_cost_per_sf"]) == D("8.76")
 
 
 def test_missing_frame_material_selection_means_all_materials_selected():
     doc, cfg = example()
     calculate_project(doc, cfg)
     results = {row["material_rule_id"]: row for row in doc["takeoff_sections"][0]["material_results"]}
-    assert results["mat_bracing"]["source_quantity"] == "4"
-    assert results["mat_sealant"]["source_quantity"] == "12"
+    assert D(results["mat_bracing"]["source_quantity"]) == D("4")
+    assert D(results["mat_sealant"]["source_quantity"]) == D("12")
 
 
 def test_quote_selection_is_implicit_by_code_uses_adjusted_cost_and_locks_manual_choice():
@@ -125,10 +125,10 @@ def test_quote_selection_is_implicit_by_code_uses_adjusted_cost_and_locks_manual
         "08 40 00": {"mode": "automatic", "selected_quote_ids": []},
     }
     calculate_project(doc, cfg)
-    assert doc["quotes"][0]["calculated_cost"] == "990.00"
-    assert doc["quotes"][1]["calculated_cost"] == "950.00"
+    assert D(doc["quotes"][0]["calculated_cost"]) == D("990")
+    assert D(doc["quotes"][1]["calculated_cost"]) == D("950")
     assert [row["id"] for row in doc["quotes"] if row["used"]] == ["quo_b"]
-    assert doc["quotes"][0]["square_feet"] == "1"
+    assert D(doc["quotes"][0]["square_feet"]) == D("1")
     assert doc["quotes"][0]["square_feet_source"] == "frame_default"
     assert doc["quotes"][1]["square_feet"] == "777"
 
@@ -139,9 +139,9 @@ def test_quote_selection_is_implicit_by_code_uses_adjusted_cost_and_locks_manual
     calculate_project(doc, cfg)
     assert [row["id"] for row in doc["quotes"] if row["used"]] == ["quo_b"]
     lineage = doc["quotes"][0]["calculation_lineage"]
-    assert lineage["credit_amount"] == "100.00"
-    assert lineage["post_credit_subtotal"] == "900.00"
-    assert lineage["surcharge_amount"] == "90.00"
+    assert D(lineage["credit_amount"]) == D("100")
+    assert D(lineage["post_credit_subtotal"]) == D("900")
+    assert D(lineage["surcharge_amount"]) == D("90")
 
 
 def test_quote_frame_default_combines_frame_sections_but_excludes_borrowed_lites():
@@ -157,9 +157,9 @@ def test_quote_frame_default_combines_frame_sections_but_excludes_borrowed_lites
     }]
     doc["quotes"][0].update({"square_feet": None, "square_feet_source": "unassigned"})
     calculate_project(doc, cfg)
-    assert doc["quotes"][0]["square_feet"] == "3"
+    assert D(doc["quotes"][0]["square_feet"]) == D("3")
     summary = next(row for row in doc["working_estimate"]["cost_code_summaries"] if row["code"] == "08 40 00")
-    assert summary["total_square_feet"] == "8"  # 3 Frame SF + BRL's five-SF row minimum.
+    assert D(summary["total_square_feet"]) == D("8")  # 3 Frame SF + BRL's five-SF row minimum.
 
 
 def test_frame_and_door_missing_quantities_are_structured_blockers_and_acknowledged_exceptions():
@@ -214,11 +214,11 @@ def test_equipment_subtotal_is_pre_tax_and_each_row_honors_taxable_flag():
          "duration": 1, "rate": 50, "delivery": 0, "taxable": False},
     ]
     calculate_project(doc, cfg)
-    assert doc["working_estimate"]["equipment_subtotal"] == "260.00"
+    assert D(doc["working_estimate"]["equipment_subtotal"]) == D("260")
     lines = {line["lineage"][0]["source_id"]: line for line in doc["working_estimate"]["lines"] if line["category"] == "equipment"}
     assert lines["eqp_tax"]["direct_cost"] == "231.00"
-    assert lines["eqp_tax"]["lineage"][0]["pre_tax_cost"] == "210.00"
-    assert lines["eqp_exempt"]["direct_cost"] == "50.00"
+    assert D(lines["eqp_tax"]["lineage"][0]["pre_tax_cost"]) == D("210")
+    assert D(lines["eqp_exempt"]["direct_cost"]) == D("50")
     assert lines["eqp_exempt"]["tax_treatment"] == "exempt"
 
 
@@ -248,13 +248,13 @@ def test_labor_cost_schedule_rate_lineage_and_unavailable_commercial_rules():
     assert row["controlled_rate_snapshot"] == snapshot
     assert row["calculated_controlled_rate"] == "50"
     assert row["calculated_effective_rate"] == "75"
-    assert row["calculated_cost"] == "6000.00"
+    assert D(row["calculated_cost"]) == D("6000")
     assert row["shift_configuration"] == "5x8"
     assert row["calculated_working_days"] == "5"
     assert row["calculated_calendar_weeks"] == "1"
     assert row["calculated_calendar_days"] == "7"
     line = next(line for line in doc["working_estimate"]["lines"] if line.get("source_key") == "labor:lbr_canonical")
-    assert line["direct_cost"] == "6000.00"
+    assert D(line["direct_cost"]) == D("6000")
     assert line["lineage"][0]["man_hours"] == "80"
     assert line["lineage"][0]["effective_rate"] == "75"
     blocker_codes = {item["code"] for item in submission_blockers(doc)}
@@ -318,12 +318,69 @@ def test_bid_code_summary_uses_area_once_and_preserves_component_markup_provenan
     assert quote_line["markup_provenance"]["effective_rate"] == ".50"
     assert quote_line["markup_provenance"]["override_reason"] == "Estimator source-line decision"
     summary = next(row for row in doc["working_estimate"]["cost_code_summaries"] if row["code"] == "08 40 00")
-    assert summary["total_square_feet"] == "6"
-    assert {component["name"] for component in summary["components"]} >= {"Base Product", "Installation Materials", "Labor", "Borrowed Lites"}
+    assert D(summary["total_square_feet"]) == D("6")
+    assert {component["name"] for component in summary["components"]} >= {"Base Product", "Installation Materials", "LAF", "Borrowed Lites"}
     assert set(summary["source_line_ids"]) == {
         line["id"] for line in doc["working_estimate"]["lines"] if line["code"] == "08 40 00"
     }
-    assert D(summary["dollars_per_square_foot"]) == (D(summary["selling_value"]) / D("6")).quantize(D(".01"))
+    assert D(summary["dollars_per_square_foot"]) == D(summary["selling_value"]) / D("6")
+
+
+def test_project_specific_installation_material_calculates_and_groups_in_bid():
+    doc, cfg = example()
+    section = doc["takeoff_sections"][0]
+    section["additional_materials"] = [{
+        "id": "matp_custom", "name": "Custom perimeter flashing", "source": "perimeter_lf",
+        "factor": ".5", "unit": "LF", "cost_code": "08 40 00", "project_specific": True,
+    }]
+    section["material_overrides"]["matp_custom"] = {"rate_override": "10", "rate_override_reason": "Project quote"}
+    calculate_project(doc, cfg)
+    result = next(row for row in section["material_results"] if row["material_rule_id"] == "matp_custom")
+    assert D(result["source_quantity"]) == D("4")
+    assert D(result["pre_tax_cost"]) == D("20")
+    assert result["project_specific"] is True
+    line = next(row for row in doc["working_estimate"]["lines"] if row["source_key"].endswith(":matp_custom"))
+    assert line["category"] == "installation_material"
+    assert line["lineage"][0]["section_name"] == "Frames"
+    component = next(row for row in doc["working_estimate"]["cost_code_summaries"][0]["components"] if row["name"] == "Installation Materials")
+    assert line["id"] in component["source_line_ids"]
+
+
+def test_bid_components_keep_laf_las_and_markup_reconciliation_distinct():
+    doc, cfg = example()
+    doc["labor_estimates"].extend([
+        {"id": "lbr_shop", "labor_type": "Shop", "code": "08 40 00", "description": "Shop Labor",
+         "man_hours": "10", "controlled_rate_snapshot": {"rate": "40"}, "origin": "manual"},
+        {"id": "lbr_design", "labor_type": "Design", "code": "08 40 00", "description": "Design Labor",
+         "man_hours": "5", "controlled_rate_snapshot": {"rate": "50"}, "origin": "manual"},
+    ])
+    calculate_project(doc, cfg)
+    summary = next(row for row in doc["working_estimate"]["cost_code_summaries"] if row["code"] == "08 40 00")
+    components = {row["name"]: row for row in summary["components"]}
+    assert {"Base Product", "Installation Materials", "LAF", "LAS", "Design Labor"} <= set(components)
+    for component in components.values():
+        assert D(component["selling_value"]) - D(component["direct_cost"]) == D(component["margin_dollars"])
+        assert component["source_count"] == len(component["source_line_ids"])
+
+
+def test_custom_material_manual_basis_and_frame_applicability_are_canonical():
+    doc, cfg = example()
+    section = doc["takeoff_sections"][0]
+    section["additional_materials"] = [{"id": "matp_manual", "name": "Custom Material A", "source": "manual_quantity", "manual_quantity": "7.5", "factor": "2", "unit": "each", "cost_code": "08 40 00"}]
+    section["material_overrides"]["matp_manual"] = {"rate_override": "3"}
+    calculate_project(doc, cfg)
+    result = next(row for row in section["material_results"] if row["material_rule_id"] == "matp_manual")
+    assert D(result["source_quantity"]) == D("7.5") and D(result["pre_tax_cost"]) == D("45")
+    section["additional_materials"][0].update({"source": "perimeter_lf", "factor": "1"})
+    section["lines"][0]["installation_material_ids"] = ["mat_sealant"]
+    calculate_project(doc, cfg)
+    result = next(row for row in section["material_results"] if row["material_rule_id"] == "matp_manual")
+    assert result["source_quantity"] == "0"
+    section["additional_materials"][0]["source"] = "quantity"
+    section["lines"][0]["installation_material_ids"].append("matp_manual")
+    calculate_project(doc, cfg)
+    result = next(row for row in section["material_results"] if row["material_rule_id"] == "matp_manual")
+    assert result["source_quantity"] == "1"
 
 
 def test_installation_material_markup_inherits_configured_base_product_rate_until_distinct_rate_exists():
@@ -508,7 +565,7 @@ def test_contract_reestimate_history_does_not_change_original_award():
     doc, _ = activated(); line=doc["contract_allocations"][0]; original=line["original_cost"]
     result=reestimate_contract(doc,"PM","Project Manager",{"allocation_id":line["id"],"new_cost":"999","reason":"Supplier update"})
     assert result["original_cost"] == original
-    assert result["current_estimated_cost"] == "999.00"
+    assert D(result["current_estimated_cost"]) == D("999")
     assert result["reestimate_history"][0]["reason"] == "Supplier update"
     assert doc["project"]["bid_version"]["display"] == "B1.0.1"
     with pytest.raises(DomainError): reestimate_contract(doc,"Support","Support",{"allocation_id":line["id"],"new_cost":1,"reason":"x"})
@@ -517,7 +574,7 @@ def test_contract_reestimate_history_does_not_change_original_award():
 def test_pco_sequential_hidden_redaction_and_authorization():
     doc,cfg=activated()
     order=create_change_order(doc,cfg,"PM","Project Manager",{"identifier":"PCO-1","cost_lines":[{"description":"Change","cost":"100","taxable":False}]})
-    assert order["customer_price"] == "132.00"
+    assert D(order["customer_price"]) == D("132")
     assert redact(doc,"Estimator")["change_orders"][0].get("markup_one_restricted") is None
     assert redact(doc,"Project Manager")["change_orders"][0]["markup_one_restricted"] == ".10"
     with pytest.raises(DomainError, match="acknowledge"):

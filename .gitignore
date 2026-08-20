@@ -8,6 +8,8 @@ data/exports/*
 data/configurations/*.json
 data/master-data/*.json
 data/master-data-backups/**/*.json
+data/historical-index/*.json
+data/historical-reference/*.json
 data/secrets/*.json
 tmp/
 !data/projects/.gitkeep
@@ -16,4 +18,5 @@ tmp/
 !data/configurations/.gitkeep
 !data/master-data/.gitkeep
 !data/master-data-backups/.gitkeep
+!data/historical-reference/.gitkeep
 !data/secrets/.gitkeep

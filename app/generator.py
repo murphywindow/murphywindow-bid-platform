@@ -8,10 +8,11 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from .calculations import normalize_code
+from .migrations import migrate_project_document
 from .schema import CONFIG_VERSION, new_project, now, uid
 from .services import audit
 
-GENERATOR_VERSION = "1.1.0"
+GENERATOR_VERSION = "1.2.0"
 
 
 PROJECT_PROFILES = [
@@ -348,4 +349,7 @@ def generate_test_project(config: dict, actor: str, role: str, seed: int | str |
     audit(doc, actor, role, "project", doc["project"]["id"], "generate_test_project", None,
           {"seed": seed_value, "profile": profile["kind"], "generator_version": GENERATOR_VERSION},
           "Generated curated synthetic project for training and workflow testing")
-    return doc
+    # Feed the former prefixed fixtures through the same one-time migration used
+    # for real 1.1 projects so generated work exercises only Base-plus-delta.
+    doc["schema_version"] = "1.1.0"; doc["interchange_version"] = "1.1.0"
+    return migrate_project_document(doc)

@@ -19,7 +19,9 @@ def history_project(project_id="prj_history_one"):
         "project": {
             "id": project_id, "archived": True, "estimator": "Micah Johnson",
             "plan_source": "Architectural Bid Set", "owner_name": "North Star Properties",
-            "owner_address": "100 Main Street", "architect": "Steinier Architects",
+            "owner_legal_name": "North Star Properties, LLC", "owner_address": "100 Main Street",
+            "owner_website": "https://northstar.example.invalid", "owner_phone": "555-0199",
+            "owner_email": "owner@example.invalid", "architect": "Steinier Architects",
             "engineer": "Element Engineering", "general_contractor": "Northland Builders",
             "construction_manager": "Northland Builders",
         },
@@ -43,6 +45,12 @@ def test_seeded_history_survives_source_removal_and_preserves_person_at_organiza
     assert len(directory["person_organization_contacts"]) == 2
     assert any(row["kind"] == "contact_role" and row["display_name"] == "Facilities Lead"
                for row in directory["text_entities"])
+    owner = next(row for row in directory["organizations"] if row["display_name"] == "North Star Properties")
+    assert owner["legal_name"] == "North Star Properties, LLC"
+    assert owner["address"] == "100 Main Street"
+    assert owner["website"] == "https://northstar.example.invalid"
+    assert owner["primary_phone"] == "555-0199"
+    assert owner["email"] == "owner@example.invalid"
 
     # Search uses the independent directory; no source project is required after seeding.
     vendor = search_master_data(directory, "metro glass", entity_kinds=["organization"])

@@ -5,7 +5,7 @@ are retained as data and are not interpreted as implementation instructions.
 """
 from __future__ import annotations
 
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal
 
 RATE_REFERENCE_ID = "owner-rate-tables-2026-08-17-v1"
 SOURCE = "Owner-provided rate tables received 2026-08-17"
@@ -105,13 +105,13 @@ def _wage_records() -> list[dict]:
     for line in COUNTY_RATES.splitlines():
         county, basic, fringe, total = line.split("|")
         wage, fringe_value = Decimal(basic), Decimal(fringe)
-        credit = (wage * Decimal("0.1425")).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
+        credit = wage * Decimal("0.1425")
         rows.append({
             "id": f"pw_mn_{county.lower().replace(' ', '_').replace('.', '')}_owner_2026",
             "county": county, "classification": None, "published_wage": basic, "published_fringe": fringe,
             "published_total": total, "fringe_credit_rate": "0.1425", "fringe_credit": str(credit),
-            "usable_fringe": str((fringe_value - credit).quantize(Decimal("0.0001"))),
-            "estimated_company_rate": str((wage + fringe_value - credit).quantize(Decimal("0.0001"))),
+            "usable_fringe": str(fringe_value - credit),
+            "estimated_company_rate": str(wage + fringe_value - credit),
             "effective_date": None, "received_date": "2026-08-17", "source": SOURCE,
             "status": "owner_provided_pending_classification_and_effective_date",
             "note": "County table did not identify labor classification or rate effective date; do not treat as a published determination without verification.",
@@ -233,4 +233,3 @@ def owner_rate_reference() -> dict:
                        "effective_date": None, "last_checked": "2024-09-01", "source": "Owner table; cited sale-tax.com/Minnesota",
                        "status": "owner_provided_stale_check", "note": "Verify jurisdiction and current rate for each project before selection."}],
     }
-

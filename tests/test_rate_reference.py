@@ -31,8 +31,8 @@ def test_county_rate_preserves_source_total_and_calculates_confirmed_fringe_cred
     assert hennepin["published_wage"] == "54.03"
     assert hennepin["published_fringe"] == "28.25"
     assert hennepin["published_total"] == "82.28"
-    assert Decimal(hennepin["fringe_credit"]) == Decimal("7.6993")
-    assert Decimal(hennepin["estimated_company_rate"]) == Decimal("74.5807")
+    assert Decimal(hennepin["fringe_credit"]) == Decimal("54.03") * Decimal("0.1425")
+    assert Decimal(hennepin["estimated_company_rate"]) == Decimal("54.03") + Decimal("28.25") - Decimal(hennepin["fringe_credit"])
     assert hennepin["classification"] is None and hennepin["effective_date"] is None
     assert "pending_classification_and_effective_date" in hennepin["status"]
 

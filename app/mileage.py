@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from decimal import Decimal, ROUND_HALF_UP
 from copy import deepcopy
 import hashlib
+import re
 from threading import Lock
 import time
 from typing import Any
@@ -40,14 +41,95 @@ _CACHE_LOCK = Lock()
 _NOMINATIM_LOCK = Lock()
 _LAST_NOMINATIM_REQUEST = 0.0
 
+_STATE_CODES = {
+    "alabama": "AL", "alaska": "AK", "arizona": "AZ", "arkansas": "AR", "california": "CA",
+    "colorado": "CO", "connecticut": "CT", "delaware": "DE", "florida": "FL", "georgia": "GA",
+    "hawaii": "HI", "idaho": "ID", "illinois": "IL", "indiana": "IN", "iowa": "IA",
+    "kansas": "KS", "kentucky": "KY", "louisiana": "LA", "maine": "ME", "maryland": "MD",
+    "massachusetts": "MA", "michigan": "MI", "minnesota": "MN", "mississippi": "MS",
+    "missouri": "MO", "montana": "MT", "nebraska": "NE", "nevada": "NV", "new hampshire": "NH",
+    "new jersey": "NJ", "new mexico": "NM", "new york": "NY", "north carolina": "NC",
+    "north dakota": "ND", "ohio": "OH", "oklahoma": "OK", "oregon": "OR", "pennsylvania": "PA",
+    "rhode island": "RI", "south carolina": "SC", "south dakota": "SD", "tennessee": "TN",
+    "texas": "TX", "utah": "UT", "vermont": "VT", "virginia": "VA", "washington": "WA",
+    "west virginia": "WV", "wisconsin": "WI", "wyoming": "WY", "district of columbia": "DC",
+}
+_STREET_SUFFIXES = {
+    "avenue": "Ave.", "ave": "Ave.", "boulevard": "Blvd.", "blvd": "Blvd.",
+    "circle": "Cir.", "court": "Ct.", "ct": "Ct.", "drive": "Dr.", "dr": "Dr.",
+    "highway": "Hwy.", "lane": "Ln.", "ln": "Ln.", "parkway": "Pkwy.", "pkwy": "Pkwy.",
+    "place": "Pl.", "pl": "Pl.", "road": "Rd.", "rd": "Rd.", "street": "St.", "st": "St.",
+    "terrace": "Ter.", "trail": "Trl.", "way": "Way",
+}
+
+
+def _display_address(value: Any) -> str:
+    """Keep U.S.-only suggestions concise without altering provider coordinates."""
+    label = str(value or "").strip()
+    return re.sub(r",\s*(?:United States(?: of America)?|USA|US)\s*$", "", label, flags=re.IGNORECASE)
+
+
+def _title_words(value: Any) -> str:
+    return " ".join(word if word.isupper() and len(word) <= 3 else word.capitalize() for word in str(value or "").split())
+
+
+def _postal_label(
+    street: Any, city: Any, state: Any, postal_code: Any, *, query: str = "",
+    location_name: Any = "",
+) -> str:
+    """Build one compact estimator-facing postal address from provider fields."""
+    raw_street = str(street or "").strip()
+    street_text = _title_words(street)
+    words = street_text.split()
+    if words:
+        suffix_key = words[-1].rstrip(".").casefold()
+        if suffix_key in _STREET_SUFFIXES:
+            words[-1] = _STREET_SUFFIXES[suffix_key]
+        street_text = " ".join(words)
+    unit_match = re.search(r"(?:,|\s)\s*(?:apt\.?|apartment|unit|#)\s*[-#]?\s*([A-Za-z0-9-]+)", query, re.IGNORECASE)
+    if unit_match and street_text and not re.search(r"\b(?:apt\.?|unit|#)\b", street_text, re.IGNORECASE):
+        street_text = f"{street_text}, Apt {unit_match.group(1)}"
+    state_text = str(state or "").strip()
+    state_text = _STATE_CODES.get(state_text.casefold(), state_text.upper())
+    locality = ", ".join(part for part in (_title_words(city), " ".join(part for part in (state_text, str(postal_code or "").strip()) if part)) if part)
+    address = ", ".join(part for part in (street_text, locality) if part).strip(" ,")
+    name = str(location_name or "").strip(" ,")
+    normalized_name = re.sub(r"[^a-z0-9]", "", name.casefold())
+    street_names = {
+        re.sub(r"[^a-z0-9]", "", value.casefold())
+        for value in (raw_street, street_text) if value
+    }
+    if name and normalized_name not in street_names:
+        return f"{name}, {address}" if address else name
+    return address
+
+
+def _tolerant_landmark_query(query: str) -> str:
+    # Providers often index the proper name without generic institutional words.
+    simplified = re.sub(r"\b(?:the|state|building|complex|campus|facility)\b", " ", query, flags=re.IGNORECASE)
+    return " ".join(simplified.split()) or query
+
 
 def _request_json(client: httpx.Client, url: str, **kwargs: Any) -> Any:
     try:
         response = client.get(url, timeout=12.0, **kwargs)
         response.raise_for_status()
         return response.json()
+    except (httpx.ConnectError, httpx.TimeoutException) as exc:
+        # Never expose socket, proxy, or firewall details in the estimator UI.
+        # The chained exception remains available to server-side diagnostics.
+        raise MileageError(
+            "Live address search cannot reach the mapping providers. "
+            "Check the server's network or firewall access and try again."
+        ) from exc
+    except httpx.HTTPStatusError as exc:
+        raise MileageError(
+            "The mapping provider returned an error. Try again shortly."
+        ) from exc
     except (httpx.HTTPError, ValueError) as exc:
-        raise MileageError(f"Mapping service request failed: {exc}") from exc
+        raise MileageError(
+            "The mapping provider returned an unreadable response. Try again shortly."
+        ) from exc
 
 
 def _geocode_census(client: httpx.Client, address: str) -> dict | None:
@@ -80,7 +162,9 @@ def _search_census(client: httpx.Client, address: str, limit: int) -> list[dict]
         ]
         street = " ".join(str(part).strip() for part in street_parts if part)
         latitude, longitude = str(coordinates["y"]), str(coordinates["x"])
-        label = str(match.get("matchedAddress") or address)
+        label = _postal_label(street, components.get("city"), components.get("state"), components.get("zip"), query=address)
+        if not label:
+            label = _display_address(match.get("matchedAddress") or address)
         results.append({
             "id": _address_id(provider, label, latitude, longitude),
             "label": label, "matched_address": label,
@@ -129,12 +213,22 @@ def _search_nominatim(client: httpx.Client, address: str, limit: int) -> list[di
             "city", "town", "village", "municipality", "hamlet"
         ) if details.get(key)), "")
         latitude, longitude = str(match["lat"]), str(match["lon"])
-        label = str(match.get("display_name") or address)
+        display_name = _display_address(match.get("display_name") or "")
+        first_component = display_name.split(",", 1)[0].strip()
+        location_name = match.get("name") or first_component
+        label = _postal_label(
+            street, city, details.get("state"), details.get("postcode"),
+            query=address, location_name=location_name,
+        )
+        if not label:
+            label = _display_address(match.get("display_name") or address)
+        state = str(details.get("state") or "").strip()
+        state = _STATE_CODES.get(state.casefold(), state.upper())
         results.append({
             "id": _address_id(provider, label, latitude, longitude),
             "label": label, "matched_address": label,
             "street": street, "city": str(city),
-            "state": str(details.get("state") or ""),
+            "state": state,
             "zip": str(details.get("postcode") or ""),
             "county": str(details.get("county") or ""),
             "latitude": latitude, "longitude": longitude,
@@ -175,7 +269,19 @@ def search_addresses(
         except MileageError:
             results = []
         if not results:
-            results = _search_nominatim(active_client, normalized, active_limit)
+            results = _search_nominatim(active_client, _tolerant_landmark_query(normalized), active_limit)
+        # Nominatim can return multiple OSM objects for the same building or
+        # street. Once formatted for estimators those are one choice, not
+        # several indistinguishable rows.
+        unique_results = []
+        seen_labels = set()
+        for item in results:
+            key = re.sub(r"[^a-z0-9]", "", str(item.get("label") or "").casefold())
+            if not key or key in seen_labels:
+                continue
+            seen_labels.add(key)
+            unique_results.append(item)
+        results = unique_results[:active_limit]
         provider = results[0]["provider"] if results else None
         attribution = next((item.get("attribution") for item in results if item.get("attribution")), None)
         payload = {
@@ -202,7 +308,10 @@ def _geocode(client: httpx.Client, address: str) -> dict:
     return result
 
 
-def calculate_driving_mileage(address: str, settings: dict | None = None, *, client: httpx.Client | None = None) -> dict:
+def calculate_driving_mileage(
+    address: str, settings: dict | None = None, *, client: httpx.Client | None = None,
+    destination: dict | None = None,
+) -> dict:
     """Geocode one job address and return fastest-route mileage from configured Rogers origin."""
     query = " ".join(str(address or "").split())
     if len(query) < 8:
@@ -217,7 +326,7 @@ def calculate_driving_mileage(address: str, settings: dict | None = None, *, cli
     owns_client = client is None
     active_client = client or httpx.Client(follow_redirects=True, headers={"User-Agent": USER_AGENT})
     try:
-        destination = _geocode(active_client, query)
+        destination = destination or _geocode(active_client, query)
         origin_lon, origin_lat = str(cfg["origin_longitude"]), str(cfg["origin_latitude"])
         destination_lon, destination_lat = destination["longitude"], destination["latitude"]
         route_url = f"{OSRM_URL}/{origin_lon},{origin_lat};{destination_lon},{destination_lat}"
