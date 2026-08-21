@@ -31,6 +31,40 @@ def create_project(client, name="API Contract"):
     return response.json()["project"]
 
 
+def test_bid_review_pdf_is_a_single_sheet_and_supports_inline_or_download(client):
+    document = create_project(client, "Single-sheet Bid Review")
+    project_id = document["project"]["id"]
+    inline = client.get(f"/api/projects/{project_id}/bid-review.pdf", headers=h())
+    download = client.get(f"/api/projects/{project_id}/bid-review.pdf?download=true", headers=h())
+    assert inline.status_code == 200 and inline.headers["content-type"] == "application/pdf"
+    assert inline.headers["content-disposition"].startswith("inline")
+    assert download.headers["content-disposition"].startswith("attachment")
+    assert "no-store" in inline.headers["cache-control"]
+    assert inline.headers["x-bid-review"] == "base"
+    assert inline.content.startswith(b"%PDF-")
+    assert len(re.findall(br"/Type\s*/Page\b", inline.content)) == 1
+
+
+def test_systems_administrator_can_create_and_edit_working_projects_without_page_override(client):
+    created = client.post("/api/projects", headers=h("Systems Administrator"), json={"name": "Administrator workspace"})
+    assert created.status_code == 200, created.text
+    doc = created.json()["project"]
+    project_id = doc["project"]["id"]
+    doc["project"]["proposal_scope"] = "Administrator-entered global project edit"
+    saved = client.put(f"/api/projects/{project_id}", headers=h("Systems Administrator"), json={
+        "project": doc,
+        "expected_revision": doc["project"]["revision"],
+        "changes": [{
+            "path": "project.proposal_scope",
+            "prior": "",
+            "new": doc["project"]["proposal_scope"],
+            "reason": "Administrator global edit permission test",
+        }],
+    })
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["project"]["project"]["proposal_scope"] == doc["project"]["proposal_scope"]
+
+
 def test_decimal_precision_configuration_is_admin_only_persisted_and_validated(client):
     source = client.get("/api/configurations", headers=h()).json()["configurations"][0]
     configured = deepcopy(source)
@@ -49,6 +83,97 @@ def test_decimal_precision_configuration_is_admin_only_persisted_and_validated(c
     configured["application_settings"]["decimal_precision"]["currency"] = 7
     invalid = client.post("/api/configurations", headers=h("Systems Administrator"), json={"source_id": source["id"], "configuration": configured})
     assert invalid.status_code == 422
+
+
+def test_commercial_impact_preview_is_read_only_and_lists_pricing_dollar_and_sf_changes(client):
+    document = create_project(client, "Pricing configuration impact")
+    code = first_controlled_cost_code()
+    document["cost_codes"] = [code]
+    document["takeoff_sections"] = [{
+        "id": "sec_impact", "definition_id": "frame-v1", "code": code["code"], "name": "Frames",
+        "lines": [{"id": "frm_impact", "mark": "F1", "quantity": "1.5", "width_inches": "42.75", "height_inches": "120.5"}],
+        "material_overrides": {}, "tie_back_qty": 0, "backpan_lf": 0,
+    }]
+    document["quotes"] = [{
+        "id": "quo_impact", "code": code["code"], "vendor": "Impact Vendor",
+        "price": "1000", "used": True, "tax_included": True,
+    }]
+    saved = client.put(f"/api/projects/{document['project']['id']}", headers=h(), json={
+        "project": document, "expected_revision": document["project"]["revision"],
+    }).json()["project"]
+    original_revision = saved["project"]["revision"]
+    original_value = Decimal(saved["working_estimate"]["totals"]["selling_value"])
+    candidate = deepcopy(saved)
+    candidate["working_estimate"]["markup_overrides"]["base_product"] = "0.25"
+
+    preview = client.post(f"/api/projects/{saved['project']['id']}/commercial-impact", headers=h(), json={
+        "expected_revision": original_revision, "project": candidate,
+    })
+    assert preview.status_code == 200
+    payload = preview.json()
+    assert payload["requires_confirmation"] is True
+    assert any(row["scope"] == "Bid total" and row["label"] == "Selling Value" for row in payload["impacts"])
+    assert any(row["label"] == "Value/ft²" and row["value_type"] == "currency_per_unit" for row in payload["impacts"])
+    reopened = client.get(f"/api/projects/{saved['project']['id']}", headers=h()).json()["project"]
+    assert reopened["project"]["revision"] == original_revision
+    assert Decimal(reopened["working_estimate"]["totals"]["selling_value"]) == original_value
+
+
+def test_configuration_autosave_requires_commercial_confirmation_then_adopts_and_recalculates(client):
+    document = create_project(client, "Administration autosave impact")
+    code = first_controlled_cost_code()
+    document["cost_codes"] = [code]
+    document["quotes"] = [{
+        "id": "quo_admin_impact", "code": code["code"], "vendor": "Admin Impact Vendor",
+        "price": "1000", "used": True, "tax_included": True,
+    }]
+    saved = client.put(f"/api/projects/{document['project']['id']}", headers=h(), json={
+        "project": document, "expected_revision": document["project"]["revision"],
+    }).json()["project"]
+    source = client.get("/api/configurations", headers=h("Systems Administrator")).json()["configurations"][0]
+    candidate = deepcopy(source)
+    candidate["markup_defaults"]["base_product"]["rate"] = "0.25"
+    before_count = len(client.get("/api/configurations", headers=h("Systems Administrator")).json()["configurations"])
+    command = {
+        "source_id": source["id"], "configuration": candidate,
+        "project_id": saved["project"]["id"], "expected_project_revision": saved["project"]["revision"],
+        "apply_to_project": True, "reason": "Automatic Administration configuration save",
+    }
+
+    blocked = client.post("/api/configurations", headers=h("Systems Administrator"), json=command)
+    assert blocked.status_code == 422
+    assert blocked.json()["error"]["code"] == "commercial_impact_confirmation_required"
+    assert len(client.get("/api/configurations", headers=h("Systems Administrator")).json()["configurations"]) == before_count
+
+    accepted = client.post("/api/configurations", headers=h("Systems Administrator"), json={
+        **command, "confirmed_commercial_impact": True,
+    })
+    assert accepted.status_code == 200
+    payload = accepted.json()
+    assert payload["configuration"]["status"] == "active"
+    assert payload["project"]["project"]["configuration_id"] == payload["configuration"]["id"]
+    assert payload["project"]["project"]["revision"] == saved["project"]["revision"] + 1
+    assert Decimal(payload["project"]["working_estimate"]["totals"]["selling_value"]) > Decimal(saved["working_estimate"]["totals"]["selling_value"])
+    assert payload["impacts"]
+    assert payload["project"]["audit_events"][-1]["operation"] == "configuration_autosaved_and_adopted"
+
+
+def test_display_only_configuration_autosave_recalculates_without_confirmation(client):
+    document = create_project(client, "Display-only configuration autosave")
+    source = client.get("/api/configurations", headers=h("Systems Administrator")).json()["configurations"][0]
+    candidate = deepcopy(source)
+    candidate["application_settings"]["decimal_precision"]["currency"] = 0
+
+    saved = client.post("/api/configurations", headers=h("Systems Administrator"), json={
+        "source_id": source["id"], "configuration": candidate,
+        "project_id": document["project"]["id"], "expected_project_revision": document["project"]["revision"],
+        "apply_to_project": True, "reason": "Display precision autosave",
+    })
+    assert saved.status_code == 200
+    payload = saved.json()
+    assert payload["impacts"] == []
+    assert payload["configuration"]["application_settings"]["decimal_precision"]["currency"] == 0
+    assert payload["project"]["project"]["configuration_id"] == payload["configuration"]["id"]
 
 
 def first_controlled_cost_code():
@@ -115,6 +240,134 @@ def test_base_plus_delta_alternate_api_creates_inherited_alt_and_applies_overrid
     assert history.json()["alternate_id"] == alternate["id"]
 
 
+def test_optional_alternate_name_uses_stable_id_and_specific_audit_events(client):
+    document = create_project(client, "Alternate naming API")
+    created = client.post(f"/api/projects/{document['project']['id']}/alternates", headers=h(), json={
+        "expected_revision": document["project"]["revision"], "name": "",
+    })
+    assert created.status_code == 200
+    alternate = created.json()["alternate"]
+    assert alternate["name"] == ""
+    stable_id, stable_key = alternate["id"], alternate["key"]
+
+    renamed = client.patch(
+        f"/api/projects/{document['project']['id']}/alternates/{stable_id}/name", headers=h(), json={
+            "expected_revision": created.json()["project"]["project"]["revision"],
+            "name": "  North Elevation  ",
+        },
+    )
+    assert renamed.status_code == 200
+    payload = renamed.json()
+    assert payload["alternate"]["id"] == stable_id
+    assert payload["alternate"]["key"] == stable_key == "ALT1"
+    assert payload["alternate"]["name"] == "North Elevation"
+    assert payload["project"]["audit_events"][-1]["operation"] == "alternate_name_set"
+    assert payload["project"]["audit_events"][-1]["prior_value"] == {"name": ""}
+
+    cleared = client.patch(
+        f"/api/projects/{document['project']['id']}/alternates/{stable_id}/name", headers=h(), json={
+            "expected_revision": payload["project"]["project"]["revision"], "name": "",
+        },
+    )
+    assert cleared.status_code == 200
+    assert cleared.json()["alternate"]["id"] == stable_id
+    assert cleared.json()["project"]["audit_events"][-1]["operation"] == "alternate_name_cleared"
+
+
+def test_actual_material_cost_code_may_use_full_reference_outside_project_scope(client):
+    document = create_project(client, "Actual Cost Code API")
+    references = [row for row in default_configuration()["csi_references"] if row.get("active", True)]
+    grouping, actual = references[0], next(row for row in references[1:] if row["display_code"] != references[0]["display_code"])
+    document["cost_codes"] = [{
+        "id": "ccd_grouping", "code": grouping["display_code"],
+        "description": grouping["description"], "deduct": False,
+    }]
+    document["takeoff_sections"] = [{
+        "id": "sec_grouping", "definition_id": "frame-v1", "code": grouping["display_code"],
+        "name": "Grouped Frames", "lines": [], "material_overrides": {},
+        "additional_materials": [], "tie_back_qty": 0, "backpan_lf": 0,
+    }]
+    saved = client.put(f"/api/projects/{document['project']['id']}", headers=h(), json={
+        "expected_revision": document["project"]["revision"], "project": document,
+    }).json()["project"]
+
+    added = client.post(
+        f"/api/projects/{document['project']['id']}/frame-sections/sec_grouping/materials", headers=h(), json={
+            "expected_revision": saved["project"]["revision"], "name": "Actual classified material",
+            "source": "manual_quantity", "manual_quantity": 2, "factor": 1, "unit": "each",
+            "project_rate": 10, "actual_cost_code": actual["display_code"], "apply_to_existing": False,
+        },
+    )
+    assert added.status_code == 200, added.text
+    project = added.json()["project"]
+    material = project["takeoff_sections"][0]["additional_materials"][0]
+    assert material["cost_code"] == actual["display_code"]
+    line = next(row for row in project["working_estimate"]["lines"] if row.get("source_key", "").endswith(material["id"]))
+    assert line["grouping_code"] == grouping["display_code"]
+    assert line["actual_cost_code"] == actual["display_code"]
+    assert all(row["code"] != actual["display_code"] for row in project["cost_codes"])
+
+    invalid = deepcopy(project)
+    invalid["takeoff_sections"][0]["additional_materials"][0]["cost_code"] = "99 99 99"
+    rejected = client.put(f"/api/projects/{document['project']['id']}", headers=h(), json={
+        "expected_revision": project["project"]["revision"], "project": invalid,
+        "changes": [{"path": "takeoff_sections.0.additional_materials.0.cost_code",
+                     "prior": actual["display_code"], "new": "99 99 99"}],
+    })
+    assert rejected.status_code == 422
+    assert rejected.json()["error"]["code"] == "invalid_actual_cost_code"
+
+    replacement = next(row for row in references[2:] if row["display_code"] not in {grouping["display_code"], actual["display_code"]})
+    project["takeoff_sections"][0]["additional_materials"][0]["cost_code"] = replacement["display_code"]
+    changed = client.put(f"/api/projects/{document['project']['id']}", headers=h(), json={
+        "expected_revision": project["project"]["revision"], "project": project,
+        "changes": [{"path": "takeoff_sections.0.additional_materials.0.cost_code",
+                     "prior": actual["display_code"], "new": replacement["display_code"],
+                     "reason": "Estimator changed Actual Cost Code"}],
+    })
+    assert changed.status_code == 200, changed.text
+    event = changed.json()["project"]["audit_events"][-1]
+    assert event["operation"] == "installation_material_actual_cost_code_change"
+    assert event["entity_id"] == material["id"]
+
+
+def test_quote_grouping_code_change_preserves_manual_selection_provenance_and_audits_identity(client):
+    document = create_project(client, "Quote grouping audit")
+    references = [row for row in default_configuration()["csi_references"] if row.get("active", True)][:2]
+    first, second = references
+    document["cost_codes"] = [
+        {"id": "ccd_quote_a", "code": first["display_code"], "description": first["description"], "deduct": False},
+        {"id": "ccd_quote_b", "code": second["display_code"], "description": second["description"], "deduct": False},
+    ]
+    document["quotes"] = [{
+        "id": "quo_group_move", "code": first["display_code"], "vendor": "Stable Vendor",
+        "price": "500", "used": True, "tax_included": True,
+    }]
+    document["working_estimate"]["quote_selection_by_code"] = {
+        first["display_code"]: {"mode": "manual", "selected_quote_ids": ["quo_group_move"]},
+    }
+    saved = client.put(f"/api/projects/{document['project']['id']}", headers=h(), json={
+        "expected_revision": document["project"]["revision"], "project": document,
+    }).json()["project"]
+
+    saved["quotes"][0]["code"] = second["display_code"]
+    moved = client.put(f"/api/projects/{document['project']['id']}", headers=h(), json={
+        "expected_revision": saved["project"]["revision"], "project": saved,
+        "changes": [{"path": "quotes.0.code", "prior": first["display_code"],
+                     "new": second["display_code"], "reason": "Quote grouping changed"}],
+    })
+    assert moved.status_code == 200, moved.text
+    project = moved.json()["project"]
+    selection = project["working_estimate"]["quote_selection_by_code"]
+    assert selection[first["display_code"]]["mode"] == "manual"
+    assert selection[first["display_code"]]["selected_quote_ids"] == []
+    assert selection[second["display_code"]]["mode"] == "manual"
+    assert "quo_group_move" in selection[second["display_code"]]["selected_quote_ids"]
+    event = project["audit_events"][-1]
+    assert event["operation"] == "quote_grouping_code_change"
+    assert event["entity_id"] == "quo_group_move"
+
+
 def test_direct_workspace_routes_return_fresh_application_shell(client):
     response = client.get("/projects/prj_00000000000000000000000000004320/frames")
     assert response.status_code == 200
@@ -129,12 +382,48 @@ def test_direct_workspace_routes_return_fresh_application_shell(client):
     assert basic_css.headers["cache-control"] == "no-store, no-cache, must-revalidate, max-age=0"
 
 
+def test_frame_save_and_reopen_recalculates_fractional_outputs_instead_of_reusing_whole_values(client):
+    document = create_project(client, "Fractional Frame API")
+    code = first_controlled_cost_code()
+    document["project"].update({
+        "project_type": "New Construction - Exterior Storefront", "project_type_status": "current",
+        "contract_type": "Bid to CM/GC", "contract_type_status": "current",
+        "wage_type": "Non-PW", "wage_type_status": "current",
+    })
+    document["cost_codes"] = [code]
+    document["takeoff_sections"] = [{
+        "id": "sec_fractional_api", "definition_id": "frame-v1", "code": code["code"], "name": "Frames",
+        "lines": [{
+            "id": "frm_fractional_api", "mark": "A1", "quantity": "6.60",
+            "width_inches": "42.75", "height_inches": "120.67", "caulking_passes": "3.18",
+            "calculated": {"square_feet": "237", "perimeter_lf": "180", "caulking_lf": "571", "head_sill_qty": "48"},
+        }],
+        "material_overrides": {}, "tie_back_qty": 0, "backpan_lf": 0,
+    }]
+
+    saved = client.put(f"/api/projects/{document['project']['id']}", headers=h(), json={
+        "expected_revision": document["project"]["revision"], "project": document,
+    })
+    assert saved.status_code == 200
+    reopened = client.get(f"/api/projects/{document['project']['id']}", headers=h())
+    assert reopened.status_code == 200
+    calculated = reopened.json()["project"]["takeoff_sections"][0]["lines"][0]["calculated"]
+
+    quantity, width, height, passes = map(Decimal, ("6.60", "42.75", "120.67", "3.18"))
+    perimeter = Decimal(2) * (width / Decimal(12) + height / Decimal(12)) * quantity
+    assert Decimal(calculated["square_feet"]) == quantity * width * height / Decimal(144)
+    assert Decimal(calculated["perimeter_lf"]) == perimeter
+    assert Decimal(calculated["caulking_lf"]) == perimeter * passes
+    assert Decimal(calculated["head_sill_qty"]) == quantity * width / Decimal(6)
+    assert calculated != {"square_feet": "237", "perimeter_lf": "180", "caulking_lf": "571", "head_sill_qty": "48"}
+
+
 def test_health_static_and_project_crud_conflict(client):
     health = client.get("/api/health")
     assert health.status_code == 200
     assert health.json()["software_version"] == SOFTWARE_VERSION
     assert re.fullmatch(r"(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)", health.json()["software_version"])
-    assert health.json()["schema_version"] == SCHEMA_VERSION == "1.2.0"
+    assert health.json()["schema_version"] == SCHEMA_VERSION == "1.3.0"
     assert client.get("/openapi.json").json()["info"]["version"] == SOFTWARE_VERSION
     assert "Murphy Window" in client.get("/").text
     created=client.post("/api/projects",headers=h(),json={"name":"API Job"})
@@ -434,12 +723,13 @@ def test_project_specific_section_material_api_adds_applies_and_removes_dependen
     saved = client.put(f"/api/projects/{project_id}", headers=h(), json={"project": doc, "expected_revision": doc["project"]["revision"]}).json()["project"]
     configuration_before = client.get("/api/configurations", headers=h()).json()["configurations"]
     created = client.post(f"/api/projects/{project_id}/frame-sections/sec_custom_material/materials", headers=h(), json={
-        "expected_revision": saved["project"]["revision"], "name": "Custom sill pan", "source": "head_sill_qty",
-        "factor": "1.25", "unit": "LF", "project_rate": "4.50", "cost_code": code["code"], "apply_to_existing": True,
+        "expected_revision": saved["project"]["revision"], "name": "Custom sill pan", "source": "square_feet",
+        "operator": "divide", "operand": "2", "unit": "LF", "project_rate": "4.50", "cost_code": code["code"], "apply_to_existing": True,
     })
     assert created.status_code == 200
     saved = created.json()["project"]
     material = created.json()["material"]
+    assert material["source"] == "square_feet" and material["operator"] == "divide" and material["operand"] == "2.0"
     selections = saved["takeoff_sections"][0]["lines"][0].get("installation_material_ids")
     assert selections is None or material["id"] in selections  # missing list canonically means all selected
     result = next(row for row in saved["takeoff_sections"][0]["material_results"] if row["material_rule_id"] == material["id"])
@@ -459,6 +749,25 @@ def test_project_specific_section_material_api_adds_applies_and_removes_dependen
     assert material["id"] not in (final["lines"][0].get("installation_material_ids") or [])
     assert removed.json()["project"]["audit_events"][-1]["operation"] == "material_remove"
 
+    controlled = default_configuration()["material_rules"][0]
+    controlled_removed = client.request(
+        "DELETE",
+        f"/api/projects/{project_id}/frame-sections/sec_custom_material/materials/{controlled['id']}",
+        headers=h(),
+        json={
+            "expected_revision": removed.json()["project"]["project"]["revision"],
+            "confirm_dependencies": True,
+            "reason": "Remove controlled material from this section",
+        },
+    )
+    assert controlled_removed.status_code == 200, controlled_removed.text
+    controlled_section = controlled_removed.json()["project"]["takeoff_sections"][0]
+    assert controlled["id"] in controlled_section["excluded_material_rule_ids"]
+    assert controlled["id"] not in {
+        row["material_rule_id"] for row in controlled_section["material_results"]
+    }
+    assert controlled_removed.json()["removed"]["controlled"] is True
+
 
 def test_duplicate_export_backup_import_and_job_data(client):
     doc=client.post("/api/projects",headers=h(),json={"name":"Portable"}).json()["project"];pid=doc["project"]["id"]
@@ -467,7 +776,7 @@ def test_duplicate_export_backup_import_and_job_data(client):
     export=client.get(f"/api/projects/{pid}/export",headers=h()); assert export.status_code == 200
     assert export.headers["content-type"].startswith("application/json")
     assert client.post(f"/api/projects/{pid}/backup",headers=h(),json={}).status_code == 200
-    data=client.get(f"/api/projects/{pid}/job-data",headers=h()).json();assert data["version"] == "1.2.0"
+    data=client.get(f"/api/projects/{pid}/job-data",headers=h()).json();assert data["version"] == "1.3.0"
     imported=client.post("/api/projects/import",headers=h(),json={"project_document":json.loads(export.text),"as_duplicate":True})
     assert imported.status_code == 200 and imported.json()["project"]["project"]["id"] != pid
 
@@ -491,10 +800,13 @@ def test_master_data_add_and_search_returns_canonical_record(client):
 
     exact = client.get("/api/master-data/search", headers=h(), params={"kind": "organizations", "q": "STEINIER GLASS"})
     alias = client.get("/api/master-data/search", headers=h(), params={"kind": "organizations", "q": "steinier"})
+    initial_list = client.get("/api/master-data/search", headers=h(), params={"kind": "organizations", "q": "", "limit": 100})
     assert exact.status_code == alias.status_code == 200
     assert exact.json()["resolved_id"] == record["id"]
     assert exact.json()["results"][0]["display_name"] == "Steinier Glass"
     assert alias.json()["results"][0]["id"] == record["id"]
+    assert initial_list.status_code == 200
+    assert record["id"] in {row["id"] for row in initial_list.json()["results"]}
 
 
 def test_owner_search_returns_owner_organizations_with_fill_details(client):
@@ -670,8 +982,8 @@ def test_mileage_is_locked_except_for_scoped_administrator_session_override(clie
     relocked = client.put(f"/api/projects/{project_id}", headers={
         **h("Systems Administrator"), "X-Override-Token": token,
     }, json=body)
-    assert relocked.status_code == 403
-    assert relocked.json()["error"]["code"] == "override_required"
+    assert relocked.status_code == 422
+    assert relocked.json()["error"]["code"] == "calculated_field_locked"
 
 
 def test_cost_code_dependency_preview_does_not_mutate_then_confirmed_cascade_removes_working_detail(client):
@@ -752,15 +1064,15 @@ def test_import_migrates_supported_legacy_project_document_to_current_schema(cli
 
     assert imported.status_code == 200
     migrated = imported.json()["project"]
-    assert migrated["schema_version"] == SCHEMA_VERSION == "1.2.0"
-    assert migrated["interchange_version"] == "1.2.0"
+    assert migrated["schema_version"] == SCHEMA_VERSION == "1.3.0"
+    assert migrated["interchange_version"] == "1.3.0"
     assert migrated["project"]["project_type"] == "Training / Sandbox"
     assert migrated["project"]["project_type_status"] == "legacy_unsupported"
     assert migrated["project"]["contract_type"] == "Legacy negotiated contract"
     assert migrated["project"]["contract_type_status"] == "legacy_unsupported"
     assert migrated["project"]["bid_due_date"] == "2026-09-01"
     assert migrated["project"]["bid_due_date_status"] == "legacy_date_only"
-    assert migrated["schema_migrations"][-1]["id"] == "project-1.1.0-to-1.2.0"
+    assert migrated["schema_migrations"][-1]["id"] == "project-1.2.0-to-1.3.0"
 
 
 def test_bid_source_edit_requires_confirmation_and_updates_only_canonical_record(client):

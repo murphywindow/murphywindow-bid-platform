@@ -12,7 +12,7 @@ MAX_DECIMAL_PLACES = 6
 
 DECIMAL_PRECISION_CATEGORIES = {
     "currency": {"label": "Dollar values", "description": "Totals, costs, selling values, credits, tax, and monetary deltas.", "default": 2},
-    "currency_per_unit": {"label": "Currency per unit", "description": "$/SF, $/LF, and other cost or value rates per unit.", "default": 2},
+    "currency_per_unit": {"label": "Currency per unit", "description": "$/ft², $/LF, and other cost or value rates per unit.", "default": 2},
     "percentage": {"label": "Percentages", "description": "Markup, margin, tax, and allocation percentages.", "default": 2},
     "quantity": {"label": "Quantities / units", "description": "Counts and general estimating quantities that may be fractional.", "default": 2},
     "dimension": {"label": "Dimensions", "description": "Editable width, height, and other dimensional measurements.", "default": 2},

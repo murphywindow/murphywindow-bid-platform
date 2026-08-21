@@ -7,7 +7,7 @@ from app.alternates import (
 )
 from app.proposals import compare_snapshots, create_proposal_snapshot
 from app.schema import default_configuration, new_project
-from app.services import calculate_project
+from app.services import calculate_project, edit_bid_source
 
 
 def alternate_project():
@@ -137,6 +137,9 @@ def test_effective_frame_projection_preserves_section_structure_and_section_delt
     alternate = new_alternate(document, "Structured frame scenario")
     set_override(alternate, "frames", "frm_f1", "width_inches", 60, "66.25")
     set_override(alternate, "takeoff_sections", "sec_storefront", "material_overrides.mat_sealant.factor_override", None, ".137")
+    set_override(alternate, "takeoff_sections", "sec_storefront", "material_overrides.mat_sealant.source_override", None, "square_feet")
+    set_override(alternate, "takeoff_sections", "sec_storefront", "material_overrides.mat_sealant.operator_override", None, "divide")
+    set_override(alternate, "takeoff_sections", "sec_storefront", "material_overrides.mat_sealant.operand_override", None, "2")
     remove_record(alternate, "takeoff_sections", "sec_curtainwall")
     add_record(alternate, "takeoff_sections", {
         "id": "sec_alt_only", "definition_id": "frame-v1", "code": "08 40 00",
@@ -156,6 +159,9 @@ def test_effective_frame_projection_preserves_section_structure_and_section_delt
     inherited = projected[0]
     assert Decimal(inherited["lines"][0]["width_inches"]) == Decimal("66.25")
     assert Decimal(inherited["material_overrides"]["mat_sealant"]["factor_override"]) == Decimal(".137")
+    formula = next(row for row in inherited["material_results"] if row["material_rule_id"] == "mat_sealant")
+    assert formula["source"] == "square_feet" and formula["operator"] == "divide"
+    assert Decimal(formula["operand"]) == Decimal("2")
     added = projected[1]
     assert added["lines"][0]["id"] == "frm_alt_only"
     assert Decimal(added["lines"][0]["calculated"]["caulking_lf"]) != Decimal(
@@ -227,3 +233,48 @@ def test_proposal_snapshot_freezes_alternate_state_and_comparison_is_business_aw
     assert alternate_changes[0]["status"] == "changed"
     assert "F1 quantity reduced from 10 to 4" in alternate_changes[0]["scope_added"]
     assert "[object Object]" not in str(comparison)
+
+
+def test_base_and_alternate_line_markup_override_inheritance_and_clearing():
+    document, configuration = alternate_project()
+    alternate = new_alternate(document)
+    document["alternates"] = [alternate]
+    calculate_project(document, configuration)
+
+    edit_bid_source(document, configuration, "Estimator", "Estimator", {
+        "confirmed": True, "source_type": "equipment", "source_id": "eqp_lift",
+        "changes": {"markup_percent": ".31"}, "reason": "Base line authority",
+    })
+    inherited = next(row for row in alternate["calculated"]["effective_estimate"]["lines"]
+                     if row.get("source_key") == "equipment:eqp_lift")
+    assert inherited["markup_override_mode"] == "percentage"
+    assert Decimal(inherited["markup_override_value"]) == Decimal(".31")
+
+    edit_bid_source(document, configuration, "Estimator", "Estimator", {
+        "confirmed": True, "source_type": "equipment", "source_id": "eqp_lift",
+        "alternate_id": alternate["id"], "changes": {"markup_amount": "80"},
+        "reason": "Alternate line authority",
+    })
+    explicit = next(row for row in alternate["calculated"]["effective_estimate"]["lines"]
+                    if row.get("source_key") == "equipment:eqp_lift")
+    assert explicit["markup_override_mode"] == "amount"
+    assert explicit["markup_value"] == "80"
+
+    edit_bid_source(document, configuration, "Estimator", "Estimator", {
+        "confirmed": True, "source_type": "equipment", "source_id": "eqp_lift",
+        "changes": {"markup_percent": ""}, "reason": "Clear Base authority",
+    })
+    still_explicit = next(row for row in alternate["calculated"]["effective_estimate"]["lines"]
+                          if row.get("source_key") == "equipment:eqp_lift")
+    assert still_explicit["markup_override_mode"] == "amount"
+    assert still_explicit["markup_value"] == "80"
+
+    edit_bid_source(document, configuration, "Estimator", "Estimator", {
+        "confirmed": True, "source_type": "equipment", "source_id": "eqp_lift",
+        "alternate_id": alternate["id"], "changes": {"markup_amount": ""},
+        "reason": "Return Alternate to current Base inheritance",
+    })
+    reset = next(row for row in alternate["calculated"]["effective_estimate"]["lines"]
+                 if row.get("source_key") == "equipment:eqp_lift")
+    assert reset["markup_override_mode"] is None
+    assert reset["markup_rate"] == configuration["markup_defaults"]["base_product"]["rate"]

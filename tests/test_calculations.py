@@ -4,7 +4,7 @@ import pytest
 
 from app.calculations import (
     bond_amount, borrowed_lite_area, contingency, dollars_in_words,
-    effective_rate, equipment_extension, escalated_rate, frame_quantities, installation_material,
+    effective_rate, equipment_extension, escalated_rate, frame_quantities, installation_material, installation_material_quantity,
     labor_extension, labor_hours, labor_schedule, map_cost_code, markup, prevailing_wage,
     project_abbreviation, quote_adjustment, quote_cost, quote_unit_cost, sequential_pco,
     sov_values, split_variant, taxed_cost,
@@ -101,6 +101,17 @@ def test_installation_material_defaults_and_missing():
     assert installation_material(100, ".08", 12) == D("96.00")
     assert installation_material(None, 1, 12) is None
     assert installation_material(0, 1, 12) is None
+
+
+def test_installation_material_formula_supports_measured_basis_operators():
+    assert installation_material_quantity(100, "multiply", ".08") == D("8.00")
+    assert installation_material_quantity(100, "divide", 20) == D("5")
+    assert installation_material_quantity(100, "add", 5) == D("105")
+    assert installation_material_quantity(100, "subtract", 5) == D("95")
+    with pytest.raises(ValueError, match="divide by zero"):
+        installation_material_quantity(100, "divide", 0)
+    with pytest.raises(ValueError, match="negative quantity"):
+        installation_material_quantity(5, "subtract", 10)
 
 
 def test_equipment_extension_blank_zero_delivery_and_multiple_units():

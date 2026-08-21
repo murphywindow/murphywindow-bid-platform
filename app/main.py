@@ -8,6 +8,7 @@ import secrets
 import time
 import hashlib
 from copy import deepcopy
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from threading import Lock
 from typing import Any
@@ -23,10 +24,10 @@ from reportlab.platypus import KeepTogether, Paragraph, SimpleDocTemplate, Space
 from xml.sax.saxutils import escape
 
 from .api_models import (
-    AddSectionMaterialCommand, BidSourceEditCommand, CustomCostCodeCommand,
+    AddSectionMaterialCommand, AlternateNameCommand, BidSourceEditCommand, CustomCostCodeCommand,
     MasterRecordCommand, RemoveCostCodeCommand, RemoveSectionMaterialCommand,
 )
-from .alternates import add_record as add_alternate_record, new_alternate, remove_record as remove_alternate_record, reset_override as reset_alternate_override, set_override as set_alternate_override
+from .alternates import add_record as add_alternate_record, alternate_label, new_alternate, remove_record as remove_alternate_record, reset_override as reset_alternate_override, set_override as set_alternate_override
 from .calculations import dollars_in_words, normalize_code, split_variant
 from .custom_code_auth import verify_custom_code_credentials
 from .master_data import (
@@ -179,6 +180,40 @@ def apply_manual_quote_selection_changes(document: dict, changes: list[dict]) ->
         selection[code] = {"mode": "manual", "selected_quote_ids": selected, "source": "estimator_used_change"}
 
 
+def preserve_quote_selection_across_group_changes(document: dict, prior_document: dict) -> None:
+    """Move only deliberate Used provenance with a Quote's stable identity."""
+    prior_quotes = {str(row.get("id")): row for row in prior_document.get("quotes", []) if row.get("id")}
+    selection = document.setdefault("working_estimate", {}).setdefault("quote_selection_by_code", {})
+
+    def entry_for(code: Any) -> tuple[str, dict | None]:
+        target = normalize_code(split_variant(str(code or ""))[1])
+        for key, value in selection.items():
+            if normalize_code(split_variant(str(key or ""))[1]) == target:
+                return key, value if isinstance(value, dict) else {"mode": value, "selected_quote_ids": []}
+        return str(code or ""), None
+
+    for quote in document.get("quotes", []):
+        prior = prior_quotes.get(str(quote.get("id")))
+        if not prior or normalize_code(str(prior.get("code") or "")) == normalize_code(str(quote.get("code") or "")):
+            continue
+        old_key, old_entry = entry_for(prior.get("code"))
+        if not old_entry or str(old_entry.get("mode") or "").lower() not in {"manual", "legacy_manual"}:
+            continue
+        quote_id = str(quote.get("id"))
+        selected = set(map(str, old_entry.get("selected_quote_ids", [])))
+        was_selected = quote_id in selected
+        selected.discard(quote_id)
+        old_entry["selected_quote_ids"] = sorted(selected)
+        old_entry.setdefault("source", "preserved_manual_group_provenance")
+        selection[old_key] = old_entry
+        if was_selected:
+            new_key, new_entry = entry_for(quote.get("code"))
+            new_entry = new_entry or {"mode": "manual", "selected_quote_ids": [], "source": "quote_group_change"}
+            new_entry["mode"] = "manual"
+            new_entry["selected_quote_ids"] = sorted(set(map(str, new_entry.get("selected_quote_ids", []))) | {quote_id})
+            selection[new_key] = new_entry
+
+
 def apply_line_acknowledgement_metadata(document: dict, changes: list[dict], actor: str) -> None:
     for change in changes:
         path = str(change.get("path") or "")
@@ -204,6 +239,22 @@ def apply_line_acknowledgement_metadata(document: dict, changes: list[dict], act
         prefix = "missing_quantity" if acknowledgement == "missing_quantity" else "stale"
         row[f"{prefix}_acknowledged_at"] = now() if enabled else None
         row[f"{prefix}_acknowledged_by"] = actor if enabled else None
+
+
+def datapoint_audit_identity(document: dict, path: str, project_id: str) -> tuple[str, str, str]:
+    """Give commercially meaningful code changes specific audit identities."""
+    parts = path.split(".")
+    try:
+        if len(parts) == 3 and parts[0] == "quotes" and parts[2] == "code":
+            row = document.get("quotes", [])[int(parts[1])]
+            return "quote", str(row.get("id") or project_id), "quote_grouping_code_change"
+        if (len(parts) == 5 and parts[0] == "takeoff_sections" and
+                parts[2] == "additional_materials" and parts[4] == "cost_code"):
+            row = document.get("takeoff_sections", [])[int(parts[1])].get("additional_materials", [])[int(parts[3])]
+            return "installation_material", str(row.get("id") or project_id), "installation_material_actual_cost_code_change"
+    except (IndexError, TypeError, ValueError):
+        pass
+    return "project_datapoint", project_id, "data_point_change"
 
 
 def rate_override_audit_context(document: dict, config: dict, path: str) -> dict | None:
@@ -298,6 +349,82 @@ def load(project_id: str) -> tuple[dict, dict]:
     doc, _ = store.load_project(project_id)
     config = store.load_configuration(doc["project"]["configuration_id"])
     return doc, config
+
+
+def _commercial_decimal(value: Any) -> Decimal | None:
+    if value is None or value == "":
+        return None
+    try:
+        return Decimal(str(value))
+    except (InvalidOperation, TypeError, ValueError):
+        return None
+
+
+def _commercial_impacts(before: dict, after: dict) -> list[dict[str, Any]]:
+    """List exact dollar and square-foot changes without applying display rounding."""
+    impacts: list[dict[str, Any]] = []
+
+    def add(scope: str, label: str, value_type: str, prior: Any, current: Any) -> None:
+        old, new = _commercial_decimal(prior), _commercial_decimal(current)
+        if old == new:
+            return
+        impacts.append({
+            "scope": scope, "label": label, "value_type": value_type,
+            "before": None if old is None else format(old, "f"),
+            "after": None if new is None else format(new, "f"),
+            "delta": None if old is None or new is None else format(new - old, "f"),
+        })
+
+    before_estimate, after_estimate = before.get("working_estimate", {}), after.get("working_estimate", {})
+    before_totals, after_totals = before_estimate.get("totals", {}), after_estimate.get("totals", {})
+    for key, label, value_type in (
+        ("direct_cost", "Direct Cost", "currency"),
+        ("markup_profit", "Margin Dollars", "currency"),
+        ("selling_value", "Selling Value", "currency"),
+        ("contingency", "Contingency", "currency"),
+        ("bond", "Bond", "currency"),
+        ("square_feet", "Total ft²", "square_footage"),
+        ("price_per_square_foot", "Value/ft²", "currency_per_unit"),
+    ):
+        add("Bid total", label, value_type, before_totals.get(key), after_totals.get(key))
+
+    def summaries(document: dict) -> dict[str, dict]:
+        return {str(row.get("code") or row.get("id") or "Unassigned"): row for row in document.get("working_estimate", {}).get("cost_code_summaries", [])}
+
+    before_summaries, after_summaries = summaries(before), summaries(after)
+    for code in sorted(set(before_summaries) | set(after_summaries)):
+        old, new = before_summaries.get(code, {}), after_summaries.get(code, {})
+        for keys, label, value_type in (
+            (("direct_cost", "cost"), "Direct Cost", "currency"),
+            (("margin_dollars",), "Margin Dollars", "currency"),
+            (("selling_value", "value"), "Selling Value", "currency"),
+            (("total_square_feet", "square_feet"), "Total ft²", "square_footage"),
+            (("dollars_per_square_foot",), "Value/ft²", "currency_per_unit"),
+        ):
+            prior = next((old.get(key) for key in keys if old.get(key) is not None), None)
+            current = next((new.get(key) for key in keys if new.get(key) is not None), None)
+            add(f"Cost Code {code}", label, value_type, prior, current)
+
+    before_alternates = {str(row.get("id")): row for row in before.get("alternates", [])}
+    after_alternates = {str(row.get("id")): row for row in after.get("alternates", [])}
+    for alternate_id in sorted(set(before_alternates) | set(after_alternates)):
+        old_row, new_row = before_alternates.get(alternate_id, {}), after_alternates.get(alternate_id, {})
+        old, new = old_row.get("calculated", {}), new_row.get("calculated", {})
+        scope = f"{new_row.get('key') or old_row.get('key') or 'Alternate'} — {new_row.get('name') or old_row.get('name') or 'Alternate'}"
+        add(scope, "Direct Cost Delta", "currency", old.get("direct_cost_delta"), new.get("direct_cost_delta"))
+        add(scope, "Selling Value Delta", "currency", old.get("selling_value_delta"), new.get("selling_value_delta"))
+
+    return impacts
+
+
+def _configuration_candidate(source: dict, supplied: Any) -> dict:
+    candidate = deepcopy(supplied if isinstance(supplied, dict) else source)
+    settings = candidate.setdefault("application_settings", {})
+    settings["decimal_precision"] = validate_decimal_precision(settings.get("decimal_precision"))
+    if "csi_references" not in candidate:
+        candidate["csi_references"] = deepcopy(source.get("csi_references", []))
+        candidate["cost_code_reference"] = deepcopy(source.get("cost_code_reference"))
+    return candidate
 
 
 def save_command(doc: dict, expected_revision: int, actor: str, role: str, operation: str) -> dict:
@@ -600,7 +727,7 @@ def create_frame_section_material(project_id: str, section_id: str, payload: Add
     try:
         require(role, "edit_estimate")
         document, configuration = load(project_id)
-        material = add_section_material(document, section_id, payload.model_dump())
+        material = add_section_material(document, section_id, payload.model_dump(), configuration)
         calculate_project(document, configuration)
         audit(document, actor, role, "frame_installation_material", material["id"], "material_add", None,
               deepcopy(material), "Added project-specific Frame Spec Section Installation Material")
@@ -619,7 +746,8 @@ def delete_frame_section_material(project_id: str, section_id: str, material_id:
         require(role, "edit_estimate")
         document, configuration = load(project_id)
         result = remove_section_material(document, section_id, material_id,
-                                         confirm_dependencies=payload.confirm_dependencies)
+                                         confirm_dependencies=payload.confirm_dependencies,
+                                         controlled_materials=configuration.get("material_rules", []))
         calculate_project(document, configuration)
         audit(document, actor, role, "frame_installation_material", material_id, "material_remove",
               result["material"], None, payload.reason)
@@ -672,6 +800,35 @@ def change_alternate(project_id: str, alternate_id: str, payload: dict = Body(..
         fail(exc)
 
 
+@app.patch("/api/projects/{project_id}/alternates/{alternate_id}/name")
+def rename_alternate(project_id: str, alternate_id: str, command: AlternateNameCommand,
+                     actor_role: tuple[str, str] = __import__("fastapi").Depends(identity)) -> dict:
+    actor, role = actor_role
+    try:
+        require(role, "edit_estimate")
+        document, configuration = load(project_id)
+        alternate = next((row for row in document.get("alternates", []) if str(row.get("id")) == alternate_id), None)
+        if not alternate:
+            raise DomainError("Alternate was not found.", "not_found")
+        prior = str(alternate.get("name") or "")
+        current = str(command.name or "").strip()
+        alternate["name"] = current
+        calculate_project(document, configuration)
+        operation = "alternate_name_cleared" if prior and not current else (
+            "alternate_name_set" if not prior and current else "alternate_name_changed"
+        )
+        correlation = uid("cor")
+        audit(document, actor, role, "alternate", alternate_id, operation,
+              {"name": prior}, {"name": current}, command.reason, correlation)
+        bump_bid_version(document, "alternate_name_change")
+        saved = store.save_project(document, command.expected_revision)
+        return {"project": redact(saved, role), "alternate": deepcopy(next(
+            row for row in saved["alternates"] if str(row.get("id")) == alternate_id
+        )), "correlation_id": correlation}
+    except Exception as exc:
+        fail(exc)
+
+
 @app.post("/api/session-overrides")
 def create_session_override(payload: dict = Body(...), actor_role: tuple[str, str] = __import__("fastapi").Depends(identity)) -> dict:
     actor, role = actor_role
@@ -718,14 +875,7 @@ def save_project(project_id: str, payload: dict = Body(...), x_override_token: s
         override_active = role == "Systems Administrator" and _valid_override_token(
             x_override_token, actor=actor, project_id=project_id, page="project"
         )
-        if role == "Systems Administrator":
-            if not override_active:
-                raise DomainError("Administrator editing requires an active page override.", "override_required")
-            changed_paths = {str(change.get("path") or "") for change in payload.get("changes") or []}
-            if changed_paths - {"project.miles_from_rogers"}:
-                raise DomainError("This page override permits only Drive miles from Rogers.", "invalid_override_field")
-        else:
-            require(role, "edit_estimate")
+        require(role, "edit_estimate")
         if incoming["project"].get("miles_from_rogers") != current["project"].get("miles_from_rogers") and not override_active:
             raise DomainError("Drive miles are calculated from the selected address and are locked.", "calculated_field_locked")
         # Client editing never receives authority to mutate immutable/lifecycle collections.
@@ -756,6 +906,7 @@ def save_project(project_id: str, payload: dict = Body(...), x_override_token: s
         if len(changes) > 10000:
             raise DomainError("A single save cannot record more than 10,000 datapoint changes.")
         apply_manual_quote_selection_changes(incoming, changes)
+        preserve_quote_selection_across_group_changes(incoming, current)
         if changes and incoming.get("working_branch"):
             incoming["working_branch"]["has_unpublished_changes"] = True
         apply_line_acknowledgement_metadata(incoming, changes, actor)
@@ -771,7 +922,8 @@ def save_project(project_id: str, payload: dict = Body(...), x_override_token: s
                 rate_context = rate_override_audit_context(incoming, config, path)
                 if rate_context is not None:
                     new_value["rate_context"] = rate_context
-                audit(incoming, actor, role, "project_datapoint", project_id, "data_point_change",
+                entity_type, entity_id, operation = datapoint_audit_identity(incoming, path, project_id)
+                audit(incoming, actor, role, entity_type, entity_id, operation,
                       prior_value, new_value,
                       str(change.get("reason") or "Datapoint modified")[:1000], correlation)
         else:
@@ -1083,6 +1235,193 @@ def _proposal_index(document: dict[str, Any]) -> list[dict[str, Any]]:
     return [deepcopy(item) for item in sorted(document.get("proposal_history", []), key=lambda row: int(row.get("sequence", 0)), reverse=True)]
 
 
+def _render_bid_review_pdf(document: dict[str, Any], configuration: dict[str, Any], alternate_id: str | None = None) -> bytes:
+    """Render a dense, single-sheet estimator review of the effective bid state."""
+    calculate_project(document, configuration)
+    alternate = next((row for row in document.get("alternates", []) if str(row.get("id")) == str(alternate_id)), None)
+    if alternate_id and not alternate:
+        raise DomainError("The requested Alternate does not exist.", "not_found")
+    estimate = alternate.get("calculated", {}).get("effective_estimate", {}) if alternate else document.get("working_estimate", {})
+    frame_sections = alternate.get("calculated", {}).get("effective_takeoff_sections", []) if alternate else document.get("takeoff_sections", [])
+    totals, project = estimate.get("totals", {}), document.get("project", {})
+
+    def plain(value: Any) -> str:
+        if value is None:
+            return ""
+        if isinstance(value, bool):
+            return "Yes" if value else "No"
+        return str(value).replace("\u2014", "-").replace("\u2013", "-").replace("\u2011", "-")
+
+    def currency(value: Any) -> str:
+        try:
+            return f"${float(value or 0):,.2f}"
+        except (TypeError, ValueError):
+            return plain(value)
+
+    def numeric(value: Any, digits: int = 2) -> str:
+        if value in (None, ""):
+            return ""
+        try:
+            return f"{float(value):,.{digits}f}"
+        except (TypeError, ValueError):
+            return plain(value)
+
+    def percentage(value: Any) -> str:
+        try:
+            return f"{float(value or 0) * 100:,.2f}%"
+        except (TypeError, ValueError):
+            return plain(value)
+
+    def markup_percentage(row: dict[str, Any]) -> str:
+        direct = float(row.get("direct_cost", row.get("cost", 0)) or 0)
+        selling = float(row.get("selling_value", row.get("value", 0)) or 0)
+        return percentage((selling - direct) / direct) if direct else ""
+
+    frame_count = sum(len(section.get("lines", [])) for section in frame_sections)
+    material_count = sum(len(section.get("material_results", [])) for section in frame_sections)
+    line_count = len(estimate.get("lines", []))
+    input_count = sum(len(document.get(key, [])) for key in ("cost_codes", "quotes", "doors", "equipment", "borrowed_lites", "labor_estimates", "travel_estimates"))
+    estimated_rows = 34 + frame_count + material_count + line_count + input_count + len(estimate.get("cost_code_summaries", [])) + len(estimate.get("validation", []))
+    if estimated_rows < 120:
+        sheet_inches = 4 + estimated_rows * .11
+    elif estimated_rows < 700:
+        sheet_inches = 6 + estimated_rows * .16
+    else:
+        sheet_inches = 8 + estimated_rows * .18
+    page_height = max(11 * inch, min(190 * inch, sheet_inches * inch))
+    page_width = max(36 * inch, min(198 * inch, page_height * 1.25))
+    pagesize = (page_width, page_height)
+    stream = io.BytesIO()
+    pdf = SimpleDocTemplate(stream, pagesize=pagesize, leftMargin=.35 * inch, rightMargin=.35 * inch,
+                            topMargin=.35 * inch, bottomMargin=.35 * inch,
+                            title=f"Bid Review - {project.get('name', '')}", author="Murphy Window")
+    usable = page_width - pdf.leftMargin - pdf.rightMargin
+    dark, accent, muted, rule, wash = (colors.HexColor(value) for value in ("#1F3430", "#2D6756", "#66736F", "#BCC8C4", "#EEF3F1"))
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle("BidReviewTitle", parent=styles["Title"], fontName="Helvetica-Bold", fontSize=17, leading=19, textColor=dark, alignment=0)
+    meta_style = ParagraphStyle("BidReviewMeta", parent=styles["BodyText"], fontName="Helvetica", fontSize=6.2, leading=7.4, textColor=muted)
+    body_style = ParagraphStyle("BidReviewBody", parent=meta_style, textColor=dark)
+    body_right = ParagraphStyle("BidReviewBodyRight", parent=body_style, alignment=2)
+    header_style = ParagraphStyle("BidReviewHeader", parent=body_style, fontName="Helvetica-Bold", fontSize=6, leading=7, textColor=colors.white)
+    section_style = ParagraphStyle("BidReviewSection", parent=body_style, fontName="Helvetica-Bold", fontSize=8, leading=9, textColor=accent, spaceBefore=3, spaceAfter=2)
+
+    def paragraph(value: Any, style: ParagraphStyle = body_style) -> Paragraph:
+        return Paragraph(escape(plain(value)).replace("\n", "<br/>"), style)
+
+    def table(title: str, headings: list[str], rows: list[list[Any]], widths: list[float] | None = None) -> list[Any]:
+        if not rows:
+            return []
+        normalized = [[paragraph(value, header_style) for value in headings]] + [
+            [paragraph(value, body_right if index >= max(2, len(headings) - 5) else body_style) for index, value in enumerate(row)]
+            for row in rows
+        ]
+        column_widths = [usable * value for value in widths] if widths else [usable / len(headings)] * len(headings)
+        grid = Table(normalized, colWidths=column_widths, repeatRows=1, hAlign="LEFT")
+        grid.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), accent), ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("GRID", (0, 0), (-1, -1), .25, rule), ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 2.2), ("RIGHTPADDING", (0, 0), (-1, -1), 2.2),
+            ("TOPPADDING", (0, 0), (-1, -1), 1.5), ("BOTTOMPADDING", (0, 0), (-1, -1), 1.5),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, wash]),
+        ]))
+        return [paragraph(title, section_style), grid, Spacer(1, 3)]
+
+    story: list[Any] = []
+    scenario = alternate_label(alternate) if alternate else "Base"
+    story.append(Table([
+        [paragraph("MURPHY WINDOW - BID REVIEW", title_style), paragraph(f"{scenario}\nGenerated {now()}\nBid version {project.get('bid_version', {}).get('display', '')}", meta_style)],
+        [paragraph(f"{project.get('name', '')} | {project.get('project_number', '')} | {project.get('address', '')}", body_style),
+         paragraph(f"Configuration {configuration.get('id', '')} v{configuration.get('version', '')}", meta_style)],
+    ], colWidths=[usable * .72, usable * .28], style=TableStyle([("ALIGN", (1, 0), (1, -1), "RIGHT"), ("VALIGN", (0, 0), (-1, -1), "TOP"), ("LINEBELOW", (0, -1), (-1, -1), .8, accent), ("BOTTOMPADDING", (0, -1), (-1, -1), 5)])))
+    story.extend(table("Commercial Summary", ["Direct Cost", "Markup", "Selling Value", "Margin", "Total ft2", "$/ft2", "Tax", "Contingency", "Bond"], [[
+        currency(totals.get("direct_cost")), currency(totals.get("markup_profit")), currency(totals.get("selling_value")),
+        percentage(totals.get("margin_percentage")), numeric(totals.get("square_feet")), currency(totals.get("price_per_square_foot")),
+        currency(totals.get("tax")), currency(totals.get("contingency")), currency(totals.get("bond")),
+    ]], [.12, .11, .13, .09, .10, .10, .11, .12, .12]))
+    markup = estimate.get("markup_overrides", {})
+    settings = configuration.get("application_settings", {})
+    story.extend(table("Effective Pricing Configuration", ["Configuration", "Base Product", "Installation Material", "Labor", "Tax Rate", "Tax Status", "Contingency", "Bond", "Wage", "Precision"], [[
+        f"{configuration.get('id', '')} / v{configuration.get('version', '')}", percentage(markup.get("base_product")),
+        percentage(markup.get("installation_material", markup.get("base_product"))), percentage(markup.get("labor", markup.get("LAF"))),
+        percentage(estimate.get("tax_rate")), project.get("tax_status", ""), plain(estimate.get("contingency_override") if estimate.get("contingency_override") is not None else estimate.get("contingency_enabled")),
+        plain(estimate.get("bond_override") if estimate.get("bond_override") is not None else estimate.get("bond_enabled")), project.get("wage_type", ""),
+        json.dumps(settings.get("decimal_precision", {}), sort_keys=True, separators=(",", ":")),
+    ]], [.12, .09, .11, .08, .08, .09, .10, .09, .08, .16]))
+
+    if alternate:
+        calculated = alternate.get("calculated", {})
+        story.extend(table("Alternate Delta", ["Alternate", "Classification", "Direct Cost Delta", "Selling Value Delta", "Scope of Change"], [[
+            alternate_label(alternate), calculated.get("classification", ""), currency(calculated.get("direct_cost_delta")), currency(calculated.get("selling_value_delta")),
+            "; ".join(f"{group.get('area', '')}: {', '.join(group.get('changes', []))}" for group in calculated.get("scope_of_change", [])),
+        ]], [.11, .10, .13, .13, .53]))
+
+    summaries = estimate.get("cost_code_summaries", [])
+    story.extend(table("Cost Code Summary", ["Code", "Description", "Direct Cost", "Markup %", "Markup $", "Selling Value", "ft2", "$/ft2"], [[
+        row.get("code", ""), row.get("description", ""), currency(row.get("direct_cost", row.get("cost"))),
+        markup_percentage(row),
+        currency(float(row.get("selling_value", row.get("value", 0)) or 0) - float(row.get("direct_cost", row.get("cost", 0)) or 0)),
+        currency(row.get("selling_value", row.get("value"))), numeric(row.get("total_square_feet", row.get("square_feet"))), currency(row.get("dollars_per_square_foot")),
+    ] for row in summaries if any((row.get("direct_cost", row.get("cost")), row.get("selling_value", row.get("value")), row.get("total_square_feet", row.get("square_feet"))))], [.10, .28, .11, .09, .10, .12, .09, .11]))
+
+    story.extend(table("Bid Source Lineage", ["Code", "Actual Code", "Category", "Description", "Source", "Direct Cost", "Markup %", "Selling Value"], [[
+        row.get("code", ""), row.get("actual_cost_code", ""), row.get("category", ""), row.get("description", ""),
+        row.get("source_key", row.get("id", "")), currency(row.get("direct_cost")), percentage(row.get("markup_rate")), currency(row.get("selling_value")),
+    ] for row in estimate.get("lines", [])], [.08, .08, .10, .28, .17, .10, .09, .10]))
+
+    story.extend(table("Scope and Cost Codes", ["Code", "Description", "Actual / MWD Code", "MWD Description", "Deduct", "Status"], [[
+        row.get("code", ""), row.get("description", ""), row.get("mwd_code", ""), row.get("mwd_description", ""), plain(row.get("deduct")), row.get("status", ""),
+    ] for row in document.get("cost_codes", [])], [.13, .30, .14, .27, .07, .09]))
+    story.extend(table("Quotes", ["Code", "Vendor", "Date", "Price", "ft2", "Credit", "Surcharge", "Tax Included", "Used", "Notes"], [[
+        row.get("code", ""), row.get("vendor", ""), row.get("date", ""), currency(row.get("price")), numeric(row.get("square_feet")),
+        f"{row.get('credit_type', '')} {numeric(row.get('credit_value'))}", f"{row.get('surcharge_type', '')} {numeric(row.get('surcharge_value'))}",
+        plain(row.get("tax_included")), plain(row.get("used")), row.get("notes", ""),
+    ] for row in document.get("quotes", [])], [.08, .13, .08, .09, .07, .10, .10, .09, .07, .19]))
+
+    frame_rows, material_rows = [], []
+    for section in frame_sections:
+        for row in section.get("lines", []):
+            calculated = row.get("calculated", {})
+            frame_rows.append([section.get("code", ""), row.get("mark", ""), numeric(row.get("quantity")), numeric(row.get("width_inches")), numeric(row.get("height_inches")),
+                               numeric(calculated.get("square_feet")), numeric(calculated.get("perimeter_lf")), numeric(row.get("caulking_passes")), numeric(calculated.get("caulking_lf")),
+                               row.get("head", ""), row.get("sill", ""), row.get("jamb", ""), row.get("type", ""), row.get("material", ""), row.get("finish", ""), row.get("notes", "")])
+        overrides = section.get("material_overrides", {})
+        for result in section.get("material_results", []):
+            override = overrides.get(str(result.get("material_rule_id")), overrides.get(result.get("material_rule_id"), {}))
+            material_rows.append([section.get("code", ""), result.get("name", ""), result.get("source", ""), result.get("operator", ""), numeric(result.get("operand")),
+                                  numeric(result.get("calculated_quantity")), result.get("unit", ""), currency(result.get("effective_rate")), currency(result.get("pre_tax_cost")),
+                                  "Yes" if override else "No"])
+    story.extend(table("Frame Takeoff", ["Code", "Mark", "Qty", "Width", "Height", "ft2", "Perim.", "Passes", "Caulk LF", "Head", "Sill", "Jamb", "Type", "Material", "Finish", "Notes"], frame_rows,
+                       [.055, .045, .04, .045, .045, .045, .05, .045, .05, .07, .06, .07, .07, .09, .075, .105]))
+    story.extend(table("Frame Installation Materials", ["Code", "Material", "Basis", "Operator", "Factor", "Quantity", "Unit", "Unit Rate", "Extended Cost", "Override"], material_rows,
+                       [.08, .20, .10, .07, .07, .09, .08, .10, .12, .09]))
+
+    record_specs = [
+        ("Doors and Hardware", "doors", ["code", "door_number", "description", "leaf_quantity", "width", "height", "hardware_set", "notes"]),
+        ("Equipment", "equipment", ["code", "description", "quantity", "duration", "duration_unit", "rate", "delivery", "notes"]),
+        ("Borrowed Lites", "borrowed_lites", ["code", "mark", "description", "quantity", "width_inches", "height_inches", "rate", "notes"]),
+        ("Labor", "labor_estimates", ["code", "labor_type", "description", "man_hours", "crew_size", "rate_override", "override_reason", "notes"]),
+        ("Travel", "travel_estimates", ["code", "description", "enabled", "quantity", "rate", "notes"]),
+    ]
+    for section_title, key, fields in record_specs:
+        story.extend(table(section_title, [field.replace("_", " ").title() for field in fields], [[plain(row.get(field)) for field in fields] for row in document.get(key, [])]))
+    story.extend(table("Validation", ["Severity", "Code", "Entity", "Message", "Acknowledged"], [[
+        "Blocking" if row.get("blocking") else "Advisory", row.get("code", ""), f"{row.get('entity_type', '')} {row.get('entity_id', '')}", row.get("message", ""), plain(row.get("acknowledged")),
+    ] for row in estimate.get("validation", [])], [.08, .12, .18, .54, .08]))
+
+    def footer(canvas: Any, doc: Any) -> None:
+        canvas.saveState()
+        canvas.setStrokeColor(rule)
+        canvas.line(pdf.leftMargin, .22 * inch, page_width - pdf.rightMargin, .22 * inch)
+        canvas.setFont("Helvetica", 5.5)
+        canvas.setFillColor(muted)
+        canvas.drawString(pdf.leftMargin, .10 * inch, f"{project.get('project_number', '')} | {scenario} | Configuration {configuration.get('id', '')}")
+        canvas.drawRightString(page_width - pdf.rightMargin, .10 * inch, f"Single-sheet estimator review | Page {doc.page}")
+        canvas.restoreState()
+
+    pdf.build(story, onFirstPage=footer, onLaterPages=footer)
+    return stream.getvalue()
+
+
 def _render_frozen_proposal_pdf(artifact: dict[str, Any]) -> bytes:
     """Render once from the frozen artifact body; committed bytes are authoritative."""
     stream = io.BytesIO()
@@ -1186,7 +1525,7 @@ def _render_frozen_proposal_pdf(artifact: dict[str, Any]) -> bytes:
         for alternate in alternates:
             delta = float(alternate.get("selling_value_delta") or 0)
             classification = "ADD" if delta > 0 else "DEDUCT" if delta < 0 else "NO CHANGE"
-            title = f"{alternate.get('key') or 'ALT'} - {alternate.get('name') or 'Alternate'}"
+            title = alternate.get("label") or alternate_label(alternate)
             descriptions = []
             if alternate.get("customer_description"):
                 descriptions.append(str(alternate["customer_description"]))
@@ -1258,7 +1597,8 @@ def preview_working_proposal(project_id: str, actor_role: tuple[str, str] = __im
             "amount": amount, "written_amount": dollars_in_words(amount), "scope": project.get("proposal_scope", ""),
             "inclusions": project.get("proposal_inclusions", ""), "exclusions": project.get("proposal_exclusions", ""),
             "additional_information": project.get("additional_information", ""), "snapshot_fingerprint": "NOT CREATED",
-            "alternates": [{"key": row.get("key"), "name": row.get("name"), "customer_description": row.get("customer_description"),
+            "alternates": [{"key": row.get("key"), "sequence": row.get("sequence"), "name": row.get("name"),
+                            "label": alternate_label(row), "customer_description": row.get("customer_description"),
                             "scope_of_change": row.get("calculated", {}).get("scope_of_change", []),
                             "classification": row.get("calculated", {}).get("classification"),
                             "selling_value_delta": row.get("calculated", {}).get("selling_value_delta")}
@@ -1267,6 +1607,23 @@ def preview_working_proposal(project_id: str, actor_role: tuple[str, str] = __im
         return Response(_render_frozen_proposal_pdf(artifact), media_type="application/pdf", headers={
             "Content-Disposition": 'inline; filename="proposal-current-working-preview.pdf"',
             "X-Proposal-Preview": "current-working", "Cache-Control": "no-store",
+        })
+    except Exception as exc:
+        fail(exc)
+
+
+@app.get("/api/projects/{project_id}/bid-review.pdf")
+def bid_review_pdf(project_id: str, alternate_id: str | None = None, download: bool = False,
+                   actor_role: tuple[str, str] = __import__("fastapi").Depends(identity)) -> Response:
+    """Export the current Base or Alternate as one dense estimator-review sheet."""
+    try:
+        document, configuration = load(project_id)
+        content = _render_bid_review_pdf(deepcopy(document), configuration, alternate_id)
+        scenario = "base" if not alternate_id else f"alternate-{alternate_id}"
+        disposition = "attachment" if download else "inline"
+        return Response(content, media_type="application/pdf", headers={
+            "Content-Disposition": f'{disposition}; filename="bid-review-{scenario}.pdf"',
+            "Cache-Control": "no-store", "X-Bid-Review": scenario,
         })
     except Exception as exc:
         fail(exc)
@@ -1545,24 +1902,90 @@ def configurations(actor_role: tuple[str, str] = __import__("fastapi").Depends(i
     return {"configurations": values}
 
 
+@app.post("/api/projects/{project_id}/commercial-impact")
+def preview_commercial_impact(project_id: str, payload: dict = Body(...),
+                              actor_role: tuple[str, str] = __import__("fastapi").Depends(identity)) -> dict:
+    actor, role = actor_role
+    try:
+        current, current_configuration = load(project_id)
+        expected = int(payload.get("expected_revision", current["project"].get("revision", 0)))
+        if expected != int(current["project"].get("revision", 0)):
+            raise ConflictError(
+                f"Concurrent edit detected: expected revision {expected}, current revision {current['project'].get('revision', 0)}."
+            )
+        candidate_project = strip_ui_working_rows(deepcopy(payload.get("project", current)))
+        if candidate_project.get("project", {}).get("id") != project_id:
+            raise DomainError("Project identifier does not match route.")
+        supplied_configuration = payload.get("configuration")
+        if supplied_configuration is not None:
+            require(role, "configuration")
+            candidate_configuration = _configuration_candidate(current_configuration, supplied_configuration)
+        else:
+            require(role, "edit_estimate")
+            candidate_configuration = current_configuration
+            validate_project_inputs(candidate_project, current, current_configuration)
+        baseline = calculate_project(deepcopy(current), current_configuration)
+        projected = calculate_project(candidate_project, candidate_configuration)
+        impacts = _commercial_impacts(baseline, projected)
+        return {
+            "project_id": project_id, "project_revision": current["project"].get("revision"),
+            "requires_confirmation": bool(impacts), "impacts": impacts,
+            "projected_totals": deepcopy(projected.get("working_estimate", {}).get("totals", {})),
+            "previewed_by": actor,
+        }
+    except Exception as exc:
+        fail(exc)
+
+
 @app.post("/api/configurations")
 def create_configuration(payload: dict = Body(...), actor_role: tuple[str, str] = __import__("fastapi").Depends(identity)) -> dict:
     actor, role = actor_role
     try:
         require(role, "configuration")
         source = store.load_configuration(payload.get("source_id", CONFIG_VERSION))
-        config = deepcopy(payload.get("configuration", source))
-        settings = config.setdefault("application_settings", {})
-        settings["decimal_precision"] = validate_decimal_precision(settings.get("decimal_precision"))
-        if "csi_references" not in config:
-            config["csi_references"] = deepcopy(source.get("csi_references", []))
-            config["cost_code_reference"] = deepcopy(source.get("cost_code_reference"))
+        config = _configuration_candidate(source, payload.get("configuration", source))
+        project_id = payload.get("project_id")
+        apply_to_project = bool(payload.get("apply_to_project") and project_id)
+        current_project = current_configuration = projected_project = None
+        impacts: list[dict[str, Any]] = []
+        expected_revision: int | None = None
+        if apply_to_project:
+            current_project, current_configuration = load(str(project_id))
+            expected_revision = int(payload.get("expected_project_revision", current_project["project"].get("revision", 0)))
+            if expected_revision != int(current_project["project"].get("revision", 0)):
+                raise ConflictError(
+                    f"Concurrent edit detected: expected revision {expected_revision}, current revision {current_project['project'].get('revision', 0)}."
+                )
+            baseline = calculate_project(deepcopy(current_project), current_configuration)
+            projected_project = calculate_project(deepcopy(current_project), config)
+            impacts = _commercial_impacts(baseline, projected_project)
+            if impacts and not payload.get("confirmed_commercial_impact"):
+                raise DomainError(
+                    "Configuration changes dollar or square-foot values and requires confirmation.",
+                    "commercial_impact_confirmation_required", impacts,
+                )
         config["id"] = uid("cfg")
         config["version"] = max((int(c.get("version", 0)) for c in store.list_configurations()), default=0) + 1
-        config["created_at"] = now(); config["created_by"] = actor; config["status"] = "draft"
+        config["created_at"] = now(); config["created_by"] = actor; config["status"] = "active" if apply_to_project else "draft"
         config.setdefault("audit_events", []).append({"id": uid("aud"), "timestamp": now(), "actor": actor, "role": role, "operation": "configuration_create", "reason": payload.get("reason", "New effective-dated configuration")})
         store.save_configuration(config)
-        return {"configuration": config}
+        saved_project = None
+        if apply_to_project and projected_project is not None and current_project is not None and expected_revision is not None:
+            prior_configuration_id = current_project["project"].get("configuration_id")
+            projected_project["project"]["configuration_id"] = config["id"]
+            projected_project.setdefault("configuration_lineage", []).append({
+                "configuration_id": config["id"], "adopted_at": now(), "actor": actor,
+                "source_configuration_id": prior_configuration_id,
+            })
+            calculate_project(projected_project, config)
+            audit(
+                projected_project, actor, role, "project", str(project_id), "configuration_autosaved_and_adopted",
+                {"configuration_id": prior_configuration_id},
+                {"configuration_id": config["id"], "commercial_impacts": impacts},
+                payload.get("reason", "Administration configuration autosave"),
+            )
+            saved_project = store.save_project(projected_project, expected_revision)
+        return {"configuration": config, "project": None if saved_project is None else redact(saved_project, role), "impacts": impacts}
     except Exception as exc:
         fail(exc)
 

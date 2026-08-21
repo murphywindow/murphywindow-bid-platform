@@ -19,6 +19,8 @@ Cost Codes, Quotes, Frames, Doors, Equipment, Borrowed Lites, and Labor use one 
 
 Each table presents exactly one browser-only trailing working row. It becomes a canonical record only after meaningful input, then a new working row appears. Working rows are excluded from persistence, calculations, audit, and bid-version increments.
 
+Live data tables use one compact visual language and browser-only sorting. A header cycles ascending, descending, then canonical order; Shift-click composes a stable multi-column sort. Blank values remain after populated values, working rows remain last, and sorting never changes persisted row order, quote selection, audit, or Bid version. Hierarchical Bid rows move as complete Cost Code groups so source details and subtotals cannot detach.
+
 A rectangular tab/newline clipboard paste begins at the focused editable cell. The controller uses each table's explicit editable-column map and skips calculated/read-only columns. Valid cells are accepted together; invalid controlled values remain in the pending browser/project validation buffer and do not become authoritative codes. One paste correlation identifier ties its field-level audit records together.
 
 Autosave patches the saved revision and calculated output into the existing interface. It does not replace the page or whole table, so focused input, selection, scroll, and expansion state survive a save.
@@ -29,7 +31,7 @@ Ordinary cost codes resolve against the pinned controlled reference. An exceptio
 
 Removing a referenced code is a deliberate cascade command. A dry run returns dependencies; declining preserves everything. Confirming removes active dependent detail, audits affected identities under one correlation identifier, and recalculates. Immutable submitted and awarded snapshots are never rewritten.
 
-Quote grouping is the full normalized Cost Code/ALT code. Historical `group_id` is retained as dormant migration evidence. Each code group has its own UI-only working quote row.
+Quote grouping is the full normalized Cost Code. Historical `group_id` is retained as dormant migration evidence. Base Quotes are presented in one continuous table with Cost Code as the first editable column and one trailing working row for the whole table. Changing a Quote's grouping code preserves stable identity and manual Used provenance; it does not depend on the current visual sort.
 
 Quote adjustment order is:
 
@@ -49,6 +51,8 @@ Quote square footage is editable. A blank value defaults from combined matching 
 Frame commercial formulas and dimension normalization remain unchanged. Frame and Door quantities have no automatic value. A meaningful row with blank or zero quantity is warning/blocking unless that specific line has a retained, audited acknowledgement; acknowledged rows remain visibly exceptional.
 
 Installation-material and Labor rate records retain controlled rate, project override, effective rate, configuration/source identity, and override provenance separately. A project override never edits the pinned configuration. Clearing it returns to the current applicable controlled rate.
+
+A Frame Spec Section Cost Code is the Grouping / Spec Code. Each project-specific Installation Material separately stores an Actual Cost Code chosen from the full controlled reference, even when that code is not in project scope. Bid groups the material under its section while exposing both codes and the material description. Scope removal dependency checks follow grouping only: an Actual Cost Code reference alone never deletes the containing section or material.
 
 Equipment extension remains `quantity × duration × rate + delivery`, with delivery applied once. The displayed subtotal is the sum of pre-tax line extensions. Tax is applied separately in Bid and honors the line's taxable declaration.
 
@@ -72,6 +76,8 @@ Travel/per-diem lineage can retain schedule inputs, but no controlled overnight/
 Bid derives one summary per normalized code without duplicating canonical source records. Expandable components include Base Product, Installation Materials, Labor, Equipment, Borrowed Lites, and any proven canonical source. Door/hardware cost remains unavailable until its commercial route is confirmed.
 
 Each summary reports Cost, Margin Dollars, Margin Percentage, Value, Frame-plus-Borrowed-Lite square footage, and Value per square foot. Component/source overrides are keyed by stable canonical identity and retain default, override, effective value, reason, actor, and audit lineage. Clearing an override resumes the current category default. Installation Materials explicitly inherit Base Product markup until a distinct controlled default exists.
+
+Every source line exposes one controlling markup authority: Markup % or Markup $. Percentage authority recalculates dollars when direct cost changes; dollar authority retains the entered amount and derives the effective percentage, including an unavailable percentage at zero direct cost. Switching authority replaces the former mode, clearing returns to the category default, and deduct lines inherit the commercial sign. Base and alternate decisions are recalculated by the same service and frozen into revisions, proposal states, exports, and comparisons.
 
 Edits initiated from expanded Bid detail require a typed command with explicit confirmation and expected revision. The server resolves and updates the canonical source record, audits it, recalculates, and returns the same project revision path used by originating pages.
 

@@ -34,5 +34,6 @@ The 2.1 web contract now confirms Project Type, Contract Type, Wage Type, local 
 14. A controlled Design Labor rate and its source/effective-date authority.
 15. The authoritative Door/Hardware monetary route into Bid, including cost code, tax, and markup treatment.
 16. Whether Installation Materials should receive a distinct controlled markup; until confirmed, the web contract explicitly inherits Base Product markup.
+17. The exact protected authorization workflow for a custom Actual Cost Code that is absent from the owner-controlled reference. Current Installation Material classification accepts the full controlled reference only; it does not silently create project scope or a custom reference.
 
 Until resolved, closeout is explicitly `provisional_pending_policy`; activation cannot be reversed through the UI; overallocated SOV lines are blocked; and underallocated lines remain pending treatment. Enabled travel without a controlled policy, Design Labor without a controlled rate, and other required unavailable commercial inputs remain structured submission blockers. The application does not infer Door/Hardware selling cost or invent a separate Installation Materials markup.

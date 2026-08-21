@@ -311,14 +311,38 @@ def search_master_data(
     limit: int = 10,
 ) -> dict[str, Any]:
     normalized = normalize_search_text(query)
-    if not normalized:
-        return {"query": query, "normalized_query": "", "results": [], "ambiguous": False, "resolved_id": None}
     limit = max(1, min(int(limit), 100))
     index = directory.get("index") or {}
     if not index.get("record_keys"):
         index = build_search_index(directory)
     allowed = set(entity_kinds or ("organization", "contact", "text"))
     references = _records_by_reference(directory)
+
+    if not normalized:
+        results = []
+        for reference, record in references.items():
+            kind = reference.split("|", 1)[0]
+            if kind not in allowed:
+                continue
+            display_name = record.get("display_name") or record.get("name") or ""
+            secondary = ""
+            if kind == "contact":
+                organization = references.get(f"organization|{record.get('organization_id')}")
+                secondary = organization.get("display_name", "") if organization else ""
+            elif kind == "text":
+                secondary = record.get("kind", "")
+            results.append({
+                "id": record.get("id"), "entity_kind": kind,
+                "display_name": display_name, "secondary": secondary,
+                "match_type": "all", "score": 0,
+                "matched_value": display_name,
+                "aliases": deepcopy(record.get("aliases", [])),
+            })
+        results.sort(key=lambda item: (normalize_search_text(item["display_name"]), item["id"] or ""))
+        return {
+            "query": query, "normalized_query": "", "results": results[:limit],
+            "ambiguous": False, "resolved_id": None,
+        }
 
     candidates = set(index.get("exact", {}).get(normalized, []))
     candidates.update(index.get("prefix", {}).get(normalized, []))

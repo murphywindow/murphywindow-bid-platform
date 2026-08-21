@@ -6,6 +6,7 @@
   "use strict";
 
   const meaningfulValue = value => value !== null && value !== undefined && value !== false && String(value).trim() !== "";
+  const countLabel = (value, singular, plural = null) => `${value} ${Number(value) === 1 ? singular : (plural || ({foot:"feet","linear foot":"feet",sausage:"sausages",person:"people",child:"children"}[String(singular).toLowerCase()]) || `${singular}s`)}`;
   const DEFAULT_DECIMAL_PRECISION = Object.freeze({currency:2,currency_per_unit:2,percentage:2,quantity:2,dimension:2,square_footage:2,linear_footage:2,labor_hours:2,rate:2,multiplier:2,percentile:2});
 
   function normalizeDecimalPrecision(settings = {}) {
@@ -137,6 +138,140 @@
     };
   }
 
+  function horizontalVisibilityDelta(targetStart, targetEnd, visibleStart, visibleEnd, padding = 4) {
+    const left = Number(visibleStart) + Number(padding || 0);
+    const right = Number(visibleEnd) - Number(padding || 0);
+    if (Number(targetStart) < left) return Number(targetStart) - left;
+    if (Number(targetEnd) > right) return Number(targetEnd) - right;
+    return 0;
+  }
+
+  function clampedHorizontalScroll(current, delta, scrollWidth, clientWidth) {
+    const maximum = Math.max(0, Number(scrollWidth || 0) - Number(clientWidth || 0));
+    return Math.min(maximum, Math.max(0, Number(current || 0) + Number(delta || 0)));
+  }
+
+  const SORT_TOOLTIP = "Click to sort; click again to reverse; click a third time to restore original order. Shift-click to sort by multiple columns.";
+
+  function cycleSort(sortStack, key, multiColumn = false) {
+    const stack = Array.isArray(sortStack)
+      ? sortStack.filter(item => item && typeof item.key === "string" && ["asc", "desc"].includes(item.direction))
+      : [];
+    const index = stack.findIndex(item => item.key === key);
+    if (!multiColumn) {
+      if (index !== 0 || stack.length !== 1) return [{ key, direction: "asc" }];
+      if (stack[0].direction === "asc") return [{ key, direction: "desc" }];
+      return [];
+    }
+    if (index < 0) return [...stack, { key, direction: "asc" }];
+    if (stack[index].direction === "asc") {
+      return stack.map((item, itemIndex) => itemIndex === index ? { ...item, direction: "desc" } : item);
+    }
+    return stack.filter((_, itemIndex) => itemIndex !== index);
+  }
+
+  function naturalParts(value) {
+    return String(value ?? "").toLocaleLowerCase().match(/\d+(?:\.\d+)?|\D+/g) || [];
+  }
+
+  function naturalCompare(left, right, locale) {
+    const a = naturalParts(left), b = naturalParts(right), length = Math.max(a.length, b.length);
+    for (let index = 0; index < length; index += 1) {
+      if (a[index] === undefined) return -1;
+      if (b[index] === undefined) return 1;
+      const aNumber = /^\d/.test(a[index]) ? Number(a[index]) : null;
+      const bNumber = /^\d/.test(b[index]) ? Number(b[index]) : null;
+      if (aNumber !== null && bNumber !== null && aNumber !== bNumber) return aNumber < bNumber ? -1 : 1;
+      const compared = a[index].localeCompare(b[index], locale, { sensitivity: "base" });
+      if (compared) return compared;
+    }
+    return 0;
+  }
+
+  function sortValueKind(column = {}) {
+    if (column.sortType) return column.sortType;
+    if (["number", "currency"].includes(column.type) || /\b(numeric|money)\b/.test(column.class || "")) return "number";
+    if (["date", "datetime-local"].includes(column.type)) return "date";
+    if (/code|identifier|number$|^mark$/i.test(column.key || "")) return "natural";
+    if (column.type === "checkbox") return "boolean";
+    return "text";
+  }
+
+  function compareSortValues(left, right, kind = "text", locale) {
+    const leftBlank = left === null || left === undefined || left === "";
+    const rightBlank = right === null || right === undefined || right === "";
+    if (leftBlank || rightBlank) return leftBlank === rightBlank ? 0 : (leftBlank ? 1 : -1);
+    if (kind === "number") {
+      const a = Number(String(left).replace(/[$,%\s,]/g, ""));
+      const b = Number(String(right).replace(/[$,%\s,]/g, ""));
+      if (Number.isFinite(a) && Number.isFinite(b)) return a === b ? 0 : (a < b ? -1 : 1);
+    }
+    if (kind === "date") {
+      const a = Date.parse(left), b = Date.parse(right);
+      if (Number.isFinite(a) && Number.isFinite(b)) return a === b ? 0 : (a < b ? -1 : 1);
+    }
+    if (kind === "boolean") return Number(Boolean(left)) - Number(Boolean(right));
+    if (kind === "natural") return naturalCompare(left, right, locale);
+    return String(left).localeCompare(String(right), locale, { sensitivity: "base", numeric: true });
+  }
+
+  function stableSortRows(rows, sortStack, columns = [], options = {}) {
+    const stack = Array.isArray(sortStack) ? sortStack : [];
+    if (!stack.length) return [...rows];
+    const byKey = new Map(columns.map(column => [column.key, column]));
+    const rawValue = options.rawValue || ((row, column) => column.sortValue ? column.sortValue(row) : row?.[column.key]);
+    return rows.map((row, index) => ({ row, index })).sort((left, right) => {
+      for (const entry of stack) {
+        const column = byKey.get(entry.key);
+        if (!column) continue;
+        const a = rawValue(left.row, column), b = rawValue(right.row, column);
+        const aBlank = a === null || a === undefined || a === "";
+        const bBlank = b === null || b === undefined || b === "";
+        let compared = compareSortValues(a, b, sortValueKind(column), options.locale);
+        // Blank values remain after real values in either direction.
+        if (!aBlank && !bBlank && entry.direction === "desc") compared *= -1;
+        if (compared) return compared;
+      }
+      return left.index - right.index;
+    }).map(item => item.row);
+  }
+
+  class SortStateStore {
+    constructor(storage = null, prefix = "murphywindow.table-sort.v1") {
+      this.storage = storage;
+      this.prefix = prefix;
+      this.memory = new Map();
+    }
+    storageKey(key) { return `${this.prefix}:${key}`; }
+    get(key, validKeys = null) {
+      let value = this.memory.get(key);
+      if (value === undefined && this.storage) {
+        try { value = JSON.parse(this.storage.getItem(this.storageKey(key)) || "[]"); } catch { value = []; }
+      }
+      if (!Array.isArray(value)) value = [];
+      const allowed = validKeys ? new Set(validKeys) : null;
+      const sanitized = value.filter(item => item && typeof item.key === "string"
+        && ["asc", "desc"].includes(item.direction) && (!allowed || allowed.has(item.key)));
+      this.memory.set(key, sanitized);
+      if (sanitized.length !== value.length) this.set(key, sanitized);
+      return sanitized.map(item => ({ ...item }));
+    }
+    set(key, value) {
+      const stack = Array.isArray(value) ? value.map(item => ({ ...item })) : [];
+      this.memory.set(key, stack);
+      if (this.storage) {
+        try {
+          if (stack.length) this.storage.setItem(this.storageKey(key), JSON.stringify(stack));
+          else this.storage.removeItem(this.storageKey(key));
+        } catch {}
+      }
+      return stack;
+    }
+    cycle(key, columnKey, multiColumn = false, validKeys = null) {
+      return this.set(key, cycleSort(this.get(key, validKeys), columnKey, multiColumn));
+    }
+  }
+
   function activeHistoryBand(position, bands) {
     if (position === null || position === undefined || position === "") return -1;
     const value = Number(position);
@@ -229,10 +364,12 @@
       this.onChange = this.onChange.bind(this);
       this.onKeyDown = this.onKeyDown.bind(this);
       this.onPaste = this.onPaste.bind(this);
+      this.onFocusIn = this.onFocusIn.bind(this);
       rootElement.addEventListener("input", this.onInput);
       rootElement.addEventListener("change", this.onChange);
       rootElement.addEventListener("keydown", this.onKeyDown);
       rootElement.addEventListener("paste", this.onPaste);
+      rootElement.addEventListener("focusin", this.onFocusIn);
     }
 
     cellFrom(event) { return event.target.closest?.("[data-table-cell]"); }
@@ -286,18 +423,12 @@
       const actionCell = row.querySelector("[data-draft-actions]");
       if (actionCell) actionCell.innerHTML = result.actionsHtml || "";
       this.drafts.reset(tableId, defaults);
-      const html = this.options.renderDraft?.(tableId);
-      let newDraftRow = null;
-      if (html) {
-        row.insertAdjacentHTML("afterend", html);
-        newDraftRow = row.nextElementSibling || null;
-      }
       this.options.afterPromote?.({
         tableId,
         table,
         row,
         rowId,
-        newDraftRow,
+        newDraftRow: null,
         cell,
         result,
         correlationId: eventCorrelation
@@ -337,12 +468,52 @@
       return rows.map(row => [...row.querySelectorAll("[data-table-cell]")].map(cell => Number(cell.dataset.columnIndex)));
     }
 
+    ensureFocusVisible(target) {
+      const cell = target?.closest?.("td, th"), wrap = cell?.closest?.(".table-wrap");
+      if (!cell || !wrap || Number(wrap.scrollWidth || 0) <= Number(wrap.clientWidth || 0) + 1) return;
+      const cellRect = cell.getBoundingClientRect?.(), wrapRect = wrap.getBoundingClientRect?.();
+      if (!cellRect || !wrapRect) return;
+      let visibleStart = wrapRect.left, visibleEnd = wrapRect.right;
+      const table = cell.closest?.("table"), row = cell.parentElement || cell.closest?.("tr");
+      const frameGrid = table?.classList?.contains?.("frame-grid") || wrap.classList?.contains?.("frame-grid");
+      if (frameGrid && row) {
+        const cells = [...(row.children || [])], columnIndex = Number.isInteger(cell.cellIndex) ? cell.cellIndex : cells.indexOf(cell);
+        if (columnIndex > 1) {
+          const frozenRect = cells[1]?.getBoundingClientRect?.();
+          if (frozenRect) visibleStart = Math.max(visibleStart, frozenRect.right);
+        }
+        const actions = row.querySelector?.(".row-action-cell");
+        if (actions && actions !== cell) {
+          const actionRect = actions.getBoundingClientRect?.();
+          if (actionRect) visibleEnd = Math.min(visibleEnd, actionRect.left);
+        }
+      }
+      const delta = horizontalVisibilityDelta(cellRect.left, cellRect.right, visibleStart, visibleEnd, 5);
+      if (delta) wrap.scrollLeft = clampedHorizontalScroll(wrap.scrollLeft, delta, wrap.scrollWidth, wrap.clientWidth);
+    }
+
+    scheduleFocusVisibility(target) {
+      this.ensureFocusVisible(target);
+      const view = this.root?.ownerDocument?.defaultView || (typeof window !== "undefined" ? window : null);
+      if (this.focusVisibilityFrame) view?.cancelAnimationFrame?.(this.focusVisibilityFrame);
+      const align = () => {
+        this.focusVisibilityFrame = null;
+        if (!this.root?.contains?.(target)) return;
+        this.ensureFocusVisible(target);
+      };
+      if (view?.requestAnimationFrame) this.focusVisibilityFrame = view.requestAnimationFrame(align);
+      else setTimeout(align, 0);
+    }
+
+    onFocusIn(event) { this.scheduleFocusVisibility(event.target); }
+
     focusPosition(table, position) {
       if (!position) return;
       const rows = [...table.querySelectorAll("[data-table-row]")];
       const target = rows[position.rowIndex]?.querySelector(`[data-table-cell][data-column-index="${position.columnIndex}"]`);
-      target?.focus();
+      target?.focus?.({ preventScroll: true });
       target?.select?.();
+      this.scheduleFocusVisibility(target);
     }
 
     onKeyDown(event) {
@@ -363,6 +534,9 @@
       const next = nextEditablePosition(geometry, rowIndex, columnIndex, direction, arrow?.sameColumn ?? event.key === "Enter");
       event.preventDefault();
       if (next) this.focusPosition(table, next);
+      else if (event.key === "Enter" && !event.shiftKey && direction > 0) {
+        this.options.requestDraft?.({ tableId: table.dataset.editTable, table, columnIndex });
+      }
     }
 
     onPaste(event) {
@@ -959,6 +1133,7 @@
 
   return {
     meaningfulValue,
+    countLabel,
     DEFAULT_DECIMAL_PRECISION,
     normalizeDecimalPrecision,
     formatNumeric,
@@ -968,6 +1143,14 @@
     mapClipboard,
     nextEditablePosition,
     arrowNavigationIntent,
+    horizontalVisibilityDelta,
+    clampedHorizontalScroll,
+    SORT_TOOLTIP,
+    cycleSort,
+    naturalCompare,
+    compareSortValues,
+    stableSortRows,
+    SortStateStore,
     activeHistoryBand,
     clampHistoryMarker,
     calculateTooltipPosition,

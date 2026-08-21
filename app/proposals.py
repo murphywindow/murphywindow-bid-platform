@@ -15,6 +15,7 @@ import re
 from typing import Any
 
 from .calculations import dollars_in_words
+from .alternates import alternate_label
 from .schema import now, uid
 from .services import DomainError, audit, calculate_project, submission_blockers
 
@@ -134,7 +135,8 @@ def create_proposal_snapshot(document: dict[str, Any], configuration: dict[str, 
         "scope": state.get("project", {}).get("proposal_scope", ""), "inclusions": state.get("project", {}).get("proposal_inclusions", ""),
         "exclusions": state.get("project", {}).get("proposal_exclusions", ""),
         "additional_information": state.get("project", {}).get("additional_information", ""), "immutable": True,
-        "alternates": [{"key": row.get("key"), "name": row.get("name"), "customer_description": row.get("customer_description"),
+        "alternates": [{"key": row.get("key"), "sequence": row.get("sequence"), "name": row.get("name"),
+                        "label": alternate_label(row), "customer_description": row.get("customer_description"),
                         "scope_of_change": deepcopy(row.get("calculated", {}).get("scope_of_change", [])),
                         "classification": row.get("calculated", {}).get("classification"),
                         "selling_value_delta": row.get("calculated", {}).get("selling_value_delta")}
@@ -255,14 +257,14 @@ def _different(old: Any, new: Any) -> bool:
 _SUMMARY_FIELDS = {
     "bid_value": ("Proposal Amount", "money"), "direct_cost": ("Direct Cost", "money"),
     "margin_dollars": ("Margin Dollars", "money"), "margin_percentage": ("Margin Percentage", "percent"),
-    "total_square_feet": ("Total SF", "number"), "value_per_square_foot": ("Value / SF", "money"),
+    "total_square_feet": ("Total ft²", "number"), "value_per_square_foot": ("Value / ft²", "money"),
     "tax": ("Tax", "money"), "applicable_tax_rate": ("Tax Rate", "percent"),
     "contingency": ("Contingency", "money"), "bond": ("Bond", "money"),
 }
 _COST_CODE_FIELDS = {
     "direct_cost": ("Direct Cost", "money"), "selling_value": ("Selling Value", "money"),
     "margin_dollars": ("Margin Dollars", "money"), "margin_percentage": ("Margin Percentage", "percent"),
-    "total_square_feet": ("SF", "number"), "dollars_per_square_foot": ("Value / SF", "money"),
+    "total_square_feet": ("ft²", "number"), "dollars_per_square_foot": ("Value / ft²", "money"),
 }
 
 
@@ -322,7 +324,7 @@ def _alternate_changes(left: dict[str, Any], right: dict[str, Any]) -> list[dict
     for key in sorted(set(before) | set(after)):
         old, new = before.get(key), after.get(key)
         current = new or old or {}
-        label = f"{key} — {current.get('name') or 'Alternate'}"
+        label = alternate_label(current)
         if old is None or new is None:
             output.append({"key": key, "label": label, "status": "added" if old is None else "removed",
                            "scope_added": [text for group in (new or {}).get("calculated", {}).get("scope_of_change", []) for text in group.get("changes", [])],
@@ -381,8 +383,8 @@ def _source_changes(left: dict[str, Any], right: dict[str, Any], code: str) -> l
     old_materials = _installation_material_records(left, code)
     new_materials = _installation_material_records(right, code)
     material_entries = _compare_records(old_materials, new_materials, "Installation Material", (
-        "name", "source", "manual_quantity", "factor", "unit", "controlled_rate_id",
-        "project_rate", "cost_code", "notes"))
+        "name", "source", "manual_quantity", "factor", "operator", "operand", "unit", "controlled_rate_id",
+        "project_rate", "actual_cost_code", "notes"))
     if material_entries:
         output.append({"category": "Installation Materials", "entries": material_entries})
     old_lines = [row for row in left.get("working_estimate", {}).get("lines", []) if str(row.get("code")) == code]
@@ -394,7 +396,8 @@ def _source_changes(left: dict[str, Any], right: dict[str, Any], code: str) -> l
         for row_id in sorted(set(old_by_id) | set(new_by_id)):
             before, after = old_by_id.get(row_id), new_by_id.get(row_id)
             changes = []
-            for field in ("direct_cost", "markup_rate", "markup_override_rate", "markup_value", "selling_value", "area"):
+            for field in ("grouping_code", "actual_cost_code", "direct_cost", "markup_rate", "markup_override_mode",
+                          "markup_override_value", "markup_value", "selling_value", "area"):
                 old_value, new_value = (before or {}).get(field), (after or {}).get(field)
                 if old_value != new_value:
                     changes.append({"field": field, "label": field.replace("_", " ").title(), "old": old_value,
@@ -420,12 +423,14 @@ def _frame_records(state: dict[str, Any], code: str) -> list[dict[str, Any]]:
 def _installation_material_records(state: dict[str, Any], code: str) -> list[dict[str, Any]]:
     records = []
     for section in state.get("takeoff_sections", []):
+        if str(section.get("code")) != code:
+            continue
         overrides = section.get("material_overrides", {})
         for material in section.get("additional_materials", []):
-            if str(material.get("cost_code") or section.get("code")) != code:
-                continue
             override = overrides.get(str(material.get("id")), {})
             records.append({**deepcopy(material), "section_name": section.get("name"),
+                            "grouping_code": section.get("code"),
+                            "actual_cost_code": material.get("cost_code") or section.get("code"),
                             "project_rate": override.get("rate_override")})
     return records
 

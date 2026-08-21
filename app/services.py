@@ -9,7 +9,7 @@ from typing import Any
 
 from .calculations import (
     bond_amount, borrowed_lite_area, contingency, dec, dollars_in_words,
-    effective_rate, equipment_extension, frame_quantities, installation_material, jsonable,
+    effective_rate, equipment_extension, frame_quantities, installation_material, installation_material_quantity, jsonable,
     labor_extension, labor_hours, labor_schedule, map_cost_code, markup, normalize_code,
     project_abbreviation, quote_adjustment, quote_unit_cost, sequential_pco, sov_values,
     split_variant, taxed_cost,
@@ -20,6 +20,7 @@ from .schema import CONTRACT_TYPES, INTERCHANGE_VERSION, PROJECT_TYPES, WAGE_TYP
 
 
 ROLES = ("Estimator", "General Manager", "President", "Project Manager", "Support", "Systems Administrator")
+ADMINISTRATOR_ROLE = "Systems Administrator"
 PERMISSIONS = {
     "edit_estimate": {"Estimator"},
     "review": {"Estimator", "General Manager", "President"},
@@ -44,6 +45,12 @@ class DomainError(ValueError):
 
 
 def require(role: str, permission: str) -> None:
+    # Systems Administrators are the global permission authority.  Domain
+    # invariants (immutable snapshots, required evidence, calculated-field
+    # locks, and confirmation workflows) are enforced separately and still
+    # apply; this bypass concerns role authorization only.
+    if role == ADMINISTRATOR_ROLE:
+        return
     if role not in PERMISSIONS.get(permission, set()):
         raise DomainError(f"{role} is not authorized to {permission.replace('_', ' ')}.", "forbidden")
 
@@ -158,6 +165,10 @@ def _frame_row_meaningful(row: dict) -> bool:
         "missing_quantity_acknowledged", "missing_quantity_acknowledged_at",
         "missing_quantity_acknowledged_by", "acknowledged_at", "acknowledged_by",
     })
+
+
+def _frame_dimensions_started(row: dict) -> bool:
+    return any(row.get(key) not in (None, "") for key in ("width_inches", "height_inches"))
 
 
 def _door_row_meaningful(row: dict) -> bool:
@@ -422,8 +433,8 @@ def calculate_project(doc: dict, config: dict, *, include_alternates: bool = Tru
         totals = {"quantity": Decimal(0), "square_feet": Decimal(0), "perimeter_lf": Decimal(0), "caulking_lf": Decimal(0), "head_sill_qty": Decimal(0)}
         for row in section.get("lines", []):
             quantity = dec(row.get("quantity"))
-            meaningful = _frame_row_meaningful(row)
-            if meaningful and quantity in (None, Decimal(0)):
+            dimensions_started = _frame_dimensions_started(row)
+            if dimensions_started and quantity in (None, Decimal(0)):
                 acknowledged = bool(row.get("missing_quantity_acknowledged"))
                 warnings.append(_warning(
                     "missing_frame_quantity", row.get("id"),
@@ -435,6 +446,8 @@ def calculate_project(doc: dict, config: dict, *, include_alternates: bool = Tru
             try:
                 q = frame_quantities(row.get("quantity"), row.get("width_inches"), row.get("height_inches"), row.get("caulking_passes"))
                 row["calculated"] = jsonable(q)
+                if q["perimeter_lf"] is not None and row.get("caulking_passes") in (None, ""):
+                    row["caulking_passes"] = jsonable(q["caulking_passes"])
                 if q["square_feet"] is not None:
                     totals["quantity"] += dec(row.get("quantity"), Decimal(0)) or Decimal(0)
                     for key in ("square_feet", "perimeter_lf", "caulking_lf", "head_sill_qty"):
@@ -445,7 +458,9 @@ def calculate_project(doc: dict, config: dict, *, include_alternates: bool = Tru
         if code_key:
             frame_area_by_code[code_key] = frame_area_by_code.get(code_key, Decimal(0)) + totals["square_feet"]
         material_results = []
-        section_material_rules = [deepcopy(rule) for rule in config.get("material_rules", [])]
+        excluded_material_rule_ids = {str(value) for value in section.get("excluded_material_rule_ids", [])}
+        section_material_rules = [deepcopy(rule) for rule in config.get("material_rules", [])
+                                  if str(rule.get("id")) not in excluded_material_rule_ids]
         controlled_rules = {str(rule.get("id")): rule for rule in config.get("material_rules", [])}
         controlled_rates = {str(rule.get("id")): rule for rule in config.get("material_rates", [])}
         for custom in section.get("additional_materials", []):
@@ -470,44 +485,71 @@ def calculate_project(doc: dict, config: dict, *, include_alternates: bool = Tru
             rule["project_specific"] = True
             section_material_rules.append(rule)
         for rule in section_material_rules:
-            if rule["source"] in totals:
+            override = section.get("material_overrides", {}).get(rule["id"], {})
+            controlled_source = rule.get("source", "manual_quantity")
+            source_override = override.get("source_override")
+            source_key = source_override if source_override not in (None, "") else controlled_source
+            if source_key in totals:
                 # A missing selection list is the backward-compatible equivalent of
                 # "all materials selected".  New rows write the list explicitly.
                 source = Decimal(0)
                 for row in section.get("lines", []):
                     selections = row.get("installation_material_ids")
                     if selections is None or rule["id"] in selections:
-                        value = row.get("quantity") if rule["source"] == "quantity" else row.get("calculated", {}).get(rule["source"])
+                        value = row.get("quantity") if source_key == "quantity" else row.get("calculated", {}).get(source_key)
                         source += dec(value, Decimal(0)) or Decimal(0)
-            elif rule.get("source") == "manual_quantity":
+            elif source_key == "manual_quantity":
                 source = dec(rule.get("manual_quantity"), Decimal(0)) or Decimal(0)
             else:
                 # The workbook's Tie Back and Backpan inputs remain section-level
                 # until their future line-level placement is confirmed.
-                source = dec(section.get(rule["source"]), Decimal(0)) or Decimal(0)
-            override = section.get("material_overrides", {}).get(rule["id"], {})
-            controlled_factor = rule.get("factor")
+                source = dec(section.get(source_key), Decimal(0)) or Decimal(0)
+            controlled_operator = rule.get("operator") or "multiply"
+            controlled_operand = rule.get("operand", rule.get("factor", 1))
+            controlled_unit = str(rule.get("unit") or "each")
+            unit_override = override.get("unit_override")
+            unit = str(unit_override) if unit_override not in (None, "") else controlled_unit
+            operator_override = override.get("operator_override")
+            operator = operator_override if operator_override not in (None, "") else controlled_operator
+            operand_override = override.get("operand_override")
             factor_override = override.get("factor_override")
             if factor_override in (None, "") and "factor" in override:
                 factor_override = override.get("factor")
-            factor = factor_override if factor_override not in (None, "") else controlled_factor
+            operand = operand_override if operand_override not in (None, "") else factor_override if factor_override not in (None, "") else controlled_operand
+            formula_override = any(value not in (None, "") for value in (source_override, operator_override, operand_override, factor_override, unit_override))
+            try:
+                calculated_quantity = installation_material_quantity(source, operator, operand)
+            except ValueError as exc:
+                calculated_quantity = None
+                warnings.append(_warning(
+                    "invalid_installation_material_formula", rule.get("id"), str(exc), blocking=True,
+                    entity_type="installation_material", section_id=section.get("id"),
+                ))
             controlled_rate = rule.get("rate")
             rate_override = override.get("rate_override")
             if rate_override in (None, "") and "rate" in override:
                 rate_override = override.get("rate")
             rate_values = effective_rate(controlled_rate, rate_override)
             rate = rate_values["effective_rate"]
-            cost = installation_material(source, factor, rate)
+            cost = installation_material(calculated_quantity, 1, rate)
             material_results.append({
-                "material_rule_id": rule["id"], "name": rule.get("name"), "source": rule.get("source"),
-                "unit": rule.get("unit"), "material_code": rule.get("material_code"),
+                "material_rule_id": rule["id"], "name": rule.get("name"), "source": source_key,
+                "unit": unit, "controlled_unit": controlled_unit,
+                "unit_override": str(unit_override) if unit_override not in (None, "") else None,
+                "material_code": rule.get("material_code"),
                 "section_id": section.get("id"), "section_name": section.get("name"),
                 "project_specific": bool(rule.get("project_specific")),
                 "controlled_rate_id": rule.get("controlled_rate_id"),
                 "controlled_reference_status": rule.get("controlled_reference_status", "controlled"),
                 "source_quantity": jsonable(source),
-                "controlled_factor": jsonable(dec(controlled_factor)), "factor_override": jsonable(dec(factor_override)) if factor_override not in (None, "") else None,
-                "factor": jsonable(dec(factor)), "controlled_rate": jsonable(rate_values["controlled_rate"]),
+                "controlled_source": controlled_source, "source_override": source_override or None,
+                "controlled_operator": controlled_operator, "operator_override": operator_override or None, "operator": operator,
+                "controlled_operand": jsonable(dec(controlled_operand)),
+                "operand_override": jsonable(dec(operand_override)) if operand_override not in (None, "") else None,
+                "operand": jsonable(dec(operand)), "calculated_quantity": jsonable(calculated_quantity),
+                "is_formula_override": formula_override,
+                "controlled_factor": jsonable(dec(controlled_operand)), "factor_override": jsonable(dec(factor_override)) if factor_override not in (None, "") else None,
+                "factor": jsonable(dec(operand)) if operator == "multiply" else None, "controlled_rate": jsonable(rate_values["controlled_rate"]),
                 "rate_override": jsonable(rate_values["rate_override"]), "effective_rate": jsonable(rate),
                 "rate": jsonable(rate), "is_rate_override": rate_values["is_override"],
                 "rate_override_reason": override.get("rate_override_reason"),
@@ -515,15 +557,24 @@ def calculate_project(doc: dict, config: dict, *, include_alternates: bool = Tru
             })
             if cost is not None and code:
                 material_cost_code = rule.get("cost_code") or code
-                raw.append({"code": material_cost_code, "category": "installation_material", "description": f"{_cost_code(doc, material_cost_code).get('description', material_cost_code)} — {rule['name']}",
+                raw.append({"code": code, "grouping_code": code, "actual_cost_code": material_cost_code,
+                            "category": "installation_material", "description": str(rule.get("name") or material_cost_code),
                             "cost": taxed_cost(cost, tax_rate, taxable=taxable and rule.get("taxable", True)), "area": totals["square_feet"],
                             "tax_treatment": "taxed" if taxable and rule.get("taxable", True) else "exempt", "markup_type": "installation_material",
                             "source_key": f"frame_material:{section['id']}:{rule['id']}",
                             "lineage": [{"source_type": "frame_material", "source_id": section["id"], "material_rule_id": rule["id"], "source_quantity": jsonable(source),
-                                         "material_name": rule.get("name"), "unit": rule.get("unit"), "section_name": section.get("name"),
+                                         "material_name": rule.get("name"), "unit": unit,
+                                         "controlled_unit": controlled_unit,
+                                         "unit_override": str(unit_override) if unit_override not in (None, "") else None,
+                                         "section_name": section.get("name"),
                                          "project_specific": bool(rule.get("project_specific")), "controlled_rate_id": rule.get("controlled_rate_id"),
-                                         "controlled_factor": jsonable(dec(controlled_factor)), "factor_override": jsonable(dec(factor_override)) if factor_override not in (None, "") else None,
-                                         "effective_factor": jsonable(dec(factor)), "controlled_rate": jsonable(rate_values["controlled_rate"]),
+                                         "controlled_source": controlled_source, "effective_source": source_key,
+                                         "controlled_operator": controlled_operator, "effective_operator": operator,
+                                         "controlled_operand": jsonable(dec(controlled_operand)),
+                                         "operand_override": jsonable(dec(operand_override)) if operand_override not in (None, "") else None,
+                                         "effective_operand": jsonable(dec(operand)), "calculated_quantity": jsonable(calculated_quantity),
+                                         "controlled_factor": jsonable(dec(controlled_operand)), "factor_override": jsonable(dec(factor_override)) if factor_override not in (None, "") else None,
+                                         "effective_factor": jsonable(dec(operand)) if operator == "multiply" else None, "controlled_rate": jsonable(rate_values["controlled_rate"]),
                                          "rate_override": jsonable(rate_values["rate_override"]), "effective_rate": jsonable(rate),
                                          "rate_override_reason": override.get("rate_override_reason"), "pre_tax_cost": str(cost), "configuration_id": config["id"]}]})
         section["material_results"] = material_results
@@ -762,23 +813,45 @@ def calculate_project(doc: dict, config: dict, *, include_alternates: bool = Tru
         component = component_map.get(item.get("source_key"), {})
         if not isinstance(component, dict):
             component = {"rate": component}
+        component_mode = component.get("mode")
+        component_value = component.get("value")
         component_rate = component.get("rate", component.get("rate_override"))
-        chosen_rate = component_rate if component_rate not in (None, "") else applicable_default
+        if component_mode not in {"percentage", "amount"}:
+            component_mode = "percentage" if component_rate not in (None, "") else None
+            component_value = component_rate if component_mode else None
+        chosen_rate = component_value if component_mode == "percentage" else applicable_default
         if "".join(c for c in item["code"] if c.isalnum()) == "012116":
-            chosen_rate = "0"
-        m = markup(signed_cost, chosen_rate)
+            chosen_rate, component_mode, component_value = "0", None, None
+        if component_mode == "amount":
+            manual_amount = dec(component_value)
+            if manual_amount is None:
+                manual_amount = Decimal(0)
+            # The entered amount is an absolute markup decision; deduct lines
+            # retain their commercial sign without requiring a negative entry.
+            effective_amount = -manual_amount if signed_cost < 0 and manual_amount > 0 else manual_amount
+            m = {"markup": effective_amount, "selling_value": signed_cost + effective_amount}
+            effective_markup_rate = None if signed_cost == 0 else effective_amount / signed_cost
+        else:
+            m = markup(signed_cost, chosen_rate)
+            effective_markup_rate = chosen_rate
         provenance = {
             "configuration_default_rate": str(configuration_rate),
             "project_category_rate": None if project_rate in (None, "") else str(project_rate),
-            "component_override_rate": None if component_rate in (None, "") else str(component_rate),
-            "effective_rate": str(chosen_rate), "applicable_type": item["markup_type"],
-            "inherited_from": inherited_from, "is_component_override": component_rate not in (None, ""),
+            "component_override_rate": None if component_mode != "percentage" else str(component_value),
+            "component_override_mode": component_mode,
+            "component_override_value": None if component_mode is None else str(component_value),
+            "effective_rate": None if effective_markup_rate is None else str(effective_markup_rate), "applicable_type": item["markup_type"],
+            "inherited_from": inherited_from, "is_component_override": component_mode is not None,
             "override_reason": component.get("reason") or component.get("rate_override_reason"),
             "override_source": component.get("source"),
         }
         item["lineage"].append({"source_type": "markup", **provenance, "configuration_id": config["id"]})
-        lines.append({"id": _stable_line_id(item), **item, "direct_cost": money_string(signed_cost), "cost": None, "included": _active(doc, item["code"]), "deduct_sign": int(sign), "markup_rate": str(chosen_rate),
+        lines.append({"id": _stable_line_id(item), **item,
+                      "grouping_code": item.get("grouping_code") or item["code"],
+                      "actual_cost_code": item.get("actual_cost_code") or item["code"],
+                      "direct_cost": money_string(signed_cost), "cost": None, "included": _active(doc, item["code"]), "deduct_sign": int(sign), "markup_rate": None if effective_markup_rate is None else str(effective_markup_rate),
                       "markup_default_rate": str(applicable_default), "markup_override_rate": provenance["component_override_rate"], "markup_provenance": provenance,
+                      "markup_override_mode": component_mode, "markup_override_value": provenance["component_override_value"],
                       "markup_value": money_string(m["markup"]), "selling_value": money_string(m["selling_value"]), "area": jsonable(item["area"]), "configuration_id": config["id"]})
 
     direct = sum((dec(x["direct_cost"], Decimal(0)) or Decimal(0) for x in lines if x.get("included", True)), Decimal(0))
@@ -842,7 +915,7 @@ def calculate_project(doc: dict, config: dict, *, include_alternates: bool = Tru
                 "selling_value": money_string(component_value),
                 "markup_rate": markup_rates[0] if len(markup_rates) == 1 else None,
                 "markup_state": "mixed" if len(markup_rates) > 1 else "uniform",
-                "override_count": sum(1 for line in component_lines if line.get("markup_override_rate") is not None),
+                "override_count": sum(1 for line in component_lines if line.get("markup_override_mode") is not None),
                 "source_count": len(component_lines),
                 "source_line_ids": [line["id"] for line in component_lines],
             })
@@ -892,7 +965,10 @@ def _bid_markup_source_key(doc: dict, source_type: str, source_id: Any) -> str:
     estimate-line ID used by expanded Bid detail.
     """
     candidates: list[str] = []
-    for line in doc.get("working_estimate", {}).get("lines", []):
+    searchable_lines = list(doc.get("working_estimate", {}).get("lines", []))
+    for alternate in doc.get("alternates", []):
+        searchable_lines.extend(alternate.get("calculated", {}).get("effective_estimate", {}).get("lines", []))
+    for line in searchable_lines:
         source_key = line.get("source_key")
         if not source_key:
             continue
@@ -919,6 +995,11 @@ def _bid_markup_source_key(doc: dict, source_type: str, source_id: Any) -> str:
             "ambiguous_bid_source",
             [{"source_keys": candidates}],
         )
+    if isinstance(source_id, str) and ":" in source_id:
+        prefix = source_id.split(":", 1)[0]
+        allowed_prefixes = {"quote", "equipment", "labor", "frame_material", "borrowed_lite"}
+        if prefix in allowed_prefixes:
+            return source_id
     direct_prefix = {"quote": "quote", "equipment": "equipment", "labor": "labor"}.get(source_type)
     if direct_prefix:
         return f"{direct_prefix}:{source_id}"
@@ -939,43 +1020,89 @@ def edit_bid_source(doc: dict, config: dict, actor: str, role: str, payload: dic
     if not isinstance(changes, dict) or not changes:
         raise DomainError("Provide at least one source field to update.")
 
-    if "markup_override" in changes:
-        disallowed = sorted(set(changes) - {"markup_override", "reason"})
+    markup_fields = {"markup_override", "markup_percent", "markup_amount", "markup_override_mode", "markup_override_value"}
+    if set(changes) & markup_fields:
+        disallowed = sorted(set(changes) - markup_fields - {"reason"})
         if disallowed:
             raise DomainError(
                 "A markup override command cannot also change canonical source fields; save those edits separately."
             )
         source_key = _bid_markup_source_key(doc, source_type, source_id)
-        overrides = doc.setdefault("working_estimate", {}).setdefault("component_markup_overrides", {})
-        prior = deepcopy(overrides.get(source_key))
-        entered = changes.get("markup_override")
+        alternate = None
+        alternate_id = payload.get("alternate_id")
+        if alternate_id:
+            alternate = next((row for row in doc.get("alternates", []) if str(row.get("id")) == str(alternate_id)), None)
+            if alternate is None:
+                raise DomainError("Alternate was not found.", "not_found")
+            overrides = alternate.setdefault("changes", {}).setdefault("line_markup_overrides", {}).setdefault("overrides", {})
+            stored_prior = overrides.get(source_key)
+            prior = deepcopy(stored_prior.get("value") if isinstance(stored_prior, dict) and "value" in stored_prior else stored_prior)
+        else:
+            overrides = doc.setdefault("working_estimate", {}).setdefault("component_markup_overrides", {})
+            prior = deepcopy(overrides.get(source_key))
+        legacy_markup_request = "markup_override" in changes and not (set(changes) & (markup_fields - {"markup_override"}))
+        supplied_percent = changes.get("markup_percent", changes.get("markup_override"))
+        supplied_amount = changes.get("markup_amount")
+        explicit_mode = changes.get("markup_override_mode")
+        explicit_value = changes.get("markup_override_value")
+        if supplied_percent not in (None, "") and supplied_amount not in (None, ""):
+            raise DomainError(
+                "Only one manual markup authority may be supplied for a line; clear either Markup % or Markup $.",
+                "ambiguous_markup_authority",
+            )
+        if explicit_mode not in (None, "", "percentage", "amount"):
+            raise DomainError("Markup override mode must be percentage or amount.", "invalid_markup_override")
+        if explicit_mode:
+            mode, entered = explicit_mode, explicit_value
+        elif "markup_amount" in changes:
+            mode, entered = "amount", supplied_amount
+        else:
+            mode, entered = "percentage", supplied_percent
         reason = changes.get("reason") or payload.get("reason") or "Confirmed Bid source-line markup decision"
         if entered in (None, ""):
             overrides.pop(source_key, None)
             new_value = None
-            operation = "clear_bid_markup_override"
+            operation = "clear_bid_markup_override" if legacy_markup_request else "line_markup_override_clear"
         else:
             try:
-                normalized_rate = str(dec(entered))
+                normalized_value = dec(entered)
+                if normalized_value is None or normalized_value < 0:
+                    raise ValueError
             except Exception as exc:
-                raise DomainError("Markup override must be a numeric decimal rate.", "invalid_markup_override") from exc
-            new_value = {
-                "rate": normalized_rate, "reason": reason, "source": "bid_expanded_detail",
-                "updated_by": actor, "updated_at": now(),
-            }
-            overrides[source_key] = new_value
-            operation = "set_bid_markup_override"
+                raise DomainError("Manual markup must be a non-negative numeric decimal value.", "invalid_markup_override") from exc
+            new_value = ({"rate": str(normalized_value)} if legacy_markup_request else {
+                "mode": mode, "value": str(normalized_value),
+                **({"rate": str(normalized_value)} if mode == "percentage" else {"amount": str(normalized_value)}),
+            })
+            new_value.update({"reason": reason, "source": "bid_expanded_detail", "updated_by": actor, "updated_at": now()})
+            if alternate is None:
+                overrides[source_key] = new_value
+            else:
+                base_override = deepcopy(doc.setdefault("working_estimate", {}).setdefault("component_markup_overrides", {}).get(source_key))
+                overrides[source_key] = {"base_value": base_override, "value": new_value, "set_at": now()}
+            prior_mode = prior.get("mode") if isinstance(prior, dict) else None
+            if legacy_markup_request:
+                operation = "set_bid_markup_override"
+            elif prior_mode and prior_mode != mode:
+                operation = "line_markup_override_mode_switch"
+            elif prior is None:
+                operation = "line_markup_override_create"
+            else:
+                operation = "line_markup_override_value_change"
         calculate_project(doc, config)
         bump_bid_version(doc, "bid_markup_override")
         audit(
             doc, actor, role, "bid_markup_override", source_key, operation,
             prior, deepcopy(new_value), reason, payload.get("correlation_id"),
         )
-        return {
+        result = {
             "source_key": source_key,
-            "markup_override": None if new_value is None else new_value["rate"],
+            "markup_override": None if new_value is None else new_value.get("value", new_value.get("rate")),
             "cleared": new_value is None,
         }
+        if not legacy_markup_request:
+            result.update({"markup_override_mode": None if new_value is None else new_value["mode"], "alternate_id": alternate_id})
+        return result
 
     collections = {
         "quote": ("quotes", {"code", "date", "vendor", "price", "credit_type", "credit_value", "surcharge_type", "surcharge_value", "tax_included", "used", "square_feet", "square_feet_source", "notes"}),

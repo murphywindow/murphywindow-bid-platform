@@ -271,7 +271,7 @@ def generate_test_project(config: dict, actor: str, role: str, seed: int | str |
     doc["borrowed_lites"] = [{
         "id": uid("brl"), "code": "08 80 00", "mark": f"BL-{index + 1}", "quantity": rng.randint(1, 5),
         "width_inches": rng.choice([12, 18, 24, 30, 36, 48]), "height_inches": rng.choice([12, 18, 24, 36, 48, 60]),
-        "rate": str(rng.choice([28, 32, 36, 42])), "notes": "Synthetic borrowed-lite takeoff; five-SF minimum applies per row quantity.",
+        "rate": str(rng.choice([28, 32, 36, 42])), "notes": "Synthetic borrowed-lite takeoff; five ft² minimum applies per row quantity.",
     } for index in range(8)]
 
     labor_specs = [

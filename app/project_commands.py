@@ -23,23 +23,46 @@ SOURCE_CODE_COLLECTIONS = (
 
 
 MATERIAL_BASIS_TYPES = {
-    "perimeter_lf", "head_sill_qty", "caulking_lf", "quantity",
+    "square_feet", "perimeter_lf", "head_sill_qty", "caulking_lf", "quantity",
     "tie_back_qty", "backpan_lf", "manual_quantity",
 }
 
+MATERIAL_FORMULA_OPERATORS = {"multiply", "divide", "add", "subtract"}
 
-def add_section_material(document: dict[str, Any], section_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+
+def add_section_material(document: dict[str, Any], section_id: str, payload: dict[str, Any],
+                         configuration: dict[str, Any] | None = None) -> dict[str, Any]:
     section = next((row for row in document.get("takeoff_sections", []) if str(row.get("id")) == str(section_id)), None)
     if not section:
         raise DomainError("Frame Spec Section was not found.", "not_found")
     source = str(payload.get("source") or "")
     if source not in MATERIAL_BASIS_TYPES:
         raise DomainError("Installation Material calculation basis is not supported.", "invalid_material_basis")
+    operator = str(payload.get("operator") or "multiply")
+    if operator not in MATERIAL_FORMULA_OPERATORS:
+        raise DomainError("Installation Material formula operator is not supported.", "invalid_material_operator")
+    operand = payload.get("operand")
+    if operand is None:
+        operand = payload.get("factor", 1)
+    if operator == "divide" and str(operand).strip() in {"0", "0.0", "0.00"}:
+        raise DomainError("Installation Material formula cannot divide by zero.", "invalid_material_formula")
+    actual_cost_code = payload.get("actual_cost_code") or payload.get("cost_code") or section.get("code")
+    if configuration is not None:
+        controlled = _controlled_reference(configuration)
+        if _base_code(actual_cost_code) not in controlled:
+            raise DomainError(
+                "Actual Cost Code must use the full controlled Cost Code reference.",
+                "invalid_actual_cost_code",
+                [{"value": actual_cost_code}],
+            )
     material = {
         "id": uid("matp"), "name": str(payload.get("name") or "").strip(), "source": source,
-        "manual_quantity": payload.get("manual_quantity"), "factor": str(payload.get("factor", 1)),
+        "manual_quantity": payload.get("manual_quantity"), "factor": str(operand),
+        "operator": operator, "operand": str(operand),
         "unit": str(payload.get("unit") or "each"), "controlled_rate_id": payload.get("controlled_rate_id"),
-        "cost_code": payload.get("cost_code") or section.get("code"),
+        # Existing persisted ``cost_code`` is the actual line classification;
+        # the containing Frame Spec Section supplies commercial grouping.
+        "cost_code": actual_cost_code,
         "material_code": str(payload.get("material_code") or "PROJECT"), "notes": str(payload.get("notes") or ""),
         "taxable": True, "project_specific": True, "status": "project_specific",
         "created_at": now(),
@@ -61,14 +84,19 @@ def add_section_material(document: dict[str, Any], section_id: str, payload: dic
 
 
 def remove_section_material(document: dict[str, Any], section_id: str, material_id: str,
-                            *, confirm_dependencies: bool = False) -> dict[str, Any]:
+                            *, confirm_dependencies: bool = False,
+                            controlled_materials: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     section = next((row for row in document.get("takeoff_sections", []) if str(row.get("id")) == str(section_id)), None)
     if not section:
         raise DomainError("Frame Spec Section was not found.", "not_found")
     materials = section.get("additional_materials", [])
     material = next((row for row in materials if str(row.get("id")) == str(material_id)), None)
+    is_controlled = material is None
+    if is_controlled:
+        material = next((row for row in (controlled_materials or [])
+                         if str(row.get("id")) == str(material_id)), None)
     if not material:
-        raise DomainError("Project-specific Installation Material was not found.", "not_found")
+        raise DomainError("Installation Material was not found.", "not_found")
     selected_frames = [row.get("id") for row in section.get("lines", [])
                        if row.get("installation_material_ids") is None
                        or material_id in row.get("installation_material_ids", [])]
@@ -78,12 +106,17 @@ def remove_section_material(document: dict[str, Any], section_id: str, material_
     if (selected_frames or has_cost) and not confirm_dependencies:
         raise DomainError("Confirm removal because this material has frame applicability or downstream cost.",
                           "material_dependencies", [dependencies])
-    section["additional_materials"] = [row for row in materials if str(row.get("id")) != str(material_id)]
+    if is_controlled:
+        excluded = {str(value) for value in section.get("excluded_material_rule_ids", [])}
+        excluded.add(str(material_id))
+        section["excluded_material_rule_ids"] = sorted(excluded)
+    else:
+        section["additional_materials"] = [row for row in materials if str(row.get("id")) != str(material_id)]
     section.setdefault("material_overrides", {}).pop(str(material_id), None)
     for frame in section.get("lines", []):
         if frame.get("installation_material_ids") is not None:
             frame["installation_material_ids"] = [value for value in frame["installation_material_ids"] if str(value) != str(material_id)]
-    return {"material": deepcopy(material), "dependencies": dependencies}
+    return {"material": deepcopy(material), "dependencies": dependencies, "controlled": is_controlled}
 
 
 def _base_code(value: Any) -> str:
@@ -304,6 +337,39 @@ def validate_project_inputs(incoming: dict[str, Any], current: dict[str, Any], c
                 "invalid_source_cost_code",
                 [{"collection": collection, "row_id": row.get("id"), "value": code}],
             )
+
+    def material_rows(document: dict[str, Any]):
+        for section in document.get("takeoff_sections", []):
+            yield from section.get("additional_materials", [])
+        for alternate in document.get("alternates", []):
+            section_changes = alternate.get("changes", {}).get("takeoff_sections", {})
+            for section in section_changes.get("added", []):
+                yield from section.get("additional_materials", [])
+            for fields in section_changes.get("overrides", {}).values():
+                stored = fields.get("additional_materials") if isinstance(fields, dict) else None
+                value = stored.get("value") if isinstance(stored, dict) and "value" in stored else stored
+                if isinstance(value, list):
+                    yield from value
+
+    prior_materials = {row.get("id"): row for row in material_rows(current) if row.get("id")}
+    for material in material_rows(incoming):
+        actual_code = material.get("cost_code")
+        if not str(actual_code or "").strip():
+            raise DomainError("Actual Cost Code is required for an Installation Material.", "invalid_actual_cost_code",
+                              [{"material_id": material.get("id"), "value": actual_code}])
+        reference = references.get(_base_code(actual_code))
+        prior = prior_materials.get(material.get("id"))
+        unchanged_legacy = prior is not None and _base_code(prior.get("cost_code")) == _base_code(actual_code)
+        if reference is None and not unchanged_legacy:
+            raise DomainError("Actual Cost Code must use the full controlled Cost Code reference.",
+                              "invalid_actual_cost_code", [{"material_id": material.get("id"), "value": actual_code}])
+        if reference is not None:
+            variant, _ = split_variant(str(actual_code))
+            display_code = reference.get("display_code") or actual_code
+            material["cost_code"] = f"{variant}-{display_code}" if variant else display_code
+            material["actual_cost_code_status"] = "controlled"
+        else:
+            material.setdefault("actual_cost_code_status", "legacy_unsupported")
 
     incoming["schema_version"] = current.get("schema_version", incoming.get("schema_version"))
     return incoming

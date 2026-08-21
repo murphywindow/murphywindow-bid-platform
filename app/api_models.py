@@ -67,6 +67,7 @@ class BidSourceEditCommand(BaseModel):
     confirmed: bool
     reason: str = Field(default="Bid detail canonical-source edit", max_length=1000)
     correlation_id: str | None = Field(default=None, max_length=200)
+    alternate_id: str | None = Field(default=None, max_length=200)
 
 
 class AddSectionMaterialCommand(BaseModel):
@@ -74,13 +75,16 @@ class AddSectionMaterialCommand(BaseModel):
 
     expected_revision: int
     name: str = Field(min_length=1, max_length=300)
-    source: Literal["perimeter_lf", "head_sill_qty", "caulking_lf", "quantity", "tie_back_qty", "backpan_lf", "manual_quantity"]
+    source: Literal["square_feet", "perimeter_lf", "head_sill_qty", "caulking_lf", "quantity", "tie_back_qty", "backpan_lf", "manual_quantity"]
     manual_quantity: float | None = None
     factor: float = 1
+    operator: Literal["multiply", "divide", "add", "subtract"] = "multiply"
+    operand: float | None = None
     unit: str = Field(default="each", min_length=1, max_length=50)
     controlled_rate_id: str | None = Field(default=None, max_length=200)
     project_rate: float | None = None
     cost_code: str | None = Field(default=None, max_length=100)
+    actual_cost_code: str | None = Field(default=None, max_length=100)
     material_code: str = Field(default="PROJECT", max_length=100)
     notes: str = Field(default="", max_length=2000)
     apply_to_existing: bool = True
@@ -92,6 +96,14 @@ class RemoveSectionMaterialCommand(BaseModel):
     expected_revision: int
     confirm_dependencies: bool = False
     reason: str = Field(default="Remove project-specific Installation Material", max_length=1000)
+
+
+class AlternateNameCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    expected_revision: int
+    name: str = Field(default="", max_length=300)
+    reason: str = Field(default="Alternate name changed", max_length=1000)
 
 
 class PasteCell(BaseModel):

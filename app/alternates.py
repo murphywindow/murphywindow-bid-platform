@@ -23,9 +23,17 @@ LABELS = {"quotes": "Quotes", "takeoff_sections": "Installation Materials", "doo
 def new_alternate(document: dict[str, Any], name: str | None = None) -> dict[str, Any]:
     sequence = max([int(row.get("sequence", 0)) for row in document.get("alternates", [])] or [0]) + 1
     key = f"ALT{sequence}"
-    return {"id": uid("alt"), "sequence": sequence, "key": key, "name": str(name or f"Alternate {sequence}").strip(),
+    return {"id": uid("alt"), "sequence": sequence, "key": key, "name": str(name or "").strip(),
             "customer_description": "", "created_at": now(), "base_created_revision": document.get("project", {}).get("revision", 0),
             "changes": {}, "calculated": {}}
+
+
+def alternate_label(alternate: dict[str, Any]) -> str:
+    """Return customer-facing text without exposing the stable ALT key."""
+    sequence = int(alternate.get("sequence") or 1)
+    base = f"Alternate {sequence}"
+    name = str(alternate.get("name") or "").strip()
+    return base if not name or name == base else f"{base} — {name}"
 
 
 def _bucket(alternate: dict[str, Any], collection: str) -> dict[str, Any]:
@@ -133,6 +141,15 @@ def materialize(document: dict[str, Any], alternate: dict[str, Any]) -> tuple[di
                                       "original_base": deepcopy(stored.get("base_value")), "current_base": deepcopy(current_value),
                                       "alternate_override": deepcopy(stored.get("value")), "reason": "base_changed_since_override"})
                 _set_field(current, field, stored.get("value"))
+    # Line markup decisions are deltas against the current Base override map.
+    # Clearing an Alternate entry therefore resumes current Base inheritance.
+    markup_changes = changes.get("line_markup_overrides", {})
+    for source_key, stored in markup_changes.get("overrides", {}).items():
+        override = stored.get("value") if isinstance(stored, dict) and "value" in stored else stored
+        if override is None:
+            effective.setdefault("working_estimate", {}).setdefault("component_markup_overrides", {}).pop(source_key, None)
+        else:
+            effective.setdefault("working_estimate", {}).setdefault("component_markup_overrides", {})[source_key] = deepcopy(override)
     quote_changes = alternate.get("changes", {}).get("quotes", {})
     if quote_changes:
         quotes = {str(row.get("id")): row for row in effective.get("quotes", [])}
@@ -209,6 +226,15 @@ def scope_of_change(document: dict[str, Any], alternate: dict[str, Any]) -> list
                     items.append(f"{label} {field.replace('_', ' ')} changed from {old} to {new}")
         if items:
             groups.append({"area": LABELS[collection], "changes": items})
+    markup_items = []
+    for source_key, stored in alternate.get("changes", {}).get("line_markup_overrides", {}).get("overrides", {}).items():
+        value = stored.get("value") if isinstance(stored, dict) else stored
+        if value:
+            mode = value.get("mode") if isinstance(value, dict) else "percentage"
+            amount = value.get("value", value.get("rate")) if isinstance(value, dict) else value
+            markup_items.append(f"{source_key} manual markup changed to {mode} {amount}")
+    if markup_items:
+        groups.append({"area": "Line Markup", "changes": markup_items})
     return groups
 
 

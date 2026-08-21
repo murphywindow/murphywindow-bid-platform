@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Murphy Window · Bid Platform</title>
-  <link rel="stylesheet" href="/assets/styles.css?v=20260820-proposal-refinement">
+  <link rel="stylesheet" href="/assets/styles.css?v=20260821-keyboard-scroll-v32">
 </head>
 <body>
   <div id="toast" role="status" aria-live="polite"></div>
@@ -14,6 +14,7 @@
     <div class="project-switcher">
       <button id="openProject" class="ghost"><span id="projectLabel">No project open</span><small id="projectMeta">Open or create a project</small></button>
     </div>
+    <div id="liveEstimateSummary" class="live-estimate-summary" aria-label="Live estimate totals" hidden></div>
     <div class="save-pill" id="saveStatus" data-state="saved"><span class="status-dot"></span><span>Saved</span></div>
     <label class="role-control"><span>Working as</span><select id="roleSelect" aria-label="Active role"></select></label>
     <label class="actor-control"><span>Actor</span><input id="actorInput" value="Local User" aria-label="Actor identity"></label>
@@ -32,7 +33,7 @@
     </aside>
 
     <main>
-      <section id="welcome" class="welcome">
+      <section id="welcome" class="welcome" hidden>
         <div class="hero">
           <p class="eyebrow">INF-4320 · LOCAL ESTIMATING</p>
           <h1>From first takeoff to final allocation.</h1>
@@ -54,9 +55,9 @@
     </main>
   </div>
 
-  <dialog id="dialog"><form method="dialog"><div id="dialogBody"></div><div class="dialog-actions"><button value="cancel">Cancel</button><button id="dialogConfirm" class="primary" value="default">Continue</button></div></form></dialog>
+  <dialog id="dialog"><form method="dialog"><div id="dialogBody"></div><div class="dialog-actions"><button value="cancel" formnovalidate>Cancel</button><button id="dialogConfirm" class="primary" value="default">Continue</button></div></form></dialog>
   <input type="file" id="fileInput" accept="application/json,.json" hidden>
-  <script src="/assets/ui-core.js?v=20260820-proposal-state-v2"></script>
-  <script src="/assets/app.js?v=20260820-proposal-refinement"></script>
+  <script src="/assets/ui-core.js?v=20260821-keyboard-scroll-v32"></script>
+  <script src="/assets/app.js?v=20260821-keyboard-scroll-v32"></script>
 </body>
 </html>

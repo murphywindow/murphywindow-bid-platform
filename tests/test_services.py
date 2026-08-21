@@ -1,14 +1,15 @@
 from copy import deepcopy
-from decimal import Decimal as D
+from decimal import Decimal, Decimal as D
 
 import pytest
 
 from app.alternates import add_record, new_alternate
 from app.schema import INTERCHANGE_VERSION, default_configuration, new_project
+from app.project_commands import cost_code_dependencies, remove_cost_code_cascade
 from app.services import (
-    DomainError, activate, calculate_project, create_change_order, job_data,
+    DomainError, PERMISSIONS, activate, calculate_project, create_change_order, job_data,
     edit_bid_source, provisional_closeout, redact, reestimate_contract, save_sov,
-    select_used_quotes, submission_blockers, submit, sync_labor_candidates,
+    require, select_used_quotes, submission_blockers, submit, sync_labor_candidates,
     update_change_order_status,
 )
 
@@ -33,6 +34,14 @@ def example():
     doc["takeoff_sections"] = [{"id":"sec_1","definition_id":"frame-v1","code":"08 40 00","name":"Frames","lines":[{"id":"frm_1","quantity":1,"width_inches":12,"height_inches":12,"caulking_passes":3}],"material_overrides":{},"tie_back_qty":0,"backpan_lf":0}]
     doc["labor_estimates"] = [{"id":"lbr_1","category":"field","code":"08 40 00","description":"Install","quantity":100,"crew":2,"productivity":5,"rate":50}]
     return doc, cfg
+
+
+def test_systems_administrator_has_every_application_permission():
+    for permission in PERMISSIONS:
+        require("Systems Administrator", permission)
+
+    with pytest.raises(DomainError):
+        require("Support", "edit_estimate")
 
 
 def test_bid_assembly_tax_markups_lineage_and_alternates():
@@ -189,6 +198,11 @@ def test_frame_and_door_missing_quantities_are_structured_blockers_and_acknowled
         "id": "frm_missing", "mark": "F-missing", "quantity": 0,
         "width_inches": 48, "height_inches": 96, "missing_quantity_acknowledged": False,
     })
+    doc["takeoff_sections"][0]["lines"].append({
+        "id": "frm_text_only", "mark": "F-future", "head": "Standard",
+        "quantity": 0, "width_inches": None, "height_inches": None,
+        "missing_quantity_acknowledged": False,
+    })
     doc["doors"] = [{
         "id": "dor_missing", "code": "08 40 00", "door_number": "D-missing",
         "leaf_quantity": None, "width_inches": 36, "height_inches": 84,
@@ -198,12 +212,28 @@ def test_frame_and_door_missing_quantities_are_structured_blockers_and_acknowled
     quantity_issues = [item for item in submission_blockers(doc) if item["code"] in {"missing_frame_quantity", "missing_door_quantity"}]
     assert {item["entity_id"] for item in quantity_issues} == {"frm_missing", "dor_missing"}
 
-    doc["takeoff_sections"][0]["lines"][-1]["missing_quantity_acknowledged"] = True
+    next(row for row in doc["takeoff_sections"][0]["lines"] if row["id"] == "frm_missing")["missing_quantity_acknowledged"] = True
     doc["doors"][0]["missing_quantity_acknowledged"] = True
     calculate_project(doc, cfg)
     visible = [item for item in doc["working_estimate"]["validation"] if item["entity_id"] in {"frm_missing", "dor_missing"}]
     assert all(item["acknowledged"] and not item["blocking"] for item in visible)
     assert not [item for item in submission_blockers(doc) if item["entity_id"] in {"frm_missing", "dor_missing"}]
+
+
+def test_frame_default_caulking_passes_materialize_only_when_perimeter_is_available():
+    doc, cfg = example()
+    row = {
+        "id": "frm_deferred_caulk", "mark": "F-deferred", "quantity": None,
+        "width_inches": None, "height_inches": None, "caulking_passes": None,
+    }
+    doc["takeoff_sections"][0]["lines"] = [row]
+    calculate_project(doc, cfg)
+    assert row["caulking_passes"] is None
+
+    row.update({"quantity": 1, "width_inches": 12, "height_inches": 12})
+    calculate_project(doc, cfg)
+    assert D(row["calculated"]["perimeter_lf"]) == D(4)
+    assert D(row["caulking_passes"]) == D(3)
 
 
 def test_installation_material_controlled_override_and_effective_values_are_distinct():
@@ -224,6 +254,33 @@ def test_installation_material_controlled_override_and_effective_values_are_dist
     assert result["pre_tax_cost"] == "18.00"
     assert result["rate_override_reason"] == "Project supplier quotation"
     assert next(rule for rule in cfg["material_rules"] if rule["id"] == "mat_sealant") == original_rule
+
+
+def test_installation_material_formula_override_uses_square_feet_and_is_reversible():
+    doc, cfg = example()
+    section = doc["takeoff_sections"][0]
+    section["material_overrides"]["mat_sealant"] = {
+        "source_override": "square_feet", "operator_override": "divide", "operand_override": "2", "unit_override": "each",
+    }
+    calculate_project(doc, cfg)
+    result = next(row for row in section["material_results"] if row["material_rule_id"] == "mat_sealant")
+    assert result["controlled_source"] == "caulking_lf"
+    assert result["source"] == "square_feet"
+    assert result["operator"] == "divide"
+    assert result["unit"] == "each"
+    assert result["unit_override"] == "each"
+    assert D(result["source_quantity"]) == D("1")
+    assert D(result["calculated_quantity"]) == D("0.5")
+    assert D(result["pre_tax_cost"]) == D("6")
+    assert result["is_formula_override"] is True
+
+    section["material_overrides"].pop("mat_sealant")
+    calculate_project(doc, cfg)
+    restored = next(row for row in section["material_results"] if row["material_rule_id"] == "mat_sealant")
+    assert restored["source"] == restored["controlled_source"] == "caulking_lf"
+    assert restored["operator"] == "multiply"
+    assert restored["operand"] == restored["controlled_operand"] == "0.08"
+    assert restored["is_formula_override"] is False
 
 
 def test_equipment_subtotal_is_pre_tax_and_each_row_honors_taxable_flag():
@@ -479,6 +536,134 @@ def test_bid_markup_override_uses_stable_source_key_and_can_be_cleared_without_e
     assert line["markup_override_rate"] is None
     assert line["markup_rate"] == ".20"
     assert doc["audit_events"][-1]["operation"] == "clear_bid_markup_override"
+
+
+def test_line_markup_percent_and_amount_authority_switch_recalculate_and_clear_exactly():
+    doc, cfg = example()
+    calculate_project(doc, cfg)
+
+    edit_bid_source(doc, cfg, "Est", "Estimator", {
+        "confirmed": True, "source_type": "quote", "source_id": "quo_base",
+        "changes": {"markup_percent": ".10"}, "reason": "Percent authority",
+    })
+    line = next(row for row in doc["working_estimate"]["lines"] if row.get("source_key") == "quote:quo_base")
+    initial_direct = Decimal(line["direct_cost"])
+    assert line["markup_override_mode"] == "percentage"
+    assert Decimal(line["markup_value"]) == initial_direct * Decimal(".10")
+
+    doc["quotes"][0]["price"] = "1500"
+    calculate_project(doc, cfg)
+    line = next(row for row in doc["working_estimate"]["lines"] if row.get("source_key") == "quote:quo_base")
+    assert Decimal(line["markup_rate"]) == Decimal(".10")
+    assert Decimal(line["markup_value"]) == Decimal(line["direct_cost"]) * Decimal(".10")
+
+    edit_bid_source(doc, cfg, "Est", "Estimator", {
+        "confirmed": True, "source_type": "quote", "source_id": "quo_base",
+        "changes": {"markup_amount": "75.25"}, "reason": "Dollar authority",
+    })
+    line = next(row for row in doc["working_estimate"]["lines"] if row.get("source_key") == "quote:quo_base")
+    assert line["markup_override_mode"] == "amount"
+    assert Decimal(line["markup_value"]) == Decimal("75.25")
+    assert doc["audit_events"][-1]["operation"] == "line_markup_override_mode_switch"
+
+    doc["quotes"][0]["price"] = "2000"
+    calculate_project(doc, cfg)
+    line = next(row for row in doc["working_estimate"]["lines"] if row.get("source_key") == "quote:quo_base")
+    assert Decimal(line["markup_value"]) == Decimal("75.25")
+    assert Decimal(line["selling_value"]) == Decimal(line["direct_cost"]) + Decimal("75.25")
+
+    edit_bid_source(doc, cfg, "Est", "Estimator", {
+        "confirmed": True, "source_type": "quote", "source_id": "quo_base",
+        "changes": {"markup_amount": ""}, "reason": "Return to inherited configuration",
+    })
+    line = next(row for row in doc["working_estimate"]["lines"] if row.get("source_key") == "quote:quo_base")
+    assert line["markup_override_mode"] is None
+    assert line["markup_rate"] == cfg["markup_defaults"]["base_product"]["rate"]
+    assert doc["audit_events"][-1]["operation"] == "line_markup_override_clear"
+
+
+def test_line_markup_zero_direct_and_ambiguous_authority_are_safe():
+    doc, cfg = example()
+    doc["quotes"][0]["price"] = "0"
+    calculate_project(doc, cfg)
+    edit_bid_source(doc, cfg, "Est", "Estimator", {
+        "confirmed": True, "source_type": "quote", "source_id": "quo_base",
+        "changes": {"markup_amount": "25"}, "reason": "Fixed handling amount",
+    })
+    line = next(row for row in doc["working_estimate"]["lines"] if row.get("source_key") == "quote:quo_base")
+    assert line["direct_cost"] == "0.00"
+    assert line["markup_rate"] is None
+    assert line["markup_value"] == "25"
+    assert line["selling_value"] == "25.00"
+    with pytest.raises(DomainError, match="Only one manual markup authority"):
+        edit_bid_source(doc, cfg, "Est", "Estimator", {
+            "confirmed": True, "source_type": "quote", "source_id": "quo_base",
+            "changes": {"markup_percent": ".1", "markup_amount": "25"},
+        })
+
+
+def test_line_markup_amount_inherits_deduct_sign_without_negative_entry():
+    doc, cfg = example()
+    next(row for row in doc["cost_codes"] if row["code"] == "08 40 00")["deduct"] = True
+    calculate_project(doc, cfg)
+
+    edit_bid_source(doc, cfg, "Est", "Estimator", {
+        "confirmed": True, "source_type": "quote", "source_id": "quo_base",
+        "changes": {"markup_amount": "50"}, "reason": "Fixed deduct handling",
+    })
+
+    line = next(row for row in doc["working_estimate"]["lines"] if row.get("source_key") == "quote:quo_base")
+    assert Decimal(line["direct_cost"]) < 0
+    assert Decimal(line["markup_value"]) == Decimal("-50")
+    assert Decimal(line["selling_value"]) == Decimal(line["direct_cost"]) - Decimal("50")
+    assert Decimal(line["markup_rate"]) > 0
+
+
+def test_grouping_and_actual_cost_code_are_distinct_without_creating_scope_group():
+    doc, cfg = example()
+    doc["cost_codes"] = [row for row in doc["cost_codes"] if row["code"] == "08 40 00"]
+    section = doc["takeoff_sections"][0]
+    section["additional_materials"] = [{
+        "id": "mat_actual_code", "name": "Backer rod and perimeter sealant",
+        "source": "manual_quantity", "manual_quantity": "10", "factor": "1",
+        "unit": "tube", "cost_code": "07 90 00", "taxable": False,
+    }]
+    section["material_overrides"]["mat_actual_code"] = {"rate_override": "5"}
+    assert all(row["code"] != "07 90 00" for row in doc["cost_codes"])
+
+    calculate_project(doc, cfg)
+
+    line = next(row for row in doc["working_estimate"]["lines"] if row.get("source_key") == "frame_material:sec_1:mat_actual_code")
+    assert line["grouping_code"] == "08 40 00"
+    assert line["actual_cost_code"] == "07 90 00"
+    assert line["description"] == "Backer rod and perimeter sealant"
+    summaries = {row["code"]: row for row in doc["working_estimate"]["cost_code_summaries"]}
+    assert "08 40 00" in summaries
+    assert "07 90 00" not in summaries
+    assert not any(row["code"] == "invalid_source_cost_code" and row.get("entity_id") == "mat_actual_code"
+                   for row in doc["working_estimate"]["validation"])
+
+
+def test_scope_removal_dependencies_follow_grouping_code_not_nested_actual_classification():
+    document = {
+        "cost_codes": [
+            {"id": "ccd_group", "code": "08 40 00", "description": "Grouping"},
+            {"id": "ccd_actual", "code": "07 90 00", "description": "Actual classification"},
+        ],
+        "takeoff_sections": [{
+            "id": "sec_group", "code": "08 40 00", "name": "Grouped Frames", "lines": [],
+            "additional_materials": [{"id": "mat_actual", "cost_code": "07 90 00"}],
+        }],
+        "working_estimate": {},
+    }
+
+    actual_report = cost_code_dependencies(document, "ccd_actual")
+    assert actual_report["has_dependencies"] is False
+    assert cost_code_dependencies(document, "ccd_group")["has_dependencies"] is True
+
+    remove_cost_code_cascade(document, "ccd_actual")
+    assert document["takeoff_sections"][0]["id"] == "sec_group"
+    assert document["takeoff_sections"][0]["additional_materials"][0]["cost_code"] == "07 90 00"
 
 
 def test_submission_blockers_include_controlled_project_and_pending_paste_states():

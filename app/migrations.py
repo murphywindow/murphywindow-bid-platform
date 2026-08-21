@@ -13,7 +13,7 @@ import re
 from typing import Any, Callable
 
 
-CURRENT_SCHEMA_VERSION = "1.2.0"
+CURRENT_SCHEMA_VERSION = "1.3.0"
 
 PROJECT_TYPES = (
     "New Construction - Curtainwall",
@@ -330,10 +330,40 @@ def _migrate_1_1_0_to_1_2_0(document: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
+def _migrate_1_2_0_to_1_3_0(document: dict[str, Any]) -> dict[str, Any]:
+    """Normalize optional names and typed line-markup override authority."""
+    result = deepcopy(document)
+    for alternate in result.setdefault("alternates", []):
+        sequence = int(alternate.get("sequence") or re.sub(r"\D", "", str(alternate.get("key") or "")) or 1)
+        alternate["sequence"] = sequence
+        name = str(alternate.get("name") or "").strip()
+        alternate["name"] = "" if name == f"Alternate {sequence}" else name
+    overrides = result.setdefault("working_estimate", {}).setdefault("component_markup_overrides", {})
+    for source_key, entry in list(overrides.items()):
+        if not isinstance(entry, dict):
+            entry = {"rate": entry}
+            overrides[source_key] = entry
+        if entry.get("mode") in {"percentage", "amount"}:
+            entry.setdefault("value", entry.get("rate") if entry["mode"] == "percentage" else entry.get("amount"))
+        elif entry.get("rate", entry.get("rate_override")) not in (None, ""):
+            rate = entry.get("rate", entry.get("rate_override"))
+            entry["mode"] = "percentage"
+            entry["value"] = str(rate)
+            entry.setdefault("rate", str(rate))
+    result.setdefault("schema_migrations", []).append({
+        "id": "project-1.2.0-to-1.3.0", "from_version": "1.2.0", "to_version": "1.3.0",
+        "scope": "active_project_only", "line_markup_authority": "percentage_or_amount",
+    })
+    result["schema_version"] = "1.3.0"
+    result["interchange_version"] = "1.3.0"
+    return result
+
+
 Migration = Callable[[dict[str, Any]], dict[str, Any]]
 MIGRATIONS: dict[str, tuple[str, Migration]] = {
     "1.0.0": ("1.1.0", _migrate_1_0_0_to_1_1_0),
     "1.1.0": ("1.2.0", _migrate_1_1_0_to_1_2_0),
+    "1.2.0": ("1.3.0", _migrate_1_2_0_to_1_3_0),
 }
 
 

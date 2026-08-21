@@ -553,12 +553,12 @@ def _date_range(observations: list[dict[str, Any]]) -> dict[str, str] | None:
 
 def _category(current: Decimal, q1: Decimal, q3: Decimal) -> tuple[str, str]:
     if q1 == q3 == current:
-        return "Normal", "Current $/SF equals the common historical value."
+        return "Normal", "Current $/ft² equals the common historical value."
     if current <= q1:
-        return "Aggressive", "Current $/SF is at or below the historical Q1 value threshold."
+        return "Aggressive", "Current $/ft² is at or below the historical Q1 value threshold."
     if current >= q3:
-        return "Conservative", "Current $/SF is at or above the historical Q3 value threshold."
-    return "Normal", "Current $/SF is between the historical Q1 and Q3 value thresholds."
+        return "Conservative", "Current $/ft² is at or above the historical Q3 value threshold."
+    return "Normal", "Current $/ft² is between the historical Q1 and Q3 value thresholds."
 
 
 def compare_values(current: Decimal | None, observations: list[dict[str, Any]], *, minimum_sample: int = MINIMUM_SAMPLE) -> dict[str, Any]:

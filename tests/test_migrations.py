@@ -56,8 +56,8 @@ def test_active_project_migration_is_lossless_idempotent_and_leaves_history_froz
     migrated = migrate_project_document(source)
 
     assert source == source_before
-    assert migrated["schema_version"] == "1.2.0"
-    assert migrated["interchange_version"] == "1.2.0"
+    assert migrated["schema_version"] == "1.3.0"
+    assert migrated["interchange_version"] == "1.3.0"
     assert migrated["project"]["project_type"] == "Legacy Renovation"
     assert migrated["project"]["project_type_status"] == "legacy_unsupported"
     assert migrated["project"]["contract_type_status"] == "legacy_unsupported"
@@ -117,6 +117,25 @@ def test_migration_normalizes_legacy_quote_selection_alias_without_deleting_it()
     }
 
 
+def test_1_3_migration_normalizes_optional_alternate_names_and_markup_authority():
+    source = migrate_project_document(legacy_document(), target_version="1.2.0")
+    source["alternates"] = [{
+        "id": "alt_1", "sequence": 1, "key": "ALT1", "name": "Alternate 1",
+        "changes": {}, "calculated": {},
+    }]
+    source["working_estimate"]["component_markup_overrides"] = {
+        "quote:quo_legacy": {"rate": ".25", "reason": "Legacy rate authority"},
+    }
+
+    migrated = migrate_project_document(source)
+
+    assert migrated["alternates"][0]["name"] == ""
+    override = migrated["working_estimate"]["component_markup_overrides"]["quote:quo_legacy"]
+    assert override["mode"] == "percentage"
+    assert override["value"] == ".25"
+    assert override["rate"] == ".25"
+
+
 def test_unknown_schema_fails_closed():
     with pytest.raises(MigrationError, match="No supported project migration path"):
         migrate_project_document({"schema_version": "9.0.0", "project": {}})
@@ -132,7 +151,7 @@ def test_json_store_migrates_on_load_without_rewriting_the_source(tmp_path):
     loaded, recovered_from = store.load_project(source["project"]["id"])
 
     assert recovered_from is None
-    assert loaded["schema_version"] == "1.2.0"
+    assert loaded["schema_version"] == "1.3.0"
     assert loaded["project"]["revision"] == 7
     assert path.read_bytes() == raw_before
     assert json.loads(path.read_text(encoding="utf-8"))["schema_version"] == "1.0.0"

@@ -26,6 +26,8 @@ Trailing spaces in the second occurrence normalize to the same stable code. The 
 
 An entered code not found in this list is preserved for correction and produces a field-specific `invalid_cost_code` validation warning. The list does not supply internal MWD mappings, vendor directories, deduct status, tax treatment, or commercial pricing; those remain separate versioned data and must not be inferred from the code description.
 
+Project scope records and Frame Spec Sections use the selected code as a Grouping / Spec Code. A project-specific Installation Material may use any entry in this full reference as its Actual Cost Code without adding that entry to project scope. Actual classification is shown separately in Bid and does not create a top-level subtotal or a scope-removal dependency. Authorization for an Actual Cost Code outside this controlled reference remains unresolved and protected.
+
 Re-import with:
 
 ```powershell

@@ -182,12 +182,38 @@ def frame_quantities(quantity: Any, width_inches: Any, height_inches: Any, caulk
     }
 
 
+def installation_material_quantity(source_quantity: Any, operator: str = "multiply", operand: Any = 1) -> Decimal | None:
+    qty = dec(source_quantity)
+    if qty is None:
+        return None
+    value = dec(operand, D(1))
+    value = D(1) if value is None else value
+    normalized = {
+        "*": "multiply", "x": "multiply", "×": "multiply",
+        "/": "divide", "÷": "divide", "+": "add", "-": "subtract",
+    }.get(str(operator or "multiply").strip().lower(), str(operator or "multiply").strip().lower())
+    if normalized == "multiply":
+        result = qty * value
+    elif normalized == "divide":
+        if value == 0:
+            raise ValueError("Installation Material formula cannot divide by zero.")
+        result = qty / value
+    elif normalized == "add":
+        result = qty + value
+    elif normalized == "subtract":
+        result = qty - value
+    else:
+        raise ValueError(f"Unsupported Installation Material formula operator: {operator!r}.")
+    if result < 0:
+        raise ValueError("Installation Material formula cannot produce a negative quantity.")
+    return result
+
+
 def installation_material(source_quantity: Any, factor: Any, rate: Any) -> Decimal | None:
-    qty, r = dec(source_quantity), dec(rate)
+    qty, r = installation_material_quantity(source_quantity, "multiply", factor), dec(rate)
     if qty is None or qty == 0 or r is None:
         return None
-    f = dec(factor, D(1)) or D(0)
-    return money(qty * f * r)
+    return money(qty * r)
 
 
 def equipment_extension(quantity: Any, duration: Any, rate: Any, delivery: Any = 0) -> Decimal | None:

@@ -8,6 +8,13 @@ const {
   mapClipboard,
   nextEditablePosition,
   arrowNavigationIntent,
+  horizontalVisibilityDelta,
+  clampedHorizontalScroll,
+  cycleSort,
+  naturalCompare,
+  compareSortValues,
+  stableSortRows,
+  SortStateStore,
   activeHistoryBand,
   clampHistoryMarker,
   normalizeDecimalPrecision,
@@ -16,11 +23,52 @@ const {
   DraftStore,
   PendingCellStore,
   meaningfulValue,
+  countLabel,
   TableController,
   AutocompleteController,
   TooltipController,
   DrawerController
 } = require("../app/static/ui-core.js");
+
+test("traditional sorting cycles and Shift-click maintains an ordered multi-column stack", () => {
+  let stack = cycleSort([], "code");
+  assert.deepEqual(stack, [{ key: "code", direction: "asc" }]);
+  stack = cycleSort(stack, "code");
+  assert.deepEqual(stack, [{ key: "code", direction: "desc" }]);
+  stack = cycleSort(stack, "code");
+  assert.deepEqual(stack, []);
+  stack = cycleSort([{ key: "vendor", direction: "asc" }], "code", true);
+  assert.deepEqual(stack, [{ key: "vendor", direction: "asc" }, { key: "code", direction: "asc" }]);
+  stack = cycleSort(stack, "code", true);
+  assert.equal(stack[1].direction, "desc");
+  stack = cycleSort(stack, "code", true);
+  assert.deepEqual(stack, [{ key: "vendor", direction: "asc" }]);
+  assert.deepEqual(cycleSort(stack, "price"), [{ key: "price", direction: "asc" }]);
+});
+
+test("stable raw-value sorting handles numbers, dates, natural codes, blanks, and canonical restoration", () => {
+  const rows = [
+    { id: "a", code: "08 10 2", price: "10", date: "2026-08-20" },
+    { id: "b", code: "08 10 10", price: null, date: "" },
+    { id: "c", code: "08 10 2", price: "2", date: "2026-08-19" },
+  ];
+  const columns = [{ key: "code" }, { key: "price", type: "currency" }, { key: "date", type: "date" }];
+  assert.ok(naturalCompare("ALT2", "ALT10") < 0);
+  assert.equal(compareSortValues(null, 0, "number"), 1);
+  assert.deepEqual(stableSortRows(rows, [{ key: "price", direction: "asc" }], columns).map(row => row.id), ["c", "a", "b"]);
+  assert.deepEqual(stableSortRows(rows, [{ key: "price", direction: "desc" }], columns).map(row => row.id), ["a", "c", "b"]);
+  assert.deepEqual(stableSortRows(rows, [{ key: "code", direction: "asc" }, { key: "date", direction: "asc" }], columns).map(row => row.id), ["c", "a", "b"]);
+  assert.deepEqual(stableSortRows(rows, [], columns), rows);
+});
+
+test("sort state stays browser-only and discards only removed columns", () => {
+  const values = new Map();
+  const storage = {getItem:key=>values.get(key)||null,setItem:(key,value)=>values.set(key,value),removeItem:key=>values.delete(key)};
+  const store = new SortStateStore(storage);
+  store.set("project/quotes/base", [{key:"vendor",direction:"asc"},{key:"removed",direction:"desc"}]);
+  assert.deepEqual(store.get("project/quotes/base", ["vendor", "price"]), [{key:"vendor",direction:"asc"}]);
+  assert.deepEqual(JSON.parse([...values.values()][0]), [{key:"vendor",direction:"asc"}]);
+});
 
 function fakeDom() {
   const listenerMethods = target => {
@@ -208,6 +256,33 @@ test("table arrows navigate selected cells while left and right preserve text ed
   assert.deepEqual(arrowNavigationIntent(numberInput, "ArrowRight"), { direction: 1, sameColumn: false });
 });
 
+test("focused table cells keep their full width inside the horizontal viewport", () => {
+  assert.equal(horizontalVisibilityDelta(120, 180, 100, 300, 5), 0);
+  assert.equal(horizontalVisibilityDelta(80, 140, 100, 300, 5), -25);
+  assert.equal(horizontalVisibilityDelta(260, 320, 100, 300, 5), 25);
+  assert.equal(clampedHorizontalScroll(590, 25, 900, 300), 600);
+  assert.equal(clampedHorizontalScroll(5, -25, 900, 300), 0);
+});
+
+test("frame focus scrolling reveals a cell hidden underneath frozen Qty", () => {
+  const root = { addEventListener() {} };
+  const controller = new TableController(root);
+  const wrap = { scrollWidth: 900, clientWidth: 300, scrollLeft: 200, classList: { contains: name => name === "frame-grid" }, getBoundingClientRect: () => ({ left: 0, right: 300 }) };
+  const frozenQty = { getBoundingClientRect: () => ({ left: 60, right: 140 }) };
+  const actions = { getBoundingClientRect: () => ({ left: 270, right: 300 }) };
+  const row = { children: [{}, frozenQty], querySelector: selector => selector === ".row-action-cell" ? actions : null };
+  const table = { classList: { contains: () => false } };
+  const cell = {
+    cellIndex: 2,
+    parentElement: row,
+    getBoundingClientRect: () => ({ left: 120, right: 200 }),
+    closest: selector => selector === ".table-wrap" ? wrap : selector === "table" ? table : null
+  };
+  row.children.push(cell);
+  controller.ensureFocusVisible({ closest: selector => selector === "td, th" ? cell : null });
+  assert.equal(wrap.scrollLeft, 175);
+});
+
 test("five-band history visualization activates every range without classification logic", () => {
   const bands = [
     { start: 0, end: 20 }, { start: 20, end: 40 }, { start: 40, end: 60 },
@@ -261,7 +336,7 @@ test("draft and pending values are UI state until deliberately consumed", () => 
   assert.equal(pending.all().length, 0);
 });
 
-test("table promotion exposes promoted and replacement draft rows through afterPromote", () => {
+test("table promotion ends the explicit draft without creating a replacement row", () => {
   const { document } = fakeDom();
   const root = document.createElement("main");
   const table = document.createElement("div");
@@ -307,7 +382,6 @@ test("table promotion exposes promoted and replacement draft rows through afterP
       paths: { mark: "takeoff_sections.0.lines.0.mark" },
       actionsHtml: "<button>Remove</button>"
     }),
-    renderDraft: () => "<div data-table-row data-row-kind=\"draft\"></div>",
     afterPromote: context => { promoted = context; }
   });
 
@@ -316,12 +390,12 @@ test("table promotion exposes promoted and replacement draft rows through afterP
   assert.equal(row.dataset.rowKind, "persisted");
   assert.equal(row.dataset.rowId, "frm-1");
   assert.equal(cell.dataset.path, "takeoff_sections.0.lines.0.mark");
-  assert.match(insertedHtml, /data-row-kind="draft"/);
+  assert.equal(insertedHtml, null);
   assert.equal(promoted.tableId, "frames-sec-1");
   assert.equal(promoted.table, table);
   assert.equal(promoted.row, row);
   assert.equal(promoted.rowId, "frm-1");
-  assert.equal(promoted.newDraftRow, row.nextElementSibling);
+  assert.equal(promoted.newDraftRow, null);
   assert.equal(promoted.cell, cell);
   assert.equal(promoted.result, result);
   assert.equal(promoted.correlationId, "entry-1");
@@ -332,6 +406,17 @@ test("meaningful row detection ignores false and blank values", () => {
   assert.equal(meaningfulValue("  "), false);
   assert.equal(meaningfulValue(0), true);
   assert.equal(meaningfulValue("A1"), true);
+});
+
+test("shared count labels handle regular and irregular plurals", () => {
+  assert.equal(countLabel(1, "frame"), "1 frame");
+  assert.equal(countLabel(2, "frame"), "2 frames");
+  assert.equal(countLabel(1, "foot"), "1 foot");
+  assert.equal(countLabel(2, "foot"), "2 feet");
+  assert.equal(countLabel(1, "linear foot"), "1 linear foot");
+  assert.equal(countLabel(2, "linear foot"), "2 feet");
+  assert.equal(countLabel(1, "sausage"), "1 sausage");
+  assert.equal(countLabel(2, "sausage"), "2 sausages");
 });
 
 test("tooltip positioning prefers a centered placement above the trigger", () => {
