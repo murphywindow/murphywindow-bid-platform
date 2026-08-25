@@ -10,8 +10,8 @@ from uuid import uuid4
 from .rate_reference import owner_rate_reference
 from .numeric_precision import default_decimal_precision
 
-SCHEMA_VERSION = "1.3.0"
-INTERCHANGE_VERSION = "1.3.0"
+SCHEMA_VERSION = "1.4.0"
+INTERCHANGE_VERSION = "1.4.0"
 CONFIG_VERSION = "cfg-2026-08-19-v5"
 
 PROJECT_TYPES = (
@@ -195,7 +195,7 @@ def test_project(actor: str = "Test Estimator") -> dict:
             {"id": "frm_test_2", "mark": "F2", "quantity": 1, "width_inches": 36, "height_inches": 84, "caulking_passes": 3, "head": "Standard", "jamb": "Standard", "sill": "Standard", "type": "Door frame", "material": "Aluminum", "finish": "Dark bronze", "notes": "Side entry"}
         ]
     }]
-    doc["equipment"] = [{"id": "eqp_test_lift", "code": "14 40 00", "description": "45’ Boom Lift", "quantity": 1, "duration": 1, "duration_unit": "month", "rate": "1750", "delivery": "200", "taxable": True, "rate_id": "equipment_owner_08", "rate_version": CONFIG_VERSION, "notes": "Owner-provided rental reference; verify stale vendor rate before commercial use."}]
+    doc["equipment"] = [{"id": "eqp_test_lift", "code": "14 40 00", "description": "45’ Boom Lift", "quantity": 1, "duration": 1, "duration_unit": "month", "rate": "1750", "delivery_direction": "two_way", "delivery": "200", "taxable": True, "rate_id": "equipment_owner_08", "rate_version": CONFIG_VERSION, "notes": "Owner-provided rental reference; verify stale vendor rate before commercial use."}]
     doc["borrowed_lites"] = [{"id": "brl_test_1", "code": "08 40 00", "mark": "BL1", "quantity": 1, "width_inches": 12, "height_inches": 12, "rate": "25", "notes": "Exercises five ft² minimum"}]
     doc["labor_estimates"] = [
         {"id": "lbr_test_field", "category": "field", "code": "08 40 00", "description": "Field installation", "quantity": 160, "quantity_unit": "SF", "crew": 2, "productivity": 4, "rate": "68.53", "rate_id": "labor_field_nonpw_2025", "rate_version": CONFIG_VERSION, "notes": "Owner-provided 2025 non-PW field rate"},

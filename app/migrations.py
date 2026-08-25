@@ -13,7 +13,7 @@ import re
 from typing import Any, Callable
 
 
-CURRENT_SCHEMA_VERSION = "1.3.0"
+CURRENT_SCHEMA_VERSION = "1.4.0"
 
 PROJECT_TYPES = (
     "New Construction - Curtainwall",
@@ -359,11 +359,86 @@ def _migrate_1_2_0_to_1_3_0(document: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
+ZERO_ABSENT_QUANTITY_FIELDS = {"quantity", "leaf_quantity", "tie_back_qty", "backpan_lf", "manual_quantity"}
+
+
+def _zero_absent(value: Any) -> Any:
+    if value in (None, ""):
+        return None
+    try:
+        return None if Decimal(str(value)) == 0 else value
+    except (InvalidOperation, TypeError, ValueError):
+        return value
+
+
+def _normalize_zero_absent_record(record: dict[str, Any], fields: set[str]) -> None:
+    for field in fields:
+        if field in record:
+            record[field] = _zero_absent(record[field])
+
+
+def _migrate_1_3_0_to_1_4_0(document: dict[str, Any]) -> dict[str, Any]:
+    """Store absent optional quantities as null in the active estimate model."""
+    result = deepcopy(document)
+    for section in result.setdefault("takeoff_sections", []):
+        _normalize_zero_absent_record(section, {"tie_back_qty", "backpan_lf"})
+        for line in section.setdefault("lines", []):
+            _normalize_zero_absent_record(line, {"quantity"})
+        for material in section.setdefault("additional_materials", []):
+            _normalize_zero_absent_record(material, {"manual_quantity"})
+    for collection, fields in (
+        ("doors", {"leaf_quantity"}),
+        ("equipment", {"quantity"}),
+        ("borrowed_lites", {"quantity"}),
+        ("travel_estimates", {"quantity"}),
+    ):
+        for record in result.setdefault(collection, []):
+            _normalize_zero_absent_record(record, fields)
+    added_fields = {
+        "takeoff_sections": {"tie_back_qty", "backpan_lf"}, "frames": {"quantity"},
+        "doors": {"leaf_quantity"}, "equipment": {"quantity"},
+        "borrowed_lites": {"quantity"}, "travel_estimates": {"quantity"},
+    }
+    for alternate in result.setdefault("alternates", []):
+        for collection, bucket in alternate.setdefault("changes", {}).items():
+            if not isinstance(bucket, dict):
+                continue
+            for record in bucket.get("added", []):
+                if isinstance(record, dict):
+                    _normalize_zero_absent_record(record, added_fields.get(collection, set()))
+                    if collection == "takeoff_sections":
+                        for line in record.get("lines", []):
+                            _normalize_zero_absent_record(line, {"quantity"})
+                        for material in record.get("additional_materials", []):
+                            _normalize_zero_absent_record(material, {"manual_quantity"})
+            for fields in bucket.get("overrides", {}).values():
+                if not isinstance(fields, dict):
+                    continue
+                for field, change in fields.items():
+                    if str(field).split(".")[-1] not in ZERO_ABSENT_QUANTITY_FIELDS:
+                        continue
+                    if isinstance(change, dict) and ("value" in change or "base_value" in change):
+                        if "base_value" in change:
+                            change["base_value"] = _zero_absent(change["base_value"])
+                        if "value" in change:
+                            change["value"] = _zero_absent(change["value"])
+                    else:
+                        fields[field] = _zero_absent(change)
+    result.setdefault("schema_migrations", []).append({
+        "id": "project-1.3.0-to-1.4.0", "from_version": "1.3.0", "to_version": "1.4.0",
+        "scope": "active_project_only", "optional_quantity_storage": "null_when_zero_or_blank",
+    })
+    result["schema_version"] = "1.4.0"
+    result["interchange_version"] = "1.4.0"
+    return result
+
+
 Migration = Callable[[dict[str, Any]], dict[str, Any]]
 MIGRATIONS: dict[str, tuple[str, Migration]] = {
     "1.0.0": ("1.1.0", _migrate_1_0_0_to_1_1_0),
     "1.1.0": ("1.2.0", _migrate_1_1_0_to_1_2_0),
     "1.2.0": ("1.3.0", _migrate_1_2_0_to_1_3_0),
+    "1.3.0": ("1.4.0", _migrate_1_3_0_to_1_4_0),
 }
 
 

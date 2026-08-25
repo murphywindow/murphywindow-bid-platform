@@ -423,7 +423,7 @@ def test_health_static_and_project_crud_conflict(client):
     assert health.status_code == 200
     assert health.json()["software_version"] == SOFTWARE_VERSION
     assert re.fullmatch(r"(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)", health.json()["software_version"])
-    assert health.json()["schema_version"] == SCHEMA_VERSION == "1.3.0"
+    assert health.json()["schema_version"] == SCHEMA_VERSION == "1.4.0"
     assert client.get("/openapi.json").json()["info"]["version"] == SOFTWARE_VERSION
     assert "Murphy Window" in client.get("/").text
     created=client.post("/api/projects",headers=h(),json={"name":"API Job"})
@@ -776,7 +776,7 @@ def test_duplicate_export_backup_import_and_job_data(client):
     export=client.get(f"/api/projects/{pid}/export",headers=h()); assert export.status_code == 200
     assert export.headers["content-type"].startswith("application/json")
     assert client.post(f"/api/projects/{pid}/backup",headers=h(),json={}).status_code == 200
-    data=client.get(f"/api/projects/{pid}/job-data",headers=h()).json();assert data["version"] == "1.3.0"
+    data=client.get(f"/api/projects/{pid}/job-data",headers=h()).json();assert data["version"] == "1.4.0"
     imported=client.post("/api/projects/import",headers=h(),json={"project_document":json.loads(export.text),"as_duplicate":True})
     assert imported.status_code == 200 and imported.json()["project"]["project"]["id"] != pid
 
@@ -1064,15 +1064,15 @@ def test_import_migrates_supported_legacy_project_document_to_current_schema(cli
 
     assert imported.status_code == 200
     migrated = imported.json()["project"]
-    assert migrated["schema_version"] == SCHEMA_VERSION == "1.3.0"
-    assert migrated["interchange_version"] == "1.3.0"
+    assert migrated["schema_version"] == SCHEMA_VERSION == "1.4.0"
+    assert migrated["interchange_version"] == "1.4.0"
     assert migrated["project"]["project_type"] == "Training / Sandbox"
     assert migrated["project"]["project_type_status"] == "legacy_unsupported"
     assert migrated["project"]["contract_type"] == "Legacy negotiated contract"
     assert migrated["project"]["contract_type_status"] == "legacy_unsupported"
     assert migrated["project"]["bid_due_date"] == "2026-09-01"
     assert migrated["project"]["bid_due_date_status"] == "legacy_date_only"
-    assert migrated["schema_migrations"][-1]["id"] == "project-1.2.0-to-1.3.0"
+    assert migrated["schema_migrations"][-1]["id"] == "project-1.3.0-to-1.4.0"
 
 
 def test_bid_source_edit_requires_confirmation_and_updates_only_canonical_record(client):

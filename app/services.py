@@ -435,12 +435,10 @@ def calculate_project(doc: dict, config: dict, *, include_alternates: bool = Tru
             quantity = dec(row.get("quantity"))
             dimensions_started = _frame_dimensions_started(row)
             if dimensions_started and quantity in (None, Decimal(0)):
-                acknowledged = bool(row.get("missing_quantity_acknowledged"))
                 warnings.append(_warning(
                     "missing_frame_quantity", row.get("id"),
-                    "Frame row contains takeoff information but Quantity is blank or zero."
-                    + (" The estimator acknowledged this line-level exception." if acknowledged else ""),
-                    blocking=not acknowledged, acknowledged=acknowledged,
+                    "Frame row contains takeoff information but Quantity is blank or zero.",
+                    blocking=True, acknowledged=False,
                     entity_type="frame_line", section_id=section.get("id"),
                 ))
             try:
@@ -587,12 +585,10 @@ def calculate_project(doc: dict, config: dict, *, include_alternates: bool = Tru
     for row in doc.get("doors", []):
         quantity = dec(row.get("leaf_quantity", row.get("quantity")))
         if _door_row_meaningful(row) and quantity in (None, Decimal(0)):
-            acknowledged = bool(row.get("missing_quantity_acknowledged"))
             warnings.append(_warning(
                 "missing_door_quantity", row.get("id"),
-                "Door row contains information but Quantity is blank or zero."
-                + (" The estimator acknowledged this line-level exception." if acknowledged else ""),
-                blocking=not acknowledged, acknowledged=acknowledged, entity_type="door_line",
+                "Door row contains information but Quantity is blank or zero.",
+                blocking=True, acknowledged=False, entity_type="door_line",
             ))
 
     # Borrowed-lite areas and internal costs.
@@ -695,7 +691,7 @@ def calculate_project(doc: dict, config: dict, *, include_alternates: bool = Tru
             raw.append({"code": code, "category": "equipment", "description": row.get("description") or "Equipment", "cost": taxed_cost(cost, tax_rate, taxable=taxable and row_taxable), "area": Decimal(0),
                         "tax_treatment": "taxed" if taxable and row_taxable else "exempt", "markup_type": "base_product", "source_key": f"equipment:{row['id']}",
                         "lineage": [{"source_type": "equipment", "source_id": row["id"], "quantity": row.get("quantity"), "duration": row.get("duration"),
-                                     "duration_unit": row.get("duration_unit"), "rate": row.get("rate"), "delivery": row.get("delivery"), "pre_tax_cost": jsonable(cost),
+                                     "duration_unit": row.get("duration_unit"), "rate": row.get("rate"), "delivery_direction": row.get("delivery_direction", "two_way"), "delivery": row.get("delivery"), "pre_tax_cost": jsonable(cost),
                                      "row_taxable": row_taxable, "rate_version": row.get("rate_version", config["id"]), "configuration_id": config["id"]}]})
         elif _meaningful(row, {"id", "calculated_cost", "taxable"}) and row.get("rate") in (None, ""):
             warnings.append(_warning("missing_equipment_rate", row.get("id"), "Equipment line has no rate and cannot contribute to Bid.", blocking=True, entity_type="equipment"))
@@ -1107,7 +1103,7 @@ def edit_bid_source(doc: dict, config: dict, actor: str, role: str, payload: dic
     collections = {
         "quote": ("quotes", {"code", "date", "vendor", "price", "credit_type", "credit_value", "surcharge_type", "surcharge_value", "tax_included", "used", "square_feet", "square_feet_source", "notes"}),
         "door": ("doors", {"code", "door_number", "mark", "leaf_quantity", "width_inches", "height_inches", "type", "material", "finish", "description", "glass", "style", "rails", "hardware_group_id", "fire_rating", "notes", "missing_quantity_acknowledged"}),
-        "equipment": ("equipment", {"code", "description", "quantity", "duration", "duration_unit", "rate", "delivery", "taxable", "notes"}),
+        "equipment": ("equipment", {"code", "description", "quantity", "duration", "duration_unit", "delivery_direction", "rate", "delivery", "taxable", "notes"}),
         "labor": ("labor_estimates", {"code", "description", "labor_type", "man_hours", "crew_size", "hours_per_worker_per_day", "workdays_per_week", "rate_override", "rate_override_reason", "stale_acknowledged", "notes"}),
         "borrowed_lite": ("borrowed_lites", {"code", "mark", "quantity", "width_inches", "height_inches", "rate", "notes"}),
     }

@@ -152,6 +152,8 @@ def test_effective_labor_rate_and_schedule_are_independent_of_cost_hours():
 def test_labor_schedule_bounds_and_blank_or_zero_denominators_are_safe():
     assert labor_schedule("8", 0, "8", "5")["working_days"] is None
     assert labor_schedule("8", None, None, None)["calendar_days"] is None
+    assert labor_schedule("8", 2, 0, 0)["shift_configuration"] is None
+    assert labor_schedule("8", 2, "8", 0)["shift_configuration"] is None
     with pytest.raises(ValueError, match="between 0 and 24"):
         labor_schedule("8", 2, "24.01", 5)
     with pytest.raises(ValueError, match="between 0 and 7"):

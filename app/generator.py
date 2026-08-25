@@ -256,8 +256,8 @@ def generate_test_project(config: dict, actor: str, role: str, seed: int | str |
     ]
     doc["equipment"] = [{
         "id": uid("eqp"), "code": configured_equipment.get(description, {}).get("code", "11 00 00"), "description": description,
-        "quantity": quantity, "duration": duration, "duration_unit": configured_equipment.get(description, {}).get("rate_unit") or "each",
-        "rate": configured_equipment.get(description, {}).get("base_rate"), "delivery": configured_equipment.get(description, {}).get("delivery") or "0",
+        "quantity": quantity, "duration": duration, "duration_unit": configured_equipment.get(description, {}).get("rate_unit") or None,
+        "rate": configured_equipment.get(description, {}).get("base_rate"), "delivery_direction": "two_way", "delivery": configured_equipment.get(description, {}).get("delivery") or "0",
         "taxable": True, "rate_id": configured_equipment.get(description, {}).get("id"), "rate_version": config.get("id"),
         "notes": "Owner-provided rental reference used for synthetic testing; verify stale vendor rate and duration before commercial use.",
     } for description, quantity, duration in equipment_specs]

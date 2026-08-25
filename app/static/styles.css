@@ -21,47 +21,47 @@
   --text-lg: 1rem;
   --text-xl: 1.5rem;
 
-  /* Authoritative application visual system */
-  --ui-canvas: #f3f6f4;
-  --ui-sidebar: #eef3f0;
+  /* Authoritative application visual system — 15% brighter presentation */
+  --ui-canvas: #f5f7f6;
+  --ui-sidebar: #f1f5f2;
   --ui-surface: #ffffff;
-  --ui-surface-subtle: #f8faf9;
-  --ui-surface-muted: #f2f6f4;
-  --ui-surface-strong: #e8f0ec;
-  --ui-brand: #244f41;
-  --ui-brand-hover: #1d4236;
-  --ui-brand-active: #17372d;
-  --ui-brand-soft: #e8f1ed;
-  --ui-brand-soft-hover: #dcebe4;
+  --ui-surface-subtle: #f9fbfa;
+  --ui-surface-muted: #f4f7f6;
+  --ui-surface-strong: #ebf2ef;
+  --ui-brand: #295b4b;
+  --ui-brand-hover: #214c3e;
+  --ui-brand-active: #1b4034;
+  --ui-brand-soft: #ebf3f0;
+  --ui-brand-soft-hover: #e1eee8;
   --ui-text: #18241f;
   --ui-text-secondary: #4f6058;
   --ui-text-muted: #718078;
   --ui-text-faint: #8c9992;
   --ui-text-on-brand: #ffffff;
-  --ui-border: #d4ded9;
-  --ui-border-subtle: #e4ebe7;
-  --ui-border-strong: #b8c7bf;
-  --ui-divider: #dde5e1;
-  --ui-success: #2f6a4d;
-  --ui-success-bg: #ebf5ef;
-  --ui-warning: #936000;
-  --ui-warning-bg: #fff6df;
-  --ui-error: #9b3b3b;
-  --ui-error-bg: #fdf0f0;
-  --ui-info: #356579;
-  --ui-info-bg: #edf5f8;
+  --ui-border: #dae3df;
+  --ui-border-subtle: #e8eeeb;
+  --ui-border-strong: #c3cfc9;
+  --ui-divider: #e2e9e6;
+  --ui-success: #367a59;
+  --ui-success-bg: #eef7f1;
+  --ui-warning: #a96e00;
+  --ui-warning-bg: #fff7e4;
+  --ui-error: #b24444;
+  --ui-error-bg: #fdf2f2;
+  --ui-info: #3d748b;
+  --ui-info-bg: #f0f7f9;
 
   /* Shared table surfaces */
-  --table-header-bg: #eef3f0;
-  --table-header-hover: #e5eee9;
+  --table-header-bg: #f1f5f2;
+  --table-header-hover: #e9f1ec;
   --table-editable-bg: #ffffff;
-  --table-editable-hover: #f5f8f6;
-  --table-calculated-bg: #f3f7f5;
-  --table-readonly-bg: #f6f8f7;
-  --table-row-hover: #f4f8f6;
-  --table-row-selected: #eaf3ef;
-  --table-subtotal-bg: #e7efeb;
-  --table-total-bg: #dce9e3;
+  --table-editable-hover: #f7f9f7;
+  --table-calculated-bg: #f5f8f7;
+  --table-readonly-bg: #f7f9f8;
+  --table-row-hover: #f6f9f7;
+  --table-row-selected: #edf5f1;
+  --table-subtotal-bg: #ebf1ee;
+  --table-total-bg: #e1ece7;
 
   /* Compatibility aliases: legacy renderers resolve to the same authority. */
   --ink: var(--ui-text);
@@ -2750,6 +2750,84 @@ td input[type="number"]::-webkit-outer-spin-button {
   padding: 0.1875rem;
   border-radius: var(--radius-sm);
 }
+.alternate-tabs .alternate-change-review { margin-left: auto; }
+.alternate-record-revert { flex: 0 0 auto; color: var(--ui-text-muted); }
+.alternate-record-revert:hover { color: var(--ui-text); background: transparent; }
+dialog.alternate-change-dialog { width: min(1120px, calc(100vw - 32px)); max-width: none; }
+.alternate-change-summary { display: grid; grid-template-columns: repeat(2, minmax(180px, 1fr)); gap: 1px; margin-bottom: 12px; border: 1px solid var(--ui-border); border-radius: 6px; overflow: hidden; background: var(--ui-border); }
+.alternate-change-summary > div { display: grid; grid-template-columns: auto 1fr auto; align-items: baseline; gap: 12px; padding: 10px 12px; background: var(--ui-surface); }
+.alternate-change-summary small { color: var(--ui-text-muted); text-transform: uppercase; letter-spacing: .04em; }
+.alternate-change-summary strong { justify-self: end; font-family: var(--font-serif); font-size: 18px; }
+.alternate-change-review-table { max-height: min(66vh, 680px); }
+.alternate-change-review-table td:nth-child(4),
+.alternate-change-review-table td:nth-child(5) { white-space: normal; overflow-wrap: anywhere; }
+.alternate-change-review-table tr.alt-added > td { background: var(--ui-success-bg); }
+.alternate-change-review-table tr.alt-modified > td { background: #f6edcf; }
+.alternate-change-review-table tr.alt-removed > td { background: var(--ui-error-bg); color: var(--ui-error); }
+.alternate-comparison-heading { display:flex; align-items:end; justify-content:space-between; gap:1rem; margin:1.25rem 0 .65rem; }
+.alternate-comparison-heading h2 { margin:0; }
+.alternate-comparison-heading span { color:var(--ui-text-muted); }
+.alternate-comparison { display:grid; gap:1rem; }
+.alternate-comparison-empty { padding:1.5rem; border:1px dashed var(--ui-border); border-radius:8px; color:var(--ui-text-muted); text-align:center; }
+.alternate-matrix-wrap { margin-top:.7rem; max-height:min(72vh,760px); }
+.alternate-matrix-table { width:max-content; min-width:100%; table-layout:fixed; }
+.alternate-matrix-table { font-size:.78rem; }
+.alternate-matrix-table :is(th,td) { min-width:6.5rem; padding:.24rem .38rem; text-align:left; vertical-align:top; }
+.alternate-matrix-table :is(th,td):first-child { position:sticky; left:0; z-index:2; min-width:10.5rem; width:10.5rem; background:var(--ui-surface); }
+.alternate-matrix-table thead th { position:sticky; top:0; z-index:3; background:var(--ui-surface-muted); }
+.alternate-matrix-table thead th:first-child { z-index:4; background:var(--ui-surface-muted); }
+.alternate-matrix-table thead th > span { display:block; white-space:nowrap; }
+.alternate-matrix-table thead input[data-alternate-name] { width:100%; min-width:5.5rem; margin-top:.15rem; padding:.12rem .22rem; font-size:.7rem; font-weight:400; }
+.alternate-matrix-table tbody th > strong,.alternate-matrix-table tbody th > small { display:block; }
+.alternate-matrix-table tbody th > small { color:var(--ui-text-muted); font-weight:400; }
+.alternate-matrix-table td.alt-inherited { background:var(--ui-surface); color:var(--ui-text-muted); }
+.alternate-matrix-value-link { display:block; width:100%; min-height:1.2rem; padding:0; border:0; overflow:hidden; background:transparent; color:inherit; text-align:left; white-space:nowrap; text-overflow:ellipsis; }
+.alternate-matrix-value-link:hover,.alternate-matrix-value-link:focus-visible { color:var(--brand); text-decoration:underline; text-underline-offset:2px; }
+.alternate-matrix-heading { align-items:center; }
+.compact-check { display:inline-flex; align-items:center; gap:.35rem; white-space:nowrap; font-size:.78rem; }
+.alternate-impact-strip { display:flex; gap:.4rem; overflow-x:auto; margin:.45rem 0; padding-bottom:.15rem; }
+.alternate-impact-strip > span { display:flex; align-items:baseline; gap:.45rem; flex:none; padding:.28rem .45rem; border:1px solid var(--ui-border); border-radius:4px; background:var(--ui-surface); }
+.alternate-impact-strip small { color:var(--ui-text-muted); }
+.alternate-matrix-table :is(th,td) { min-width:6rem; width:6rem; max-width:10rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.alternate-matrix-table :is(th,td):nth-child(1) { position:sticky; left:0; z-index:2; min-width:14rem; width:14rem; max-width:14rem; background:var(--ui-surface); }
+.alternate-matrix-table :is(th,td):nth-child(2) { position:sticky; left:14rem; z-index:2; min-width:6.5rem; width:6.5rem; background:var(--ui-surface); border-right-color:var(--table-sticky-divider); box-shadow:none; }
+.alternate-matrix-table thead :is(th,td):nth-child(-n+2) { z-index:5; background:var(--ui-surface-muted); }
+.alternate-matrix-table .diff-old { background:var(--ui-error-bg); color:var(--ui-error); }
+.alternate-matrix-table .diff-new { background:var(--ui-success-bg); color:var(--ui-success); }
+.alternate-matrix-table .diff-modified { background:var(--ui-warning-bg); color:var(--ui-text); }
+.alternate-matrix-table .diff-zero { background:var(--ui-surface-muted); color:var(--ui-text-muted); }
+.alternate-diff-token { display:inline; padding:.05rem .16rem; border-radius:2px; box-decoration-break:clone; -webkit-box-decoration-break:clone; }
+.diff-modified .alternate-diff-token { background:color-mix(in srgb,var(--ui-warning) 28%,transparent); color:var(--ui-text); }
+.alternate-matrix-table tbody tr:is(:hover,:focus-within) > td.diff-old { background-color:var(--ui-error-bg); }
+.alternate-matrix-table tbody tr:is(:hover,:focus-within) > td.diff-new { background-color:var(--ui-success-bg); }
+.alternate-matrix-table tbody tr:is(:hover,:focus-within) > td.diff-modified { background-color:var(--ui-warning-bg); }
+.alternate-matrix-table tbody tr:is(:hover,:focus-within) > td.diff-zero { background-color:var(--ui-surface-muted); }
+.alternate-matrix-table .alternate-base-absent { color:var(--ui-text-faint); text-align:center; }
+.alternate-matrix-table tr.alt-unchanged > * { color:var(--ui-text-muted); }
+.alternate-matrix-table tr.alternate-outline-row > :not(.diff-old):not(.diff-new):not(.diff-modified):not(.diff-zero) { border-top-color:var(--ui-border-strong); background:var(--ui-surface-muted); }
+.alternate-matrix-table tr.alternate-location-row > :not(.diff-old):not(.diff-new):not(.diff-modified):not(.diff-zero) { background:var(--ui-surface); }
+.alternate-matrix-table tbody tr.alternate-logical-change:nth-child(even) > :not(.diff-old):not(.diff-new):not(.diff-modified):not(.diff-zero),
+.alternate-matrix-table tbody tr.alt-unchanged:nth-child(even) > :not(.diff-old):not(.diff-new):not(.diff-modified):not(.diff-zero) { background:color-mix(in srgb,var(--ui-surface-muted) 44%,var(--ui-surface)); }
+.alternate-matrix-table tbody tr > :nth-child(2):not(.diff-old):not(.diff-new):not(.diff-modified):not(.diff-zero) { background:color-mix(in srgb,var(--ui-surface-muted) 76%,var(--ui-surface)); border-right-color:var(--table-sticky-divider); }
+.alternate-matrix-table thead :nth-child(2) { background:color-mix(in srgb,var(--ui-surface-muted) 82%,var(--ui-surface)); border-right-color:var(--table-sticky-divider); }
+.alternate-location-row .alternate-outline-toggle { padding-left:1rem; }
+.alternate-item-row .alternate-outline-toggle { padding-left:2rem; }
+.alternate-field-outline { padding-left:2.1rem !important; font-weight:400; }
+.alternate-item-field-row .alternate-field-outline { padding-left:3.1rem !important; }
+.alternate-logical-change .alternate-field-outline { color:var(--ui-text); }
+.alternate-diff-operation,.alternate-outline-operation { font-weight:700; }
+.alternate-outline-toggle { display:flex; align-items:center; gap:.3rem; width:100%; min-width:0; padding:0; border:0; overflow:hidden; background:transparent; color:inherit; text-align:left; white-space:nowrap; }
+.alternate-outline-toggle > span:last-child { display:block; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.alternate-outline-toggle small { color:var(--ui-text-muted); font-size:.72rem; font-weight:400; }
+.alternate-outline-toggle small::before { content:" · "; }
+.alternate-outline-toggle [data-alt-outline-caret] { flex:none; width:.8rem; color:var(--ui-text-muted); }
+.alternate-price-impact { color:var(--ui-text); font-variant-numeric:tabular-nums; text-align:left !important; }
+.alternate-base-total { color:var(--ui-text-secondary) !important; font-weight:600; }
+.alternate-price-impact .alternate-matrix-value-link { font-weight:600; text-align:left; }
+.alternate-source-highlight { outline:3px solid var(--brand) !important; outline-offset:-2px; }
+@media (max-width:700px) {
+  .alternate-diff-table { min-width:34rem; }
+}
 .alternate-tabs button { min-height: 1.625rem; padding: 0.1875rem 0.5rem; }
 
 @media (min-width: 75rem) {
@@ -3997,6 +4075,29 @@ dialog h2 {
   font-size: 1.125rem;
 }
 
+dialog.installation-material-dialog {
+  width: max-content;
+  max-width: calc(100vw - 2rem);
+}
+dialog.installation-material-dialog form { width: max-content; max-width: 100%; }
+dialog.installation-material-dialog #dialogBody { width: min(900px, calc(100vw - 4rem)); max-width: 100%; }
+dialog.installation-material-dialog .dialog-actions button[value="cancel"] { display: none; }
+.installation-material-dialog-toolbar {
+  display: flex;
+  min-height: 30px;
+  margin-bottom: 8px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--ui-text-muted);
+  font-size: 11px;
+}
+.installation-material-dialog-toolbar strong { color: var(--ui-text); }
+.installation-material-dialog .material-config { width: 100%; min-width: 0; }
+.installation-material-dialog .formula-material-grid { width: 100%; }
+.installation-material-dialog [data-add-section-material],
+.installation-material-dialog [data-alt-add-section-material] { flex: 0 0 auto; }
+
 .dialog-actions {
   display: flex;
   justify-content: flex-end;
@@ -5063,15 +5164,15 @@ td.numeric {
 .scenario-frame-workspace .frame-grid td.frame-entry-expanded {
   position: relative;
   z-index: 18;
-  overflow: visible;
 }
 .scenario-frame-workspace .frame-grid .frame-text-entry-expanded {
-  position: absolute;
-  z-index: 19;
-  top: 0;
-  left: 0;
+  position: fixed;
+  z-index: var(--z-tooltip);
+  top: var(--frame-expanded-top);
+  left: var(--frame-expanded-left);
+  box-sizing: border-box;
   width: var(--frame-expanded-width);
-  max-width: none;
+  max-width: calc(100vw - var(--frame-expanded-left) - 8px);
   min-height: 1.625rem;
   height: 1.625rem;
   border-color: var(--focus);
@@ -5080,26 +5181,15 @@ td.numeric {
 }
 .scenario-frame-workspace .frame-grid .frame-text-entry-expanded[data-frame-expand-direction="left"] {
   right: auto;
-  left: 0;
 }
 .scenario-frame-workspace .frame-grid textarea.frame-text-entry-expanded {
   height: var(--frame-expanded-height, 4rem);
+  max-height: calc(100vh - var(--frame-expanded-top) - 8px);
   padding: 0.25rem 0.375rem;
   overflow: auto;
   line-height: 1.35;
-  resize: vertical;
+  resize: both;
   white-space: pre-wrap;
-}
-.scenario-frame-workspace .frame-grid input:hover,
-.scenario-frame-workspace .frame-grid select:hover,
-.scenario-frame-workspace .frame-grid textarea:hover { border-color: #d8d3bc; }
-.scenario-frame-workspace .frame-grid input:focus,
-.scenario-frame-workspace .frame-grid select:focus,
-.scenario-frame-workspace .frame-grid textarea:focus {
-  border-color: var(--focus);
-  outline: 1px solid var(--focus-border);
-  outline-offset: -1px;
-  box-shadow: var(--focus-ring);
 }
 .scenario-frame-workspace .frame-grid td.calculated,
 .scenario-frame-workspace .frame-grid td.calculated:hover {
@@ -5177,29 +5267,11 @@ td.numeric {
 .scenario-frame-workspace .row-action-cell .icon-button,
 .scenario-frame-workspace .frame-grid .row-action-cell button { min-width: 1.25rem; min-height: 1.25rem; padding: 0.03125rem; }
 
-.scenario-frame-workspace .alternate-frame-grid tr.alt-modified > td:first-child {
-  box-shadow: inset 3px 0 #b28a50;
-}
-.scenario-frame-workspace .alternate-frame-grid tr.alt-added > td:first-child {
-  box-shadow: inset 3px 0 var(--green);
-}
-.scenario-frame-workspace .alternate-frame-grid tr.alt-removed > td {
-  color: var(--muted);
-  background: #f8efee;
-}
-.scenario-frame-workspace .alternate-frame-grid tr.alt-removed > td:not(:last-child) { text-decoration: line-through; }
 .scenario-frame-workspace .alternate-frame-grid tr.alt-removed > td > span {
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.scenario-frame-workspace .alternate-frame-grid tr.alt-removed > td:nth-child(1),
-.scenario-frame-workspace .alternate-frame-grid tr.alt-removed > td:nth-child(2) { background: #f8efee; }
-.scenario-frame-workspace .alt-value-changed {
-  border-color: #d4b98c !important;
-  background: #fff8e9 !important;
-  box-shadow: inset 0 -2px #c08b3e;
 }
 .scenario-frame-workspace .delta-state {
   position: absolute;
@@ -5215,10 +5287,6 @@ td.numeric {
 }
 .scenario-frame-workspace .alternate-frame-grid td:first-child { position: sticky; }
 .scenario-frame-workspace .alternate-frame-grid td:first-child input { padding-right: 2.5rem; }
-.scenario-frame-workspace .scenario-section.alt-modified { border-left: 3px solid #b28a50; }
-.scenario-frame-workspace .scenario-section.alt-added { border-left: 3px solid var(--green); }
-.scenario-frame-workspace .scenario-section.alt-removed { border-left: 3px solid var(--red); opacity: 0.82; }
-.scenario-frame-workspace .scenario-section.alt-removed > .module-header { background: #f8efee; }
 
 .scenario-frame-workspace .material-config { margin: 0; }
 .scenario-frame-workspace .installation-material-grid {
@@ -5552,8 +5620,7 @@ td.numeric {
 [data-edit-table] td > textarea:hover,
 .frame-material-list td input:not([type="checkbox"], [type="radio"]):hover,
 .frame-material-list td select:hover,
-.frame-material-list td textarea:hover,
-.alternate-frame-grid td input:not([type="checkbox"], [type="radio"]):hover {
+.frame-material-list td textarea:hover {
   border-color: #d8d2c1;
   background: var(--table-editable-hover);
 }
@@ -5562,10 +5629,7 @@ td.numeric {
 [data-edit-table] td > textarea:focus,
 .frame-material-list td input:focus,
 .frame-material-list td select:focus,
-.frame-material-list td textarea:focus,
-.alternate-frame-grid td input:focus,
-.alternate-frame-grid td select:focus,
-.alternate-frame-grid td textarea:focus {
+.frame-material-list td textarea:focus {
   position: relative;
   z-index: 2;
   border-color: var(--focus);
@@ -5640,12 +5704,6 @@ tr.has-rate-override > td,
 tr.has-override > td { background: var(--table-warning-surface); }
 tr.has-rate-override > td:first-child,
 tr.has-override > td:first-child { box-shadow: inset 0.1875rem 0 var(--amber), 1px 0 var(--table-sticky-divider); }
-.scenario-frame-workspace .alt-value-changed {
-  border-color: #d7b574 !important;
-  background: var(--table-warning-surface) !important;
-  box-shadow: inset 0 -2px #bd8431;
-}
-.scenario-frame-workspace .alternate-frame-grid tr.alt-inherited > td { background: var(--table-inherited-surface); }
 [aria-invalid="true"],
 .has-pending-cell :is(input, select, textarea) {
   border-color: var(--red) !important;
@@ -6190,14 +6248,12 @@ main { min-width: 0; padding: var(--workspace-padding-top) var(--workspace-paddi
 [data-edit-table] td > textarea:hover,
 .frame-material-list td input:not([type="checkbox"], [type="radio"]):hover,
 .frame-material-list td select:hover,
-.frame-material-list td textarea:hover,
-.alternate-frame-grid td input:not([type="checkbox"], [type="radio"]):hover {
+.frame-material-list td textarea:hover {
   border-color: var(--ui-border);
   background: var(--table-editable-hover);
 }
 [data-edit-table] td > :is(input, select, textarea):focus,
-.frame-material-list td :is(input, select, textarea):focus,
-.alternate-frame-grid td :is(input, select, textarea):focus {
+.frame-material-list td :is(input, select, textarea):focus {
   border-color: var(--focus-border);
   outline: 0;
   background: var(--ui-surface);
@@ -6234,7 +6290,6 @@ tr.has-rate-override > td,
 tr.has-override > td { background: var(--ui-warning-bg); }
 tr.has-rate-override > td:first-child,
 tr.has-override > td:first-child { box-shadow: inset 3px 0 var(--ui-warning), 1px 0 var(--ui-border-strong); }
-.scenario-frame-workspace .alternate-frame-grid tr.alt-inherited > td { background: var(--table-readonly-bg); }
 [aria-invalid="true"],
 .has-pending-cell :is(input, select, textarea) { border-color: var(--ui-error) !important; background: var(--ui-error-bg) !important; }
 
@@ -6349,7 +6404,7 @@ tr.has-override > td:first-child { box-shadow: inset 3px 0 var(--ui-warning), 1p
   font: 700 14px/17px var(--font-display);
   font-variant-numeric: tabular-nums lining-nums;
 }
-.scenario-frame-workspace .frame-header-commercial .section-metric.primary strong { color: var(--ui-brand); }
+.scenario-frame-workspace .frame-header-commercial .section-metric.primary strong { color: var(--ui-text); }
 .scenario-frame-workspace .section-history.vertical .history-slot { max-width: 48px; max-height: 28px; }
 .scenario-frame-workspace .section-history.vertical [data-tooltip] { max-width: 48px; }
 .scenario-frame-workspace .module-actions { grid-column: 7; grid-row: 1; }
@@ -6367,25 +6422,26 @@ tr.has-override > td:first-child { box-shadow: inset 3px 0 var(--ui-warning), 1p
   border-radius: 0;
   outline: 0 !important;
   box-shadow: none !important;
+  background: var(--ui-canvas);
   scrollbar-color: transparent transparent;
   scrollbar-width: none;
 }
 .scenario-frame-workspace .frame-table .table-wrap.is-horizontal-scrolling,
 .scenario-frame-workspace .frame-table .table-wrap.is-scrollbar-hovered {
-  scrollbar-color: #9fb1aa transparent;
+  scrollbar-color: var(--ui-border-strong) var(--ui-canvas);
   scrollbar-width: thin;
 }
 .scenario-frame-workspace .frame-table .table-wrap::-webkit-scrollbar { height: 0; background: transparent; }
 .scenario-frame-workspace .frame-table .table-wrap.is-horizontal-scrolling::-webkit-scrollbar,
-.scenario-frame-workspace .frame-table .table-wrap.is-scrollbar-hovered::-webkit-scrollbar { height: 8px; }
-.scenario-frame-workspace .frame-table .table-wrap::-webkit-scrollbar-track { background: transparent; }
+.scenario-frame-workspace .frame-table .table-wrap.is-scrollbar-hovered::-webkit-scrollbar { height: 7px; background: var(--ui-canvas); }
+.scenario-frame-workspace .frame-table .table-wrap::-webkit-scrollbar-track { background: var(--ui-canvas); }
 .scenario-frame-workspace .frame-table .table-wrap::-webkit-scrollbar-button,
-.scenario-frame-workspace .frame-table .table-wrap::-webkit-scrollbar-corner { display: none; width: 0; height: 0; background: transparent; }
-.scenario-frame-workspace .frame-table .table-wrap::-webkit-scrollbar-thumb { border-radius: 999px; background: transparent; transition: background .16s ease; }
+.scenario-frame-workspace .frame-table .table-wrap::-webkit-scrollbar-corner { display: none !important; width: 0; height: 0; background: var(--ui-canvas); -webkit-appearance: none; }
+.scenario-frame-workspace .frame-table .table-wrap::-webkit-scrollbar-thumb { border: 1px solid var(--ui-canvas); border-radius: 999px; background: transparent; background-clip: padding-box; transition: background .16s ease; }
 .scenario-frame-workspace .frame-table .table-wrap::-webkit-scrollbar-thumb:hover,
 .scenario-frame-workspace .frame-table .table-wrap::-webkit-scrollbar-thumb:active,
 .scenario-frame-workspace .frame-table .table-wrap.is-scrollbar-hovered::-webkit-scrollbar-thumb,
-.scenario-frame-workspace .frame-table .table-wrap.is-horizontal-scrolling::-webkit-scrollbar-thumb { background: #9fb1aa; }
+.scenario-frame-workspace .frame-table .table-wrap.is-horizontal-scrolling::-webkit-scrollbar-thumb { background: var(--ui-border-strong); }
 .scenario-frame-workspace .frame-grid {
   width: 100%;
   min-width: var(--frame-grid-min-width);
@@ -6459,8 +6515,31 @@ tr.has-override > td:first-child { box-shadow: inset 3px 0 var(--ui-warning), 1p
 .scenario-frame-workspace .frame-grid :is(th, td):nth-child(2) { position: sticky; left: var(--frame-frozen-mark-width); z-index: var(--z-sticky-cell); border-right-color: var(--ui-border); box-shadow: none; }
 .scenario-frame-workspace .frame-grid thead :is(th):nth-child(1),
 .scenario-frame-workspace .frame-grid thead :is(th):nth-child(2) { z-index: calc(var(--z-sticky-header) + 1); background: var(--table-header-bg); }
-.scenario-frame-workspace .frame-grid :is(th, td):nth-child(18) { position: sticky; right: 0; z-index: var(--z-sticky-cell); border-left: 1px solid var(--ui-border); box-shadow: none; }
+.scenario-frame-workspace .frame-grid :is(th, td):nth-child(18) {
+  position: sticky;
+  right: 0;
+  z-index: var(--z-sticky-cell);
+  border-right: 1px solid var(--ui-border);
+  border-left: 1px solid var(--ui-border);
+  box-shadow: none;
+}
+.scenario-frame-workspace .frame-grid :is(th, td):last-child {
+  position: sticky;
+  right: 0;
+  z-index: var(--z-sticky-cell);
+  width: 54px;
+  min-width: 54px;
+  border-right: 1px solid var(--ui-border);
+  border-left: 1px solid var(--ui-border);
+  background: var(--ui-surface-subtle);
+  box-shadow: none;
+}
+.scenario-frame-workspace .frame-table .table-wrap.is-at-horizontal-end .frame-grid :is(th, td):nth-child(18) { border-left: 0; }
+.scenario-frame-workspace .frame-table .table-wrap.is-at-horizontal-end .frame-grid :is(th, td):last-child { border-left: 0; }
+.scenario-frame-workspace .frame-grid tbody :is(th, td):nth-child(18) { background: var(--ui-surface); }
+.scenario-frame-workspace .frame-grid tbody :is(th, td):last-child { background: var(--ui-surface-subtle); }
 .scenario-frame-workspace .frame-grid thead th:nth-child(18) { z-index: calc(var(--z-sticky-header) + 2); background: var(--table-header-bg); }
+.scenario-frame-workspace .frame-grid thead th:last-child { z-index: calc(var(--z-sticky-header) + 2); background: var(--table-header-bg); }
 .scenario-frame-workspace .frame-grid thead th[data-column-key] { position: sticky; }
 .scenario-frame-workspace .frame-column-resizer {
   position: absolute;
@@ -6487,9 +6566,11 @@ tr.has-override > td:first-child { box-shadow: inset 3px 0 var(--ui-warning), 1p
   width: 100%;
   min-width: var(--frame-grid-min-width);
   min-height: var(--table-subtotal-height);
-  margin-top: 5px;
+  margin-top: 0;
+  padding-top: 5px;
+  box-sizing: border-box;
   color: var(--ui-brand-active);
-  background: var(--surface);
+  background: var(--ui-canvas);
   font-size: 11.5px;
   font-variant-numeric: tabular-nums;
   font-weight: 400;
@@ -6505,13 +6586,14 @@ tr.has-override > td:first-child { box-shadow: inset 3px 0 var(--ui-warning), 1p
   align-items: center;
   justify-content: flex-end;
   border: 0;
-  background: transparent;
+  background: var(--ui-canvas);
+  background-clip: border-box;
 }
 .scenario-frame-workspace .frame-totals-rail > span:nth-child(1),
 .scenario-frame-workspace .frame-totals-rail > span:nth-child(2) {
   position: sticky;
   z-index: calc(var(--z-sticky-cell) + 1);
-  background: var(--surface);
+  background: var(--ui-canvas);
 }
 .scenario-frame-workspace .frame-totals-rail > span:first-child { border-left: 0 !important; outline: 0; box-shadow: none; }
 .scenario-frame-workspace .frame-totals-rail > span:nth-child(1) { left: 0; }
@@ -6520,7 +6602,7 @@ tr.has-override > td:first-child { box-shadow: inset 3px 0 var(--ui-warning), 1p
   position: sticky;
   z-index: calc(var(--z-sticky-cell) + 1);
   right: 0;
-  background: var(--surface);
+  background: var(--ui-canvas);
 }
 .scenario-frame-workspace .frame-totals-rail strong { font-weight: 750; }
 .scenario-frame-workspace .frame-table > .compact-add,
@@ -6555,12 +6637,63 @@ tr.has-override > td:first-child { box-shadow: inset 3px 0 var(--ui-warning), 1p
   justify-content: space-between;
   gap: 6px;
 }
-.scenario-frame-workspace .formula-material-grid { width: 100%; min-width: 0; max-width: 780px; }
-.scenario-frame-workspace .formula-material-grid :is(th, td):nth-child(1) { width: 23%; }
-.scenario-frame-workspace .formula-material-grid :is(th, td):nth-child(2) { width: 50%; }
-.scenario-frame-workspace .formula-material-grid :is(th, td):nth-child(3) { width: 12%; }
-.scenario-frame-workspace .formula-material-grid :is(th, td):nth-child(4) { width: 11%; }
-.scenario-frame-workspace .formula-material-grid :is(th, td):nth-child(5) { width: 4%; min-width: 28px; padding-inline: 3px; text-align: center; }
+.scenario-frame-workspace .formula-material-grid { width: 100%; min-width: 0; max-width: none; table-layout: fixed; }
+.scenario-frame-workspace table.formula-material-grid {
+  border-radius: 5px;
+  outline: 0;
+}
+.scenario-frame-workspace .formula-material-grid tr > :first-child { border-left: 1px solid var(--ui-border); }
+.scenario-frame-workspace .formula-material-grid thead tr:first-child > th { border-top: 1px solid var(--ui-border); }
+.scenario-frame-workspace .formula-material-grid :is(th, td) {
+  height: var(--table-row-height);
+  padding: 4px 7px;
+  border-right: 1px solid var(--ui-border);
+  border-bottom: 1px solid var(--ui-border);
+  vertical-align: middle;
+}
+.scenario-frame-workspace .formula-material-grid thead th {
+  height: var(--table-header-height);
+  color: var(--ui-text-secondary);
+  background: var(--table-header-bg);
+  font-size: 10.5px;
+  font-weight: 650;
+  line-height: 13px;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: normal;
+}
+.scenario-frame-workspace .formula-material-grid thead th:first-child { border-top-left-radius: 5px; }
+.scenario-frame-workspace .formula-material-grid thead th:last-child { border-top-right-radius: 5px; }
+.scenario-frame-workspace .formula-material-grid tbody tr:last-child td:first-child { border-bottom-left-radius: 5px; }
+.scenario-frame-workspace .formula-material-grid tbody tr:last-child td:last-child { border-bottom-right-radius: 5px; }
+.scenario-frame-workspace .formula-material-grid :is(th, td):nth-child(1) { width: 20%; }
+.scenario-frame-workspace .formula-material-grid :is(th, td):nth-child(2) { width: 48%; }
+.scenario-frame-workspace .formula-material-grid :is(th, td):nth-child(3) { width: 13%; }
+.scenario-frame-workspace .formula-material-grid :is(th, td):nth-child(4) { width: 15%; }
+.scenario-frame-workspace .formula-material-grid :is(th, td):nth-child(5) { width: 54px; min-width: 54px; padding-inline: 3px; text-align: center; }
+.scenario-frame-workspace .formula-material-grid :is(.row-actions-heading, .row-action-cell) {
+  background: var(--ui-surface-subtle);
+  box-shadow: none;
+}
+.scenario-frame-workspace .material-totals-rail {
+  display: grid;
+  width: 100%;
+  min-height: var(--table-subtotal-height);
+  grid-template-columns: 20fr 48fr 13fr 15fr 54px;
+  color: var(--ui-text);
+  background: transparent;
+}
+.scenario-frame-workspace .material-totals-rail > span {
+  display: flex;
+  min-width: 0;
+  min-height: var(--table-subtotal-height);
+  padding: 3px 7px 5px;
+  align-items: center;
+  justify-content: flex-end;
+  border: 0;
+  background: transparent;
+}
+.scenario-frame-workspace .material-totals-rail strong { font-weight: 750; font-variant-numeric: tabular-nums; }
 .scenario-frame-workspace .formula-material-grid .compact-two-line-heading {
   display: inline-block;
   line-height: 1.05;
@@ -6575,7 +6708,16 @@ tr.has-override > td:first-child { box-shadow: inset 3px 0 var(--ui-warning), 1p
   white-space: nowrap;
 }
 .scenario-frame-workspace .formula-material-grid tbody tr,
-.scenario-frame-workspace .formula-material-grid tbody td { height: 34px; }
+.scenario-frame-workspace .formula-material-grid tbody td { height: var(--table-row-height); }
+.scenario-frame-workspace .formula-material-grid :is(input:not([type="checkbox"]), select, textarea) {
+  min-height: 24px;
+  height: 24px;
+  margin: 0;
+  padding: 2px 5px;
+  border-radius: 3px;
+  background: var(--table-editable-bg);
+  box-shadow: none;
+}
 .scenario-frame-workspace .formula-material-grid td:nth-child(3) input { width: 100%; text-align: right; }
 .scenario-frame-workspace .formula-material-grid td:nth-child(4) { white-space: nowrap; }
 .scenario-frame-workspace .formula-material-grid tr.has-override > td {
@@ -6589,7 +6731,8 @@ tr.has-override > td:first-child { box-shadow: inset 3px 0 var(--ui-warning), 1p
   display: grid;
   width: 100%;
   min-width: 0;
-  grid-template-columns: minmax(58px, 1.05fr) 32px 48px 8px minmax(54px, .85fr) minmax(62px, .9fr) 28px;
+  max-width: 460px;
+  grid-template-columns: minmax(72px, 110px) 34px 52px 8px minmax(58px, 78px) minmax(68px, 104px) 28px;
   align-items: center;
   gap: 3px;
 }
@@ -6604,43 +6747,42 @@ tr.has-override > td:first-child { box-shadow: inset 3px 0 var(--ui-warning), 1p
 .scenario-frame-workspace .material-formula-editor select:nth-child(2) { padding-inline: 5px 15px; text-align: center; }
 .scenario-frame-workspace .material-formula-editor [data-material-unit-control] { padding-inline: 4px 15px; }
 .scenario-frame-workspace .material-formula-equals { color: var(--ui-text-muted); text-align: center; }
-.scenario-frame-workspace .material-formula-total {
-  display: grid;
+.scenario-frame-workspace .material-formula-result {
+  display: flex;
+  width: 100%;
   min-width: 0;
-  align-content: center;
-  line-height: 1;
-  text-align: right;
-}
-.scenario-frame-workspace .material-formula-total small {
-  color: var(--ui-text-muted);
-  font-size: 7.5px;
-  font-weight: 650;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-}
-.scenario-frame-workspace .material-formula-editor output {
-  min-width: 0;
+  min-height: 24px;
+  height: 24px;
+  padding: 2px 5px;
+  align-items: center;
+  justify-content: flex-end;
   overflow: hidden;
+  border: 1px solid var(--ui-border);
+  border-radius: 3px;
+  background: var(--table-calculated-surface);
   color: var(--ui-text);
   font-size: 10.5px;
   font-weight: 650;
+  font-variant-numeric: tabular-nums;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .scenario-frame-workspace .material-formula-revert { min-width: 26px; min-height: 22px; height: 22px; padding: 0; font-size: 14px; }
 .scenario-frame-workspace .material-formula-revert:disabled { visibility: hidden; }
-.scenario-frame-workspace .material-config > .compact-add { min-height: 26px; height: 26px; margin-top: 6px; padding-inline: 9px; justify-self: start; }
+.scenario-frame-workspace .material-heading [data-add-section-material] { display: inline-flex; }
 
-.scenario-frame-workspace .frame-section-tabs {
+.frame-section-tabs {
   display: flex;
   align-items: stretch;
   min-width: 0;
   margin: 0 0 8px;
   overflow-x: auto;
+  overflow-y: hidden;
   border-bottom: 1px solid var(--ui-border);
-  scrollbar-width: thin;
+  scrollbar-width: none;
 }
-.scenario-frame-workspace .frame-section-tab-item {
+.frame-section-tabs::-webkit-scrollbar { display: none; width: 0; height: 0; }
+.frame-section-tab-item {
   display: flex;
   flex: 0 0 auto;
   align-items: stretch;
@@ -6648,8 +6790,8 @@ tr.has-override > td:first-child { box-shadow: inset 3px 0 var(--ui-warning), 1p
   margin: 0 14px -1px 0;
   border-bottom: 2px solid transparent;
 }
-.scenario-frame-workspace .frame-section-tab-item.is-active { border-bottom-color: var(--ui-brand); }
-.scenario-frame-workspace .frame-section-tab {
+.frame-section-tab-item.is-active { border-bottom-color: var(--ui-brand); }
+.frame-section-tab {
   display: grid;
   min-width: max-content;
   min-height: 38px;
@@ -6663,11 +6805,11 @@ tr.has-override > td:first-child { box-shadow: inset 3px 0 var(--ui-warning), 1p
   background: transparent;
   text-align: left;
 }
-.scenario-frame-workspace .frame-section-tab strong { color: inherit; font-size: 11.5px; line-height: 15px; }
-.scenario-frame-workspace .frame-section-tab:hover { color: var(--ui-text); background: transparent; }
-.scenario-frame-workspace .frame-section-tab.is-active { color: var(--ui-brand); }
-.scenario-frame-workspace .frame-section-tab:focus-visible { outline: 2px solid var(--focus-border); outline-offset: -2px; }
-.scenario-frame-workspace .frame-section-tab-edit {
+.frame-section-tab strong { color: inherit; font-size: 11.5px; line-height: 15px; }
+.frame-section-tab:hover { color: var(--ui-text); background: transparent; }
+.frame-section-tab.is-active { color: var(--ui-brand); }
+.frame-section-tab:focus-visible { outline: 2px solid var(--focus-border); outline-offset: -2px; }
+.frame-section-tab-edit {
   width: 24px;
   min-width: 24px;
   min-height: 38px;
@@ -6678,9 +6820,9 @@ tr.has-override > td:first-child { box-shadow: inset 3px 0 var(--ui-warning), 1p
   background: transparent;
   font-size: 11px;
 }
-.scenario-frame-workspace .frame-section-tab-edit:hover { color: var(--ui-brand-active); background: transparent; }
-.scenario-frame-workspace .frame-section-tab-edit:focus-visible { outline: 2px solid var(--focus-border); outline-offset: -2px; }
-.scenario-frame-workspace .frame-section-add-tab {
+.frame-section-tab-edit:hover { color: var(--ui-brand-active); background: transparent; }
+.frame-section-tab-edit:focus-visible { outline: 2px solid var(--focus-border); outline-offset: -2px; }
+.frame-section-add-tab {
   flex: 0 0 auto;
   min-height: 38px;
   margin: 0 0 -1px 4px;
@@ -6693,7 +6835,7 @@ tr.has-override > td:first-child { box-shadow: inset 3px 0 var(--ui-warning), 1p
   font-size: 11px;
   font-weight: 650;
 }
-.scenario-frame-workspace .frame-section-add-tab:hover { border-bottom-color: var(--ui-brand); background: transparent; }
+.frame-section-add-tab:hover { border-bottom-color: var(--ui-brand); background: transparent; }
 
 /* Center the text inside each inner cell control, not only the surrounding
  * table cell. Single-line textareas still expand normally when focused. */
@@ -6795,9 +6937,10 @@ main,
   overscroll-behavior-x: contain;
 }
 .scenario-frame-workspace .frame-material-list:has(.compact-material-grid) {
-  width: min(780px, 100%);
+  width: 100%;
   min-width: 0;
   max-width: 100%;
+  justify-self: stretch;
 }
 .scenario-frame-workspace .frame-material-list:has(.formula-material-grid) {
   scrollbar-width: none;
@@ -6808,23 +6951,14 @@ main,
   align-items: center;
   padding-bottom: 2px;
 }
+.scenario-frame-workspace .frame-lines-actions-only { justify-content: flex-end; gap: 6px; }
+.scenario-frame-workspace .configure-installation-materials { min-height: 26px; height: 26px; padding-inline: 9px; }
 .scenario-frame-workspace .compact-frame-add {
   flex: 0 0 auto;
   min-height: 26px;
   height: 26px;
   padding-inline: 9px;
 }
-body.keyboard-table-navigation .table-wrap tbody tr:hover:not(:focus-within) > td,
-body.keyboard-table-navigation .data-grid tbody tr:hover:not(:focus-within) > td,
-body.keyboard-table-navigation .app-data-table tbody tr:hover:not(:focus-within) > td {
-  background-color: transparent;
-}
-body.keyboard-table-navigation .table-wrap tbody tr:hover:not(:focus-within) > td.calculated,
-body.keyboard-table-navigation .data-grid tbody tr:hover:not(:focus-within) > td.calculated,
-body.keyboard-table-navigation .app-data-table tbody tr:hover:not(:focus-within) > td.calculated {
-  background-color: var(--table-calculated-bg);
-}
-
 /* Wheel input over a wide worksheet must continue scrolling the page
  * vertically; only horizontal overflow is contained by the worksheet. */
 .table-wrap,
@@ -6835,60 +6969,56 @@ body.keyboard-table-navigation .app-data-table tbody tr:hover:not(:focus-within)
   overscroll-behavior-y: auto;
 }
 
-/* Frame quantity issues are row states, not a dedicated data column. */
-.scenario-frame-workspace .frame-grid tr.quantity-issue-row > td {
-  color: var(--ui-text-muted);
-  background: var(--ui-surface-strong) !important;
-}
-.scenario-frame-workspace .frame-grid tr.quantity-issue-row > td:first-child {
-  box-shadow: none;
-}
-.scenario-frame-workspace .frame-grid tr.quantity-issue-row :is(input:not([type="checkbox"]), textarea, output, td > span, td > strong) {
-  color: var(--ui-text-muted);
-  text-decoration: line-through;
-  text-decoration-thickness: 1px;
-}
-.scenario-frame-workspace .frame-grid tr.quantity-issue-row :is(input:not([type="checkbox"]), textarea) {
-  background: var(--ui-surface-muted) !important;
-}
-.scenario-frame-workspace .frame-grid tr.quantity-issue-row .row-action-cell button {
-  color: var(--ui-text);
-  text-decoration: none;
-}
-
-/* Alternate rows use semantic, non-yellow states with a consistent status
- * badge and centered worksheet headings. */
+/* Alternate worksheet alignment. */
 .scenario-frame-workspace .alternate-frame-grid thead th { text-align: center; vertical-align: middle; }
 .scenario-frame-workspace .alternate-frame-grid td { vertical-align: middle; }
 .scenario-frame-workspace .alternate-frame-grid td.numeric,
 .scenario-frame-workspace .alternate-frame-grid td output,
 .scenario-frame-workspace .alternate-frame-grid input[inputmode="decimal"] { text-align: right; }
-.scenario-frame-workspace .alternate-frame-grid tr.alt-inherited > td,
-.scenario-frame-workspace .alternate-frame-grid tr.alt-modified > td { background: var(--ui-surface); }
-.scenario-frame-workspace .alternate-frame-grid tr.alt-added > td { background: var(--ui-success-bg); }
-.scenario-frame-workspace .alternate-frame-grid tr.alt-removed > td { color: var(--ui-error); background: var(--ui-error-bg); }
-.scenario-frame-workspace .alternate-frame-grid tr.alt-added > td:first-child,
-.scenario-frame-workspace .alternate-frame-grid tr.alt-removed > td:first-child { box-shadow: none; }
-.scenario-frame-workspace .alternate-frame-grid tr.alt-removed > td:not(.row-action-cell) { text-decoration: line-through; text-decoration-color: var(--ui-error); }
-.scenario-frame-workspace .alternate-frame-grid .alt-value-changed {
-  border-color: var(--ui-border) !important;
-  background: var(--ui-surface) !important;
-  box-shadow: none !important;
-}
-.scenario-frame-workspace .alternate-frame-grid tr.alt-added :is(input, select, textarea) { background: var(--ui-success-bg) !important; }
 .scenario-frame-workspace .material-picker.customized summary { border-color: var(--ui-border); color: var(--ui-text); background: var(--ui-surface); }
 .scenario-frame-workspace .alternate-frame-grid td:first-child { position: sticky; }
 .scenario-frame-workspace .alternate-frame-grid td:first-child input { padding-right: 5px; }
-.scenario-frame-workspace .scenario-section.alt-modified { border-left-color: var(--ui-border-strong); }
 
-/* Alternate state is communicated by row color, not an inset section rail. */
-.scenario-frame-workspace .scenario-section:is(.alt-modified, .alt-added, .alt-removed) {
-  border-left: 1px solid var(--ui-border);
+/* All editable cells share one surface. Mark and Qty retain only the isolation
+ * required by their frozen positioning, not a separate visual treatment. */
+.scenario-frame-workspace .frame-grid tbody td:not(.calculated, .row-action-cell) {
+  background-color: var(--ui-surface);
+  background-clip: border-box;
 }
-.scenario-frame-workspace .alternate-frame-grid tr:is(.alt-modified, .alt-added, .alt-removed) > td:first-child {
-  box-shadow: none;
+.scenario-frame-workspace .frame-grid tbody td:is(:nth-child(1), :nth-child(2)) { isolation: isolate; }
+.scenario-frame-workspace .frame-grid tbody .row-action-cell {
+  z-index: calc(var(--z-sticky-cell) + 7);
+  isolation: isolate;
+  overflow: hidden;
+  background-color: var(--ui-surface-subtle) !important;
+  background-clip: border-box;
 }
-
+.scenario-frame-workspace .alternate-frame-grid tbody tr.alt-removed > td > span {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 24px;
+  height: 24px;
+  margin: 0;
+  padding: 2px 5px;
+  box-sizing: border-box;
+  overflow: hidden;
+  color: inherit;
+  font: inherit;
+  line-height: normal;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.scenario-frame-workspace .alternate-frame-grid tbody tr.alt-removed > td:is(
+  [data-column-key="quantity"],
+  [data-column-key="width_inches"],
+  [data-column-key="height_inches"],
+  [data-column-key="caulking_passes"]
+) > span {
+  justify-content: flex-end;
+  text-align: right;
+}
 /* Alternate Quotes share the Frame worksheet's semantic row treatment. */
 .alternate-quote-grid table { width: 100%; table-layout: fixed; }
 .alternate-quote-grid :is(th, td) { height: var(--table-row-height); vertical-align: middle; }
@@ -7020,4 +7150,253 @@ table.app-data-table > :is(thead, tbody, tfoot) > tr > :is(th, td) {
 table.data-grid td > :is(input, select, textarea, button, output),
 table.app-data-table td > :is(input, select, textarea, button, output) {
   vertical-align: middle;
+}
+
+/* A Frame Spec Section tab already owns schedule navigation. The selected
+ * schedule therefore uses a fixed summary rail, not a second disclosure. */
+.scenario-frame-workspace .scenario-section > .frame-schedule-summary {
+  display: grid;
+  min-width: 0;
+  min-height: 54px;
+  height: 54px;
+  grid-template-columns: minmax(240px, 1fr) 72px 108px 88px 100px;
+  grid-template-rows: 54px;
+  gap: 0;
+  padding: 0 6px 0 0;
+  align-items: center;
+  border-bottom: 1px solid var(--ui-border);
+  border-radius: 7px 7px 0 0;
+  background: var(--ui-surface-subtle);
+}
+.scenario-frame-workspace .frame-schedule-summary .frame-section-description {
+  min-width: 0;
+  height: 100%;
+  grid-column: 1;
+  grid-row: 1;
+  padding: 0 12px;
+  justify-content: center;
+}
+.scenario-frame-workspace .frame-schedule-summary .frame-section-description strong {
+  font-size: 12px;
+  font-weight: 600;
+}
+.scenario-frame-workspace .frame-schedule-summary .frame-section-description span {
+  margin-top: 1px;
+  font-size: 9.5px;
+}
+.scenario-frame-workspace .frame-schedule-summary .frame-header-commercial { display: contents; }
+.scenario-frame-workspace .frame-schedule-summary .frame-header-commercial .section-metric,
+.scenario-frame-workspace .frame-schedule-summary .section-history.vertical {
+  height: 54px;
+  padding-block: 5px;
+}
+.scenario-frame-workspace .frame-schedule-summary .frame-header-commercial .section-metric:nth-child(1) { grid-column: 2; }
+.scenario-frame-workspace .frame-schedule-summary .frame-header-commercial .section-metric:nth-child(2) { grid-column: 3; }
+.scenario-frame-workspace .frame-schedule-summary .frame-header-commercial .section-metric:nth-child(3) { grid-column: 4; }
+.scenario-frame-workspace .frame-schedule-summary .section-history.vertical { grid-column: 5; }
+.scenario-frame-workspace .frame-schedule-summary .section-history.vertical .history-slot,
+.scenario-frame-workspace .frame-schedule-summary .section-history.vertical [data-tooltip] {
+  width: 78px;
+  max-width: 78px;
+}
+.scenario-frame-workspace .frame-schedule-summary .section-history.vertical .history-vertical {
+  width: 78px;
+  min-width: 78px;
+}
+.scenario-frame-workspace .frame-schedule-summary .section-history.vertical .history-five-band.compact { width: 68px; }
+.scenario-frame-workspace .frame-schedule-summary .section-history.vertical .history-five-band.compact .history-current { width: 60px; }
+
+/* The active Cost Code tab is a flat workspace. Its description is the
+ * content title, while the commercial values remain a compact title rail. */
+.scenario-frame-workspace .scenario-section {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.scenario-frame-workspace .scenario-section > .frame-schedule-summary {
+  min-height: 50px;
+  height: 50px;
+  grid-template-rows: 50px;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.scenario-frame-workspace .frame-schedule-summary .frame-section-description {
+  padding: 0 12px 0 0;
+}
+.scenario-frame-workspace .frame-schedule-summary .frame-section-description h2 {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--ui-text);
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 20px;
+  letter-spacing: -.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.scenario-frame-workspace .frame-schedule-summary .frame-section-title-row {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+.scenario-frame-workspace .frame-schedule-summary .frame-section-title-row .compact-frame-add {
+  flex: 0 0 auto;
+  margin: 0;
+}
+.scenario-frame-workspace .frame-schedule-summary .frame-section-title-row .configure-installation-materials {
+  flex: 0 0 auto;
+  margin: 0;
+}
+.scenario-frame-workspace .frame-schedule-summary .frame-header-commercial .section-metric,
+.scenario-frame-workspace .frame-schedule-summary .section-history.vertical {
+  height: 50px;
+}
+.scenario-frame-workspace .scenario-section > .module-body {
+  padding: 8px 0 6px;
+}
+.scenario-frame-workspace .scenario-section > .scenario-schedule-no-summary {
+  min-height: 50px;
+  height: 50px;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: 50px;
+}
+.scenario-frame-workspace .scenario-schedule-no-summary .frame-section-description { grid-column: 1; }
+.scenario-frame-workspace .frame-lines-actions-only {
+  display: flex;
+  min-height: 26px;
+  margin: 0 0 4px;
+  align-items: center;
+  justify-content: flex-end;
+}
+.scenario-frame-workspace .frame-lines-actions-only .compact-frame-add {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+/* Frame row semantics are independent layers. Calculated-column classification
+ * owns its background; row status owns only non-calculated backgrounds, and
+ * interaction owns borders only. */
+.scenario-frame-workspace table tbody tr > td:not(.calculated) {
+  background-color: var(--ui-surface) !important;
+  background-image: none !important;
+}
+.scenario-frame-workspace table tbody tr > td.calculated {
+  background: var(--table-calculated-bg) !important;
+  background-image: none !important;
+}
+
+.scenario-frame-workspace .alternate-frame-grid tbody tr.alt-modified > td:not(.calculated) {
+  background-color: #f6edcf !important;
+}
+.scenario-frame-workspace .alternate-frame-grid tbody tr.alt-added > td:not(.calculated) {
+  background-color: #dcefe4 !important;
+}
+.scenario-frame-workspace .alternate-frame-grid tbody tr.alt-removed > td:not(.calculated) {
+  color: var(--ui-error) !important;
+  background-color: var(--ui-error-bg) !important;
+}
+
+/* Explicitly removed Alternate records retain their removal treatment. Optional
+ * zero quantities are normalized to blank and never create a strike-through. */
+.scenario-frame-workspace .frame-grid tbody tr.alt-removed > td:not(.row-action-cell),
+.scenario-frame-workspace .frame-grid tbody tr.alt-removed > td:not(.row-action-cell) :is(
+  input:not([type="checkbox"], [type="radio"]),
+  textarea,
+  select,
+  output,
+  span,
+  strong,
+  .material-picker > summary
+) {
+  text-decoration: line-through !important;
+  text-decoration-thickness: 1px !important;
+  text-decoration-color: currentColor !important;
+}
+.scenario-frame-workspace .alternate-frame-grid tbody tr.alt-removed > td,
+.scenario-frame-workspace .alternate-frame-grid tbody tr.alt-removed > td :is(input, textarea, select, output, span, strong, .material-picker > summary) {
+  color: var(--ui-error) !important;
+}
+
+/* Controls reveal their cell's semantic surface. Interaction shading belongs
+ * only to editable cells; calculated cells keep their permanent classification
+ * color through hover, focus, and blur. */
+.scenario-frame-workspace table tbody td > :is(
+  input:not([type="checkbox"], [type="radio"]),
+  textarea,
+  select,
+  .material-picker > summary
+) {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+.scenario-frame-workspace table tbody tr:is(:hover, :focus-within) > td:not(.calculated) {
+  background-image: linear-gradient(rgba(24, 42, 34, 0.055), rgba(24, 42, 34, 0.055)) !important;
+}
+.scenario-frame-workspace table tbody td:hover > :is(
+  input:not([type="checkbox"], [type="radio"]),
+  textarea,
+  select,
+  .material-picker > summary
+) {
+  border-color: var(--ui-border) !important;
+}
+.scenario-frame-workspace table tbody td:focus-within > :is(
+  input:not([type="checkbox"], [type="radio"]),
+  textarea,
+  select,
+  .material-picker > summary
+):focus {
+  border-color: var(--ui-border-strong) !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Expanded text editors float above row semantics on an opaque work surface. */
+.scenario-frame-workspace .frame-grid .frame-text-entry-expanded,
+.scenario-frame-workspace .frame-grid .frame-text-entry-expanded:hover,
+.scenario-frame-workspace .frame-grid .frame-text-entry-expanded:focus {
+  background-color: #fff !important;
+  background-image: none !important;
+}
+
+/* Shared takeoff worksheets keep one compact action rail regardless of their
+ * field count. Column widths come from the semantic layout map in app.js. */
+.scenario-frame-workspace table[data-unified-worksheet-table] :is(.row-actions-heading, .row-action-cell) {
+  width: 54px !important;
+  min-width: 54px !important;
+  max-width: 54px !important;
+}
+.scenario-frame-workspace table[data-unified-worksheet-table] .row-action-cell > button {
+  line-height: 1;
+}
+
+.equipment-grid td[data-column-key="rate"] {
+  position: relative;
+}
+.equipment-grid td[data-column-key="rate"]:has(.equipment-rate-warning) > input {
+  padding-right: 1.75rem;
+}
+.equipment-rate-warning {
+  position: absolute;
+  top: 50%;
+  right: 0.4rem;
+  width: 1.1rem;
+  color: var(--warning-ink, #8a5300);
+  font-size: 0;
+  line-height: 1;
+  text-align: center;
+  transform: translateY(-50%);
+  cursor: help;
+}
+.equipment-rate-warning::before {
+  content: "⚠";
+  font-size: 0.82rem;
+}
+.equipment-rate-warning.is-manual {
+  color: var(--danger, #a22b2b);
 }

@@ -56,8 +56,8 @@ def test_active_project_migration_is_lossless_idempotent_and_leaves_history_froz
     migrated = migrate_project_document(source)
 
     assert source == source_before
-    assert migrated["schema_version"] == "1.3.0"
-    assert migrated["interchange_version"] == "1.3.0"
+    assert migrated["schema_version"] == "1.4.0"
+    assert migrated["interchange_version"] == "1.4.0"
     assert migrated["project"]["project_type"] == "Legacy Renovation"
     assert migrated["project"]["project_type_status"] == "legacy_unsupported"
     assert migrated["project"]["contract_type_status"] == "legacy_unsupported"
@@ -136,6 +136,29 @@ def test_1_3_migration_normalizes_optional_alternate_names_and_markup_authority(
     assert override["rate"] == ".25"
 
 
+def test_1_4_migration_normalizes_optional_zero_quantities_and_alt_snapshots():
+    source = migrate_project_document(legacy_document(), target_version="1.3.0")
+    section = source["takeoff_sections"][0]
+    section.update({"tie_back_qty": 0, "backpan_lf": "0.00"})
+    section["lines"][0]["quantity"] = 0
+    source["doors"][0]["leaf_quantity"] = 0
+    source["alternates"] = [{"id": "alt_1", "sequence": 1, "key": "ALT1", "changes": {
+        "takeoff_sections": {"added": [], "removed": [], "overrides": {section["id"]: {
+            "tie_back_qty": {"base_value": 0, "value": 24}
+        }}}
+    }}]
+
+    migrated = migrate_project_document(source)
+
+    section = migrated["takeoff_sections"][0]
+    assert section["tie_back_qty"] is None and section["backpan_lf"] is None
+    assert section["lines"][0]["quantity"] is None
+    assert migrated["doors"][0]["leaf_quantity"] is None
+    change = migrated["alternates"][0]["changes"]["takeoff_sections"]["overrides"][section["id"]]["tie_back_qty"]
+    assert change["base_value"] is None and change["value"] == 24
+    assert migrated["schema_migrations"][-1]["id"] == "project-1.3.0-to-1.4.0"
+
+
 def test_unknown_schema_fails_closed():
     with pytest.raises(MigrationError, match="No supported project migration path"):
         migrate_project_document({"schema_version": "9.0.0", "project": {}})
@@ -151,7 +174,7 @@ def test_json_store_migrates_on_load_without_rewriting_the_source(tmp_path):
     loaded, recovered_from = store.load_project(source["project"]["id"])
 
     assert recovered_from is None
-    assert loaded["schema_version"] == "1.3.0"
+    assert loaded["schema_version"] == "1.4.0"
     assert loaded["project"]["revision"] == 7
     assert path.read_bytes() == raw_before
     assert json.loads(path.read_text(encoding="utf-8"))["schema_version"] == "1.0.0"

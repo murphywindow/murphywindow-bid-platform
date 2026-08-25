@@ -143,7 +143,7 @@ def _is_ui_draft(row: Any) -> bool:
 def _meaningful_without_id(collection: str, row: dict[str, Any]) -> bool:
     ignored = {
         "id", "calculated", "created_at", "updated_at", "active", "status",
-        "deduct", "taxable", "duration_unit", "missing_quantity_acknowledged",
+        "deduct", "taxable", "duration_unit", "delivery_direction", "missing_quantity_acknowledged",
         "stale_acknowledged", "installation_material_ids", "caulking_passes",
         "used", "tax_included", "credit_type", "credit_value", "surcharge_type",
         "surcharge_value", "used_selection_mode", "labor_type", "category",

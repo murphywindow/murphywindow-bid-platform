@@ -1,3 +1,4 @@
+from copy import deepcopy
 from decimal import Decimal
 
 from app.generator import generate_test_project
@@ -63,3 +64,13 @@ def test_generated_projects_use_versioned_owner_rates_safely():
     assert {row["rate"] for row in public["labor_estimates"] if row["category"] == "shop"} == {"38.85"}
     assert all(row["per_diem_rate"] == "120.00" and not row["enabled"] for row in public["travel_estimates"])
     assert all(row["rate_id"] and row["rate_version"] == CONFIG_VERSION for row in public["equipment"])
+    assert all(row["delivery_direction"] == "two_way" for row in public["equipment"])
+
+
+def test_generated_equipment_does_not_invent_a_unit_when_the_rate_has_none():
+    config = deepcopy(default_configuration())
+    reference = next(row for row in config["equipment_rates"] if row["description"] == "45’ Boom Lift")
+    reference["rate_unit"] = None
+    document = generate_test_project(config, "Tester", "Estimator", 1)
+    equipment = next(row for row in document["equipment"] if row["description"] == "45’ Boom Lift")
+    assert equipment["duration_unit"] is None

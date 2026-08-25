@@ -110,6 +110,9 @@ def test_effective_commercial_delta_reconciles_and_downstream_materials_recalcul
     assert Decimal(calculated["effective_totals"]["selling_value"]) - base_total == Decimal(calculated["selling_value_delta"])
     assert sum(Decimal(row["direct_cost_delta"]) for row in calculated["cost_code_impacts"]) == Decimal(calculated["direct_cost_delta"])
     assert sum(Decimal(row["selling_value_delta"]) for row in calculated["cost_code_impacts"]) == Decimal(calculated["selling_value_delta"])
+    assert sum(Decimal(row["selling_value_delta"]) for row in calculated["comparison_impacts"]) == Decimal(calculated["selling_value_delta"])
+    assert calculated["comparison_impacts"][0]["collection"] == "frames"
+    assert calculated["comparison_impacts"][0]["record_id"] == "frm_f1"
     assert any(row["category"] == "installation_material" for row in calculated["cost_code_impacts"])
     effective = calculated["effective_estimate"]
     assert effective["totals"] == calculated["effective_totals"]
@@ -117,10 +120,34 @@ def test_effective_commercial_delta_reconciles_and_downstream_materials_recalcul
     assert {component["name"] for component in effective["cost_code_summaries"][0]["components"]} >= {
         "Installation Materials", "LAF",
     }
+    assert calculated["effective_equipment"][0]["id"] == "eqp_lift"
+    assert calculated["effective_equipment"][0]["calculated_cost"] == "1100"
+    assert calculated["effective_labor_estimates"][0]["id"] == "lbr_field"
+    assert calculated["effective_labor_estimates"][0]["calculated_cost"] is not None
+    assert calculated["effective_borrowed_lites"] == []
     assert "alternate_results" not in effective
     first = deepcopy(calculated)
     calculate_project(document, configuration)
     assert alternate["calculated"] == first  # no volatile values may alter proposal fingerprints
+
+
+def test_record_comparison_impacts_are_stable_and_sum_to_the_authoritative_alternate_total():
+    document, configuration = alternate_project()
+    alternate = new_alternate(document, "Mixed scope")
+    set_override(alternate, "frames", "frm_f1", "quantity", 10, 6)
+    set_override(alternate, "labor_estimates", "lbr_field", "man_hours", "80", "56")
+    remove_record(alternate, "equipment", "eqp_lift")
+    document["alternates"] = [alternate]
+
+    calculate_project(document, configuration)
+    impacts = alternate["calculated"]["comparison_impacts"]
+
+    assert [(row["collection"], row["record_id"]) for row in impacts] == [
+        ("frames", "frm_f1"), ("equipment", "eqp_lift"), ("labor_estimates", "lbr_field"),
+    ]
+    assert sum(Decimal(row["selling_value_delta"]) for row in impacts) == Decimal(
+        alternate["calculated"]["selling_value_delta"]
+    )
 
 
 def test_effective_frame_projection_preserves_section_structure_and_section_deltas():

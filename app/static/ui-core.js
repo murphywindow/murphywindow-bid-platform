@@ -31,6 +31,21 @@
     }).format(numeric);
   }
 
+  function comparisonChangedSegment(baseValue, alternateValue) {
+    const base = String(baseValue ?? ""), alternate = String(alternateValue ?? "");
+    if (!base || !alternate || base === alternate) return null;
+    const tokenize = value => value.match(/\s+|[^\s]+/g) || [];
+    const baseTokens = tokenize(base), alternateTokens = tokenize(alternate);
+    let prefixCount = 0;
+    while (prefixCount < baseTokens.length && prefixCount < alternateTokens.length && baseTokens[prefixCount] === alternateTokens[prefixCount]) prefixCount += 1;
+    let suffixCount = 0;
+    while (suffixCount < baseTokens.length - prefixCount && suffixCount < alternateTokens.length - prefixCount && baseTokens[baseTokens.length - 1 - suffixCount] === alternateTokens[alternateTokens.length - 1 - suffixCount]) suffixCount += 1;
+    if (!prefixCount && !suffixCount) return null;
+    const changed = alternateTokens.slice(prefixCount, alternateTokens.length - suffixCount).join("");
+    if (!changed.trim()) return null;
+    return {prefix:alternateTokens.slice(0,prefixCount).join(""),changed,suffix:suffixCount?alternateTokens.slice(alternateTokens.length-suffixCount).join(""):""};
+  }
+
   function correlationId(prefix = "cor") {
     const value = globalThis.crypto?.randomUUID?.() || `${Date.now()}_${Math.random().toString(16).slice(2)}`;
     return `${prefix}_${value.replaceAll("-", "")}`;
@@ -138,7 +153,7 @@
     };
   }
 
-  function horizontalVisibilityDelta(targetStart, targetEnd, visibleStart, visibleEnd, padding = 4) {
+  function horizontalVisibilityDelta(targetStart, targetEnd, visibleStart, visibleEnd, padding = 0) {
     const left = Number(visibleStart) + Number(padding || 0);
     const right = Number(visibleEnd) - Number(padding || 0);
     if (Number(targetStart) < left) return Number(targetStart) - left;
@@ -234,6 +249,14 @@
       }
       return left.index - right.index;
     }).map(item => item.row);
+  }
+
+  function visiblePasteRows(rows, visibleRowIds = []) {
+    const canonical = Array.isArray(rows) ? rows : [];
+    if (!visibleRowIds?.length) return [...canonical];
+    const byId = new Map(canonical.map(row => [String(row?.id), row]));
+    const visible = visibleRowIds.map(id => byId.get(String(id))).filter(Boolean);
+    return visible.length ? visible : [...canonical];
   }
 
   class SortStateStore {
@@ -488,7 +511,7 @@
           if (actionRect) visibleEnd = Math.min(visibleEnd, actionRect.left);
         }
       }
-      const delta = horizontalVisibilityDelta(cellRect.left, cellRect.right, visibleStart, visibleEnd, 5);
+      const delta = horizontalVisibilityDelta(cellRect.left, cellRect.right, visibleStart, visibleEnd);
       if (delta) wrap.scrollLeft = clampedHorizontalScroll(wrap.scrollLeft, delta, wrap.scrollWidth, wrap.clientWidth);
     }
 
@@ -1137,6 +1160,7 @@
     DEFAULT_DECIMAL_PRECISION,
     normalizeDecimalPrecision,
     formatNumeric,
+    comparisonChangedSegment,
     correlationId,
     parseClipboardMatrix,
     parseColumnValue,
@@ -1150,6 +1174,7 @@
     naturalCompare,
     compareSortValues,
     stableSortRows,
+    visiblePasteRows,
     SortStateStore,
     activeHistoryBand,
     clampHistoryMarker,

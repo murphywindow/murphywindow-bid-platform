@@ -16,6 +16,7 @@ from .services_shared import money_string
 
 
 COLLECTIONS = ("quotes", "takeoff_sections", "doors", "equipment", "borrowed_lites", "labor_estimates", "travel_estimates", "frames")
+COMPARISON_COLLECTIONS = ("quotes", "takeoff_sections", "frames", "doors", "equipment", "borrowed_lites", "labor_estimates", "travel_estimates")
 LABELS = {"quotes": "Quotes", "takeoff_sections": "Installation Materials", "doors": "Doors", "equipment": "Equipment",
           "borrowed_lites": "Borrowed Lites", "labor_estimates": "Labor", "travel_estimates": "Travel", "frames": "Frame Takeoff"}
 
@@ -185,7 +186,16 @@ def materialize(document: dict[str, Any], alternate: dict[str, Any]) -> tuple[di
 
 def _record_label(collection: str, record: dict[str, Any] | None) -> str:
     row = record or {}
-    return str(row.get("mark") or row.get("vendor") or row.get("door_number") or row.get("description") or row.get("name") or row.get("id") or "record")
+    label = row.get("mark") or row.get("vendor") or row.get("door_number") or row.get("description") or row.get("name")
+    if label:
+        return str(label)
+    if collection == "labor_estimates":
+        return f"{row.get('labor_type') or 'Labor'} labor"
+    if collection == "travel_estimates":
+        return "Travel allowance"
+    singular = {"quotes": "Quote", "takeoff_sections": "Frame section", "doors": "Door", "equipment": "Equipment item",
+                "borrowed_lites": "Borrowed lite", "frames": "Frame line"}.get(collection, "Record")
+    return f"{singular} {row.get('code')}" if row.get("code") else singular
 
 
 def scope_of_change(document: dict[str, Any], alternate: dict[str, Any]) -> list[dict[str, Any]]:
@@ -250,6 +260,63 @@ def _commercial_groups(lines: list[dict[str, Any]]) -> dict[tuple[str, str], dic
     return grouped
 
 
+def _comparison_change_steps(alternate: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return stable record-level delta steps for exact, summable UI impacts."""
+    changes = alternate.get("changes", {})
+    steps: list[dict[str, Any]] = []
+    for collection in COMPARISON_COLLECTIONS:
+        bucket = changes.get(collection, {})
+        if not isinstance(bucket, dict):
+            continue
+        records: dict[str, dict[str, Any]] = {}
+        for record_id in bucket.get("removed", []):
+            key = str(record_id)
+            records.setdefault(key, {"added": [], "removed": [], "overrides": {}})["removed"].append(key)
+        for row in bucket.get("added", []):
+            key = str(row.get("id") or f"added-{len(records)}")
+            records.setdefault(key, {"added": [], "removed": [], "overrides": {}})["added"].append(deepcopy(row))
+        for record_id, fields in bucket.get("overrides", {}).items():
+            key = str(record_id)
+            records.setdefault(key, {"added": [], "removed": [], "overrides": {}})["overrides"][key] = deepcopy(fields)
+        for record_id, payload in records.items():
+            steps.append({"collection": collection, "record_id": record_id, "payload": payload})
+    markup = changes.get("line_markup_overrides", {})
+    for source_key, stored in (markup.get("overrides", {}) if isinstance(markup, dict) else {}).items():
+        steps.append({"collection": "line_markup_overrides", "record_id": str(source_key),
+                      "payload": {"overrides": {str(source_key): deepcopy(stored)}}})
+    return steps
+
+
+def _comparison_impacts(document: dict[str, Any], alternate: dict[str, Any], configuration: dict[str, Any],
+                        calculator: Callable[..., dict[str, Any]], final_selling_value: Decimal) -> list[dict[str, str]]:
+    """Attribute authoritative selling-value movement in a telescoping sequence."""
+    steps = _comparison_change_steps(alternate)
+    if not steps:
+        return []
+    cumulative = {"changes": {}}
+    prior = dec(document.get("working_estimate", {}).get("totals", {}).get("selling_value"), Decimal(0)) or Decimal(0)
+    impacts: list[dict[str, str]] = []
+    for index, step in enumerate(steps):
+        collection, payload = step["collection"], step["payload"]
+        if collection == "line_markup_overrides":
+            cumulative["changes"].setdefault(collection, {"overrides": {}})["overrides"].update(deepcopy(payload["overrides"]))
+        else:
+            target = cumulative["changes"].setdefault(collection, {"added": [], "removed": [], "overrides": {}})
+            target["added"].extend(deepcopy(payload["added"]))
+            target["removed"].extend(deepcopy(payload["removed"]))
+            target["overrides"].update(deepcopy(payload["overrides"]))
+        if index == len(steps) - 1:
+            current = final_selling_value
+        else:
+            effective, _ = materialize(document, cumulative)
+            calculator(effective, configuration, include_alternates=False)
+            current = dec(effective.get("working_estimate", {}).get("totals", {}).get("selling_value"), Decimal(0)) or Decimal(0)
+        impacts.append({"collection": collection, "record_id": step["record_id"],
+                        "selling_value_delta": money_string(current - prior)})
+        prior = current
+    return impacts
+
+
 def calculate_alternates(document: dict[str, Any], configuration: dict[str, Any], calculator: Callable[..., dict[str, Any]]) -> list[dict[str, Any]]:
     results = []
     base_lines = document.get("working_estimate", {}).get("lines", [])
@@ -270,10 +337,13 @@ def calculate_alternates(document: dict[str, Any], configuration: dict[str, Any]
         effective_totals = effective.get("working_estimate", {}).get("totals", {})
         direct_delta = (dec(effective_totals.get("direct_cost"), Decimal(0)) or Decimal(0)) - (dec(base_totals.get("direct_cost"), Decimal(0)) or Decimal(0))
         value_delta = (dec(effective_totals.get("selling_value"), Decimal(0)) or Decimal(0)) - (dec(base_totals.get("selling_value"), Decimal(0)) or Decimal(0))
+        comparison_impacts = _comparison_impacts(document, alternate, configuration, calculator,
+                                                 dec(effective_totals.get("selling_value"), Decimal(0)) or Decimal(0))
         calculated = {"scope_of_change": scope_of_change(document, alternate), "conflicts": conflicts,
                       "direct_cost_delta": money_string(direct_delta), "selling_value_delta": money_string(value_delta),
                       "classification": "add" if value_delta > 0 else "deduct" if value_delta < 0 else "zero",
                       "effective_totals": deepcopy(effective_totals), "cost_code_impacts": impacts,
+                      "comparison_impacts": comparison_impacts,
                       # A calculated projection, never an independently editable estimate.
                       # This lets every commercial workspace render the effective ALT
                       # through the same authoritative Bid outputs as Base.
@@ -281,7 +351,12 @@ def calculate_alternates(document: dict[str, Any], configuration: dict[str, Any]
                                                        for key in ("lines", "cost_code_summaries", "totals", "validation")}),
                       # Read-only calculated projection for the shared Frame workspace.
                       # Canonical ALT storage remains inheritance plus explicit deltas.
-                      "effective_takeoff_sections": deepcopy(effective.get("takeoff_sections", []))}
+                      "effective_takeoff_sections": deepcopy(effective.get("takeoff_sections", [])),
+                      # Read-only row projections let the shared tabular workspaces
+                      # retain their authoritative calculated columns in Alternates.
+                      "effective_equipment": deepcopy(effective.get("equipment", [])),
+                      "effective_borrowed_lites": deepcopy(effective.get("borrowed_lites", [])),
+                      "effective_labor_estimates": deepcopy(effective.get("labor_estimates", []))}
         alternate["calculated"] = calculated
         results.append(calculated)
     document.setdefault("working_estimate", {})["alternate_results"] = deepcopy(results)

@@ -14,11 +14,13 @@ const {
   naturalCompare,
   compareSortValues,
   stableSortRows,
+  visiblePasteRows,
   SortStateStore,
   activeHistoryBand,
   clampHistoryMarker,
   normalizeDecimalPrecision,
   formatNumeric,
+  comparisonChangedSegment,
   calculateTooltipPosition,
   DraftStore,
   PendingCellStore,
@@ -29,6 +31,14 @@ const {
   TooltipController,
   DrawerController
 } = require("../app/static/ui-core.js");
+
+test("comparison intravalue emphasis requires unchanged surrounding text", () => {
+  assert.deepEqual(comparisonChangedSegment("Backpans from OBE", "Backpans from Hart"), {prefix:"Backpans from ",changed:"Hart",suffix:""});
+  assert.deepEqual(comparisonChangedSegment("Clear anodized finish", "Dark bronze finish"), {prefix:"",changed:"Dark bronze",suffix:" finish"});
+  assert.equal(comparisonChangedSegment("5", "6"), null);
+  assert.equal(comparisonChangedSegment("Standard", "Steel-reinforced"), null);
+  assert.equal(comparisonChangedSegment("Same", "Same"), null);
+});
 
 test("traditional sorting cycles and Shift-click maintains an ordered multi-column stack", () => {
   let stack = cycleSort([], "code");
@@ -222,6 +232,19 @@ test("clipboard mapping consumes values across editable destinations and never w
   ]);
 });
 
+test("rectangular paste follows visible sorted row order instead of canonical storage order", () => {
+  const rows = [{ id: "a" }, { id: "b" }, { id: "c" }, { id: "d" }];
+  const visible = visiblePasteRows(rows, ["c", "a", "d", "b"]);
+  const start = visible.findIndex(row => row.id === "a");
+  assert.deepEqual(visible.slice(start, start + 2).map(row => row.id), ["a", "d"]);
+});
+
+test("rectangular paste does not spill into rows hidden from a filtered table", () => {
+  const rows = [{ id: "a" }, { id: "b" }, { id: "c" }, { id: "d" }];
+  assert.deepEqual(visiblePasteRows(rows, ["c", "a"]).map(row => row.id), ["c", "a"]);
+  assert.deepEqual(visiblePasteRows(rows).map(row => row.id), ["a", "b", "c", "d"]);
+});
+
 test("pasted grid values normalize valid Excel text and reject values the controls would hide", () => {
   assert.deepEqual(parseColumnValue({ type: "number" }, "1,250.5"), { handled: true, value: "1250.5" });
   assert.throws(() => parseColumnValue({ type: "number" }, "N/A"), /valid number/);
@@ -257,9 +280,9 @@ test("table arrows navigate selected cells while left and right preserve text ed
 });
 
 test("focused table cells keep their full width inside the horizontal viewport", () => {
-  assert.equal(horizontalVisibilityDelta(120, 180, 100, 300, 5), 0);
-  assert.equal(horizontalVisibilityDelta(80, 140, 100, 300, 5), -25);
-  assert.equal(horizontalVisibilityDelta(260, 320, 100, 300, 5), 25);
+  assert.equal(horizontalVisibilityDelta(120, 180, 100, 300), 0);
+  assert.equal(horizontalVisibilityDelta(80, 140, 100, 300), -20);
+  assert.equal(horizontalVisibilityDelta(260, 320, 100, 300), 20);
   assert.equal(clampedHorizontalScroll(590, 25, 900, 300), 600);
   assert.equal(clampedHorizontalScroll(5, -25, 900, 300), 0);
 });
@@ -280,7 +303,7 @@ test("frame focus scrolling reveals a cell hidden underneath frozen Qty", () => 
   };
   row.children.push(cell);
   controller.ensureFocusVisible({ closest: selector => selector === "td, th" ? cell : null });
-  assert.equal(wrap.scrollLeft, 175);
+  assert.equal(wrap.scrollLeft, 180);
 });
 
 test("five-band history visualization activates every range without classification logic", () => {

@@ -192,7 +192,7 @@ def test_quote_frame_default_combines_frame_sections_but_excludes_borrowed_lites
     assert D(summary["total_square_feet"]) == D("8")  # 3 Frame SF + BRL's five-SF row minimum.
 
 
-def test_frame_and_door_missing_quantities_are_structured_blockers_and_acknowledged_exceptions():
+def test_frame_and_door_missing_quantities_remain_blockers_until_quantity_is_entered():
     doc, cfg = example()
     doc["takeoff_sections"][0]["lines"].append({
         "id": "frm_missing", "mark": "F-missing", "quantity": 0,
@@ -216,8 +216,8 @@ def test_frame_and_door_missing_quantities_are_structured_blockers_and_acknowled
     doc["doors"][0]["missing_quantity_acknowledged"] = True
     calculate_project(doc, cfg)
     visible = [item for item in doc["working_estimate"]["validation"] if item["entity_id"] in {"frm_missing", "dor_missing"}]
-    assert all(item["acknowledged"] and not item["blocking"] for item in visible)
-    assert not [item for item in submission_blockers(doc) if item["entity_id"] in {"frm_missing", "dor_missing"}]
+    assert all(not item["acknowledged"] and item["blocking"] for item in visible)
+    assert {item["entity_id"] for item in submission_blockers(doc) if item["entity_id"] in {"frm_missing", "dor_missing"}} == {"frm_missing", "dor_missing"}
 
 
 def test_frame_default_caulking_passes_materialize_only_when_perimeter_is_available():

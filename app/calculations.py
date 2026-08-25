@@ -289,7 +289,7 @@ def labor_schedule(
         raise ValueError("Workdays per Week must be between 0 and 7.")
 
     shift = None
-    if hours_per_day is not None and days_per_week is not None:
+    if hours_per_day is not None and hours_per_day > 0 and days_per_week is not None and days_per_week > 0:
         shift = f"{_schedule_number(days_per_week)}x{_schedule_number(hours_per_day)}"
     denominator = None if crew is None or hours_per_day is None else crew * hours_per_day
     working_days = None if hours is None or denominator is None or denominator == 0 else hours / denominator

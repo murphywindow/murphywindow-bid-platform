@@ -1397,7 +1397,7 @@ def _render_bid_review_pdf(document: dict[str, Any], configuration: dict[str, An
 
     record_specs = [
         ("Doors and Hardware", "doors", ["code", "door_number", "description", "leaf_quantity", "width", "height", "hardware_set", "notes"]),
-        ("Equipment", "equipment", ["code", "description", "quantity", "duration", "duration_unit", "rate", "delivery", "notes"]),
+        ("Equipment", "equipment", ["code", "description", "quantity", "duration", "duration_unit", "delivery_direction", "rate", "delivery", "notes"]),
         ("Borrowed Lites", "borrowed_lites", ["code", "mark", "description", "quantity", "width_inches", "height_inches", "rate", "notes"]),
         ("Labor", "labor_estimates", ["code", "labor_type", "description", "man_hours", "crew_size", "rate_override", "override_reason", "notes"]),
         ("Travel", "travel_estimates", ["code", "description", "enabled", "quantity", "rate", "notes"]),

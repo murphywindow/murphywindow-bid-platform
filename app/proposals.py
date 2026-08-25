@@ -493,7 +493,7 @@ def _business_fields(category: str) -> tuple[str, ...]:
     return {
         "Quote": ("vendor", "price", "used", "credit_type", "credit_value", "surcharge_type", "surcharge_value", "square_feet", "notes"),
         "Frame": ("name", "tie_back_qty", "backpan_lf"),
-        "Equipment": ("description", "quantity", "duration", "duration_unit", "rate", "delivery", "taxable", "notes"),
+        "Equipment": ("description", "quantity", "duration", "duration_unit", "delivery_direction", "rate", "delivery", "taxable", "notes"),
         "Borrowed Lite": ("mark", "quantity", "width_inches", "height_inches", "rate", "notes"),
         "Labor": ("description", "labor_type", "man_hours", "crew_size", "hours_per_worker_per_day", "workdays_per_week", "controlled_rate_snapshot.rate", "rate_override", "rate_override_reason", "notes"),
         "Door": ("door_number", "mark", "leaf_quantity", "width_inches", "height_inches", "hardware_group_id", "notes"),
