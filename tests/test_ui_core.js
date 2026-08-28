@@ -10,6 +10,9 @@ const {
   arrowNavigationIntent,
   horizontalVisibilityDelta,
   clampedHorizontalScroll,
+  edgeAutoScrollDelta,
+  virtualWindowStart,
+  virtualWindowSize,
   cycleSort,
   naturalCompare,
   compareSortValues,
@@ -38,6 +41,19 @@ test("comparison intravalue emphasis requires unchanged surrounding text", () =>
   assert.equal(comparisonChangedSegment("5", "6"), null);
   assert.equal(comparisonChangedSegment("Standard", "Steel-reinforced"), null);
   assert.equal(comparisonChangedSegment("Same", "Same"), null);
+});
+
+test("large tables calculate a bounded overscanned render window", () => {
+  assert.equal(virtualWindowStart({ scrollTop: 0, totalRows: 800 }), 0);
+  assert.equal(virtualWindowStart({ scrollTop: 2800, totalRows: 800 }), 70);
+  assert.equal(virtualWindowStart({ scrollTop: 22400, totalRows: 800 }), 700);
+  assert.equal(virtualWindowStart({ scrollTop: 22400, totalRows: 80 }), 0);
+});
+
+test("large schedules use a cell-budgeted row window", () => {
+  assert.equal(virtualWindowSize({ totalRows: 2000, columnCount: 20 }), 36);
+  assert.equal(virtualWindowSize({ totalRows: 2000, columnCount: 8 }), 72);
+  assert.equal(virtualWindowSize({ totalRows: 18, columnCount: 20 }), 18);
 });
 
 test("traditional sorting cycles and Shift-click maintains an ordered multi-column stack", () => {
@@ -247,6 +263,11 @@ test("rectangular paste does not spill into rows hidden from a filtered table", 
 
 test("pasted grid values normalize valid Excel text and reject values the controls would hide", () => {
   assert.deepEqual(parseColumnValue({ type: "number" }, "1,250.5"), { handled: true, value: "1250.5" });
+  assert.deepEqual(parseColumnValue({ type: "number" }, '2 "'), { handled: true, value: "2" });
+  assert.deepEqual(parseColumnValue({ type: "number" }, "18 LF"), { handled: true, value: "18" });
+  assert.deepEqual(parseColumnValue({ type: "number" }, "7 each"), { handled: true, value: "7" });
+  assert.deepEqual(parseColumnValue({ type: "number" }, "2%"), { handled: true, value: "2" });
+  assert.deepEqual(parseColumnValue({ type: "currency" }, "($1,250.50)"), { handled: true, value: "-1250.50" });
   assert.throws(() => parseColumnValue({ type: "number" }, "N/A"), /valid number/);
   assert.deepEqual(parseColumnValue({ type: "date" }, "8/19/2026"), { handled: true, value: "2026-08-19" });
   assert.throws(() => parseColumnValue({ type: "date" }, "2/30/2026"), /valid calendar date/);
@@ -287,6 +308,14 @@ test("focused table cells keep their full width inside the horizontal viewport",
   assert.equal(clampedHorizontalScroll(5, -25, 900, 300), 0);
 });
 
+test("range drag autoscroll accelerates at and beyond every table edge", () => {
+  assert.equal(edgeAutoScrollDelta(100, 100, 500), -28);
+  assert.equal(edgeAutoScrollDelta(124, 100, 500), -14);
+  assert.equal(edgeAutoScrollDelta(250, 100, 500), 0);
+  assert.equal(edgeAutoScrollDelta(476, 100, 500), 14);
+  assert.equal(edgeAutoScrollDelta(520, 100, 500), 28);
+});
+
 test("frame focus scrolling reveals a cell hidden underneath frozen Qty", () => {
   const root = { addEventListener() {} };
   const controller = new TableController(root);
@@ -304,6 +333,55 @@ test("frame focus scrolling reveals a cell hidden underneath frozen Qty", () => 
   row.children.push(cell);
   controller.ensureFocusVisible({ closest: selector => selector === "td, th" ? cell : null });
   assert.equal(wrap.scrollLeft, 180);
+});
+
+test("drag selection suppresses native text selection from every table cell including focused controls", () => {
+  const listeners = new Map();
+  const focusedCell = {};
+  const otherCell = {};
+  const root = {
+    ownerDocument: { activeElement: focusedCell },
+    addEventListener(type, handler) { listeners.set(type, handler); }
+  };
+  const controller = new TableController(root);
+  const suppressed = [];
+  controller.cellFrom = event => event.target;
+  controller.selectCell = () => {};
+  controller.suppressNativeSelection = active => suppressed.push(active);
+
+  controller.onPointerDown({ target: otherCell, button: 0, shiftKey: false });
+  assert.equal(controller.rangeSelecting, true);
+  assert.deepEqual(suppressed, [true]);
+  controller.onPointerUp();
+
+  suppressed.length = 0;
+  controller.onPointerDown({ target: focusedCell, button: 0, shiftKey: false });
+  assert.equal(controller.rangeSelecting, true);
+  assert.deepEqual(suppressed, [true]);
+});
+
+test("copy uses the complete anchored model range beyond the virtual DOM window", () => {
+  const root = { addEventListener() {} };
+  const table = { dataset: { editTable: "frames-sec-1" } };
+  const copiedRange = [];
+  const controller = new TableController(root, {
+    copyRange: bounds => {
+      copiedRange.push(bounds);
+      return Array.from({ length: 100 }, (_, row) => [`R${row + 1}C1`, `R${row + 1}C2`]);
+    }
+  });
+  controller.selectionAnchor = { table, row: 0, column: 0 };
+  controller.selectionFocus = { table, row: 99, column: 1 };
+  let copied = "", prevented = false;
+  controller.onCopy({
+    preventDefault() { prevented = true; },
+    clipboardData: { setData(type, value) { assert.equal(type, "text/plain"); copied = value; } }
+  });
+  assert.equal(copiedRange[0].rowEnd, 99);
+  assert.equal(copiedRange[0].columnEnd, 1);
+  assert.equal(copied.split("\n").length, 100);
+  assert.equal(copied.split("\n")[99], "R100C1\tR100C2");
+  assert.equal(prevented, true);
 });
 
 test("five-band history visualization activates every range without classification logic", () => {

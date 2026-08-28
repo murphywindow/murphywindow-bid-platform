@@ -1,6 +1,6 @@
 # Owner Rate Reference
 
-Configuration `cfg-2026-08-17-v3` first normalized the rate tables supplied by the owner on 2026-08-17. Configuration `cfg-2026-08-17-v4` added versioned mileage settings. Current configuration `cfg-2026-08-19-v5` retains those records unchanged and adds schema 1.1 policy metadata, explicit Base Product inheritance for Installation Materials markup, and an unavailable Design Labor placeholder rather than inventing a rate. The complete normalized records are emitted to the human-readable configuration JSON under `data/configurations/` and are defined in `app/rate_reference.py` for reproducible installation.
+Configuration `cfg-2026-08-17-v3` first normalized the rate tables supplied by the owner on 2026-08-17. Configuration `cfg-2026-08-17-v4` added versioned mileage settings. Current configuration `cfg-2026-08-19-v5` retains those records unchanged and adds schema 1.1 policy metadata, explicit Base Product inheritance for Installation Materials markup, and an unavailable Design Labor placeholder rather than inventing a rate. Configuration records are stored in SQL and defined in `app/rate_reference.py` for reproducible installation; legacy configuration JSON remains migration evidence.
 
 ## Included source data
 

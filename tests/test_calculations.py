@@ -68,7 +68,7 @@ def test_frame_dimension_conversions_and_boundaries():
     q = frame_quantities(1, 12, 12)
     assert q == {"square_feet": D(1), "perimeter_lf": D(4), "caulking_passes": D(3), "caulking_lf": D(12), "head_sill_qty": D(2)}
     q = frame_quantities(2, 35.5, 71.25, 4)
-    assert q["square_feet"] == D("35.5") * D("71.25") * D(2) / D(144)
+    assert q["square_feet"] == D(36)
     assert q["perimeter_lf"] == D(2) * (D("35.5") / D(12) + D("71.25") / D(12)) * D(2)
     assert q["caulking_lf"] == q["perimeter_lf"] * D(4)
     assert q["head_sill_qty"] == D(2) * D("35.5") / D(6)
@@ -76,6 +76,13 @@ def test_frame_dimension_conversions_and_boundaries():
     assert frame_quantities(0, 12, 12)["square_feet"] is None
     with pytest.raises(ValueError):
         frame_quantities(1, -1, 12)
+
+
+def test_frame_square_feet_rounds_one_frame_up_before_multiplying_quantity():
+    quantities = frame_quantities(10, 48, 80)
+    assert quantities["square_feet"] == D(270)
+    total_first = frame_quantities(10, 48, 80, square_footage_method="quantity_then_round_up")
+    assert total_first["square_feet"] == D(267)
 
 
 def test_fractional_caulking_passes_preserve_fractional_linear_feet():

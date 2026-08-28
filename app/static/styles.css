@@ -1161,6 +1161,10 @@ main {
   grid-column: span 2;
 }
 
+.project-notes-card textarea {
+  min-height: 6.5rem;
+}
+
 .field small {
   color: var(--muted-light);
   font-size: 0.625rem;
@@ -6618,7 +6622,15 @@ tr.has-override > td:first-child { box-shadow: inset 3px 0 var(--ui-warning), 1p
 .scenario-frame-workspace .material-heading h3 { margin-bottom: 1px; }
 .scenario-frame-workspace .material-heading span { margin-bottom: 5px; color: var(--ui-text-secondary); }
 .scenario-frame-workspace .material-heading button { min-height: 26px; height: 26px; padding-inline: 8px; }
-.scenario-frame-workspace .frame-material-list { width: max-content; max-width: 100%; justify-self: start; }
+.scenario-frame-workspace .frame-material-list {
+  width: 100%;
+  max-width: 100%;
+  justify-self: start;
+  overflow-x: auto;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
 .scenario-frame-workspace .compact-material-grid { width: 636px; min-width: 636px; max-width: none; table-layout: fixed; }
 .scenario-frame-workspace .compact-material-grid th,
 .scenario-frame-workspace .compact-material-grid td { height: 28px; padding: 4px 7px; }
@@ -6637,7 +6649,7 @@ tr.has-override > td:first-child { box-shadow: inset 3px 0 var(--ui-warning), 1p
   justify-content: space-between;
   gap: 6px;
 }
-.scenario-frame-workspace .formula-material-grid { width: 100%; min-width: 0; max-width: none; table-layout: fixed; }
+.scenario-frame-workspace .formula-material-grid { width: 884px; min-width: 884px; max-width: 884px; table-layout: fixed; }
 .scenario-frame-workspace table.formula-material-grid {
   border-radius: 5px;
   outline: 0;
@@ -6666,10 +6678,10 @@ tr.has-override > td:first-child { box-shadow: inset 3px 0 var(--ui-warning), 1p
 .scenario-frame-workspace .formula-material-grid thead th:last-child { border-top-right-radius: 5px; }
 .scenario-frame-workspace .formula-material-grid tbody tr:last-child td:first-child { border-bottom-left-radius: 5px; }
 .scenario-frame-workspace .formula-material-grid tbody tr:last-child td:last-child { border-bottom-right-radius: 5px; }
-.scenario-frame-workspace .formula-material-grid :is(th, td):nth-child(1) { width: 20%; }
-.scenario-frame-workspace .formula-material-grid :is(th, td):nth-child(2) { width: 48%; }
-.scenario-frame-workspace .formula-material-grid :is(th, td):nth-child(3) { width: 13%; }
-.scenario-frame-workspace .formula-material-grid :is(th, td):nth-child(4) { width: 15%; }
+.scenario-frame-workspace .formula-material-grid :is(th, td):nth-child(1) { width: 230px; min-width: 230px; max-width: 230px; }
+.scenario-frame-workspace .formula-material-grid :is(th, td):nth-child(2) { width: 260px; min-width: 260px; max-width: 260px; }
+.scenario-frame-workspace .formula-material-grid :is(th, td):nth-child(3) { width: 220px; min-width: 220px; max-width: 220px; }
+.scenario-frame-workspace .formula-material-grid :is(th, td):nth-child(4) { width: 120px; min-width: 120px; max-width: 120px; }
 .scenario-frame-workspace .formula-material-grid :is(th, td):nth-child(5) { width: 54px; min-width: 54px; padding-inline: 3px; text-align: center; }
 .scenario-frame-workspace .formula-material-grid :is(.row-actions-heading, .row-action-cell) {
   background: var(--ui-surface-subtle);
@@ -6677,9 +6689,10 @@ tr.has-override > td:first-child { box-shadow: inset 3px 0 var(--ui-warning), 1p
 }
 .scenario-frame-workspace .material-totals-rail {
   display: grid;
-  width: 100%;
+  width: 884px;
+  min-width: 884px;
   min-height: var(--table-subtotal-height);
-  grid-template-columns: 20fr 48fr 13fr 15fr 54px;
+  grid-template-columns: 230px 260px 220px 120px 54px;
   color: var(--ui-text);
   background: transparent;
 }
@@ -6700,12 +6713,24 @@ tr.has-override > td:first-child { box-shadow: inset 3px 0 var(--ui-warning), 1p
   text-align: center;
   white-space: normal;
 }
+.scenario-frame-workspace .formula-material-grid .material-quantity-heading {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 56px 88px 72px;
+  justify-content: end;
+  gap: 6px;
+  align-items: center;
+  font-size: 10px;
+  text-align: left;
+  white-space: nowrap;
+}
+.scenario-frame-workspace .formula-material-grid .material-quantity-heading > span:nth-child(2) { text-align: right; }
 .scenario-frame-workspace .formula-material-grid .material-name-cell > span { overflow: hidden; }
 .scenario-frame-workspace .formula-material-grid .material-name-cell strong {
   display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
 }
 .scenario-frame-workspace .formula-material-grid tbody tr,
 .scenario-frame-workspace .formula-material-grid tbody td { height: var(--table-row-height); }
@@ -6719,6 +6744,63 @@ tr.has-override > td:first-child { box-shadow: inset 3px 0 var(--ui-warning), 1p
   box-shadow: none;
 }
 .scenario-frame-workspace .formula-material-grid td:nth-child(3) input { width: 100%; text-align: right; }
+.scenario-frame-workspace .formula-material-grid .material-rate-cell {
+  position: relative;
+  white-space: nowrap;
+}
+.scenario-frame-workspace .formula-material-grid .material-rate-cell::before {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  left: 8px;
+  color: var(--ui-text-muted);
+  content: "$";
+  font-size: 10.5px;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.scenario-frame-workspace .formula-material-grid .material-rate-cell > .override-control,
+.scenario-frame-workspace .formula-material-grid .material-rate-cell > input {
+  display: inline-flex;
+  width: calc(100% - 78px) !important;
+  min-width: 76px;
+  vertical-align: middle;
+}
+.scenario-frame-workspace .formula-material-grid .material-rate-cell input {
+  padding-left: 17px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.scenario-frame-workspace .formula-material-grid .material-rate-cell .override-control > input { min-width: 76px; }
+.scenario-frame-workspace .formula-material-grid .material-rate-cell .override-control { position: relative; }
+.scenario-frame-workspace .formula-material-grid .material-rate-cell .override-control > input { padding-right: 42px; }
+.scenario-frame-workspace .formula-material-grid .material-rate-cell .override-control > [data-clear-rate-override] {
+  position: absolute;
+  top: 50%;
+  right: 2px;
+  min-width: 36px;
+  min-height: 20px;
+  height: 20px;
+  margin: 0;
+  padding: 0 3px;
+  transform: translateY(-50%);
+  font-size: 9px;
+}
+.scenario-frame-workspace .formula-material-grid .material-rate-cell .override-control > [data-clear-rate-override]:disabled { opacity: .32; }
+.scenario-frame-workspace .formula-material-grid [data-material-rate-unit] {
+  display: inline-block;
+  width: 74px;
+  min-width: 74px;
+  overflow: visible;
+  color: var(--ui-text-muted);
+  font-size: 9.5px;
+  text-align: left;
+  text-overflow: clip;
+  vertical-align: middle;
+  white-space: nowrap;
+}
 .scenario-frame-workspace .formula-material-grid td:nth-child(4) { white-space: nowrap; }
 .scenario-frame-workspace .formula-material-grid tr.has-override > td {
   background: var(--table-editable-bg);
@@ -6731,12 +6813,56 @@ tr.has-override > td:first-child { box-shadow: inset 3px 0 var(--ui-warning), 1p
   display: grid;
   width: 100%;
   min-width: 0;
-  max-width: 460px;
-  grid-template-columns: minmax(72px, 110px) 34px 52px 8px minmax(58px, 78px) minmax(68px, 104px) 28px;
+  max-width: none;
+  grid-template-columns: 56px minmax(112px, 1fr);
   align-items: center;
-  gap: 3px;
+  gap: 8px;
 }
-.scenario-frame-workspace .material-formula-editor :is(select, input) {
+.scenario-frame-workspace .material-formula-button {
+  width: 56px;
+  min-width: 56px;
+  min-height: 24px;
+  height: 24px;
+  padding: 2px 5px;
+  font-size: 10px;
+}
+.scenario-frame-workspace .material-formula-popover {
+  position: fixed;
+  width: max-content;
+  max-width: calc(100vw - 16px);
+  margin: 0;
+  padding: 6px;
+  overflow: visible;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 4px;
+  background: var(--ui-surface);
+  box-shadow: var(--shadow-lg);
+  color: var(--ui-text);
+}
+.scenario-frame-workspace .material-formula-popover::backdrop { background: transparent; }
+.scenario-frame-workspace .material-formula-config-grid {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.scenario-frame-workspace .material-formula-field {
+  display: block;
+  min-width: 0;
+}
+.scenario-frame-workspace [data-material-formula-basis-field] { width: 112px; }
+.scenario-frame-workspace [data-material-formula-operator-field] { width: 58px; }
+.scenario-frame-workspace [data-material-formula-operand-field] { width: 70px; }
+.scenario-frame-workspace [data-material-formula-unit-field] {
+  width: 100px;
+  margin-left: 5px;
+  padding-left: 9px;
+  border-left: 1px solid var(--ui-divider);
+}
+.scenario-frame-workspace .material-formula-editor.is-custom :is(
+  [data-material-formula-operator-field],
+  [data-material-formula-operand-field]
+) { display: none; }
+.scenario-frame-workspace .material-formula-popover :is(select, input) {
   width: 100%;
   min-width: 0;
   min-height: 24px;
@@ -6744,12 +6870,31 @@ tr.has-override > td:first-child { box-shadow: inset 3px 0 var(--ui-warning), 1p
   padding: 2px 4px;
   font-size: 10.5px;
 }
-.scenario-frame-workspace .material-formula-editor select:nth-child(2) { padding-inline: 5px 15px; text-align: center; }
+.scenario-frame-workspace .material-formula-editor [data-material-formula-operator] { padding-inline: 5px 15px; text-align: center; }
 .scenario-frame-workspace .material-formula-editor [data-material-unit-control] { padding-inline: 4px 15px; }
-.scenario-frame-workspace .material-formula-equals { color: var(--ui-text-muted); text-align: center; }
-.scenario-frame-workspace .material-formula-result {
-  display: flex;
-  width: 100%;
+.scenario-frame-workspace .material-formula-output {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 88px 72px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.scenario-frame-workspace .material-formula-output [data-material-formula-unit-label] {
+  display: block;
+  width: 72px;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ui-text-muted);
+  font-size: 10.5px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.scenario-frame-workspace .material-formula-output .material-formula-result {
+  width: 88px;
+  min-width: 88px;
+  max-width: 88px;
   min-width: 0;
   min-height: 24px;
   height: 24px;
@@ -6767,8 +6912,13 @@ tr.has-override > td:first-child { box-shadow: inset 3px 0 var(--ui-warning), 1p
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.scenario-frame-workspace .material-formula-revert { min-width: 26px; min-height: 22px; height: 22px; padding: 0; font-size: 14px; }
-.scenario-frame-workspace .material-formula-revert:disabled { visibility: hidden; }
+.scenario-frame-workspace .material-formula-editor:not(.is-custom) .material-formula-result {
+  pointer-events: none;
+  user-select: none;
+  caret-color: transparent;
+}
+.scenario-frame-workspace .material-formula-revert { width: 24px; min-width: 24px; min-height: 24px; height: 24px; padding: 0; font-size: 14px; line-height: 1; }
+.scenario-frame-workspace .material-formula-revert:disabled { visibility: visible; opacity: .28; }
 .scenario-frame-workspace .material-heading [data-add-section-material] { display: inline-flex; }
 
 .frame-section-tabs {
@@ -7152,6 +7302,72 @@ table.app-data-table td > :is(input, select, textarea, button, output) {
   vertical-align: middle;
 }
 
+/* A control belongs to its declared worksheet column. Focus expansion is the
+ * only deliberate overlay and is opt-in through frame-text-entry-expanded. */
+.app-data-table :is(th, td),
+.data-grid :is(th, td) {
+  min-width: 0;
+  max-width: none;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+.app-data-table td > :is(input, select, textarea, output),
+.data-grid td > :is(input, select, textarea, output) {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.app-data-table col,
+.data-grid col {
+  box-sizing: border-box;
+}
+.app-data-table td.table-cell-selected,
+.data-grid td.table-cell-selected {
+  position: relative;
+  background: color-mix(in srgb, var(--ui-brand-soft) 72%, var(--ui-surface)) !important;
+  box-shadow: inset 0 0 0 1px var(--ui-brand);
+}
+.app-data-table tr.table-row-selected > td,
+.data-grid tr.table-row-selected > td {
+  background: color-mix(in srgb, var(--ui-brand-soft) 55%, var(--ui-surface)) !important;
+}
+.app-data-table td.table-cell-selected > :is(input, select, textarea),
+.data-grid td.table-cell-selected > :is(input, select, textarea) {
+  background: transparent;
+}
+.table-range-selecting :is(table.data-grid, table.app-data-table),
+.table-range-selecting :is(table.data-grid, table.app-data-table) * {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+}
+/* Horizontal sticky cells were valid only for the original Frame column set.
+ * Applying those positional rules to Borrowed Lites, Doors, Equipment, and
+ * other grouped grids displaced cells from their colgroup tracks and created
+ * blank phantom bands. All input-table columns now scroll on one shared track;
+ * only the header remains vertically sticky. */
+.scenario-frame-workspace .frame-grid :is(th, td) {
+  left: auto !important;
+  right: auto !important;
+}
+.scenario-frame-workspace .frame-grid tbody td,
+.scenario-frame-workspace .frame-grid tfoot td,
+.scenario-frame-workspace .frame-grid .row-action-cell,
+.scenario-frame-workspace .frame-totals-rail > span {
+  position: static !important;
+}
+.scenario-frame-workspace .frame-grid thead th {
+  position: sticky !important;
+  top: 0;
+}
+.scenario-frame-workspace .frame-grid td.frame-entry-expanded,
+.scenario-frame-workspace .frame-grid td:has(> .frame-text-entry-expanded) {
+  overflow: hidden;
+}
+
 /* A Frame Spec Section tab already owns schedule navigation. The selected
  * schedule therefore uses a fixed summary rail, not a second disclosure. */
 .scenario-frame-workspace .scenario-section > .frame-schedule-summary {
@@ -7278,6 +7494,106 @@ table.app-data-table td > :is(input, select, textarea, button, output) {
   margin: 0;
 }
 
+/* Quotes reuse the schedule-summary markup without the takeoff workspace that
+ * normally defines its grid. Pin the two direct children to a Quotes-specific
+ * grid so the generic frame header cannot collapse the title into its narrow
+ * control column. */
+.quote-workspace [data-scenario-section-kind="quotes"] > .frame-schedule-summary {
+  display: grid;
+  min-width: 0;
+  min-height: 54px;
+  height: auto;
+  grid-template-columns: minmax(18rem, 1fr) auto;
+  grid-template-rows: minmax(54px, auto);
+  gap: 12px;
+  align-items: center;
+  padding: 0 10px;
+}
+.quote-workspace .frame-schedule-summary > .frame-section-description {
+  display: flex;
+  min-width: 0;
+  grid-column: 1;
+  grid-row: 1;
+  flex-direction: column;
+  justify-content: center;
+}
+.quote-workspace .frame-schedule-summary .frame-section-title-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+.quote-workspace .frame-schedule-summary .frame-section-title-row h2 {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  overflow-wrap: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  word-break: normal;
+}
+.quote-workspace .frame-schedule-summary .frame-section-title-row .compact-frame-add {
+  flex: 0 0 auto;
+  margin: 0;
+  white-space: nowrap;
+}
+.quote-workspace .frame-schedule-summary > .frame-header-commercial {
+  display: grid;
+  width: auto;
+  min-width: 22rem;
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  grid-template-columns: 4.5rem minmax(7.5rem, auto) minmax(9rem, auto);
+  justify-self: end;
+  margin: 0 !important;
+  border: 0 !important;
+}
+.quote-workspace .frame-schedule-summary > .frame-header-commercial > .section-metric {
+  min-width: 0;
+  grid-column: auto !important;
+  grid-row: auto !important;
+  white-space: nowrap;
+}
+.quote-grid td.quote-square-feet-cell {
+  white-space: nowrap;
+}
+.quote-grid td.quote-square-feet-cell:has(.quote-square-feet-revert) > input {
+  width: calc(100% - 30px);
+}
+.quote-grid .quote-square-feet-revert {
+  width: 26px;
+  min-width: 26px;
+  height: 24px;
+  min-height: 24px;
+  margin-left: 4px;
+  padding: 0;
+  vertical-align: middle;
+}
+.quote-grid .quote-square-feet-revert:disabled {
+  visibility: hidden;
+}
+
+@media (max-width: 70rem) {
+  .quote-workspace [data-scenario-section-kind="quotes"] > .frame-schedule-summary {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(50px, auto) auto;
+    gap: 0;
+    padding-block: 4px;
+  }
+  .quote-workspace .frame-schedule-summary > .frame-section-description {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .quote-workspace .frame-schedule-summary > .frame-header-commercial {
+    width: 100%;
+    min-width: 0;
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    justify-self: stretch;
+  }
+}
+
 /* Frame row semantics are independent layers. Calculated-column classification
  * owns its background; row status owns only non-calculated backgrounds, and
  * interaction owns borders only. */
@@ -7367,9 +7683,8 @@ table.app-data-table td > :is(input, select, textarea, button, output) {
 /* Shared takeoff worksheets keep one compact action rail regardless of their
  * field count. Column widths come from the semantic layout map in app.js. */
 .scenario-frame-workspace table[data-unified-worksheet-table] :is(.row-actions-heading, .row-action-cell) {
-  width: 54px !important;
-  min-width: 54px !important;
-  max-width: 54px !important;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 .scenario-frame-workspace table[data-unified-worksheet-table] .row-action-cell > button {
   line-height: 1;
@@ -7399,4 +7714,596 @@ table.app-data-table td > :is(input, select, textarea, button, output) {
 }
 .equipment-rate-warning.is-manual {
   color: var(--danger, #a22b2b);
+}
+
+/* Row status is communicated by the row surface and controls. Do not add a
+ * decorative warning/selection stripe to the leading cell of input tables. */
+:is(table.data-grid, table.app-data-table) tbody tr:is(
+  .trailing-row,
+  .incomplete-row,
+  .acknowledged-exception,
+  .has-rate-override,
+  .has-override,
+  .manually-selected,
+  .automatically-selected,
+  .alt-added,
+  .alt-modified,
+  .alt-removed
+) > td:first-child {
+  box-shadow: none !important;
+}
+
+/* Large schedules and takeoffs keep the complete data set while mounting only
+ * a cell-budgeted row window. Spacer rows preserve natural scroll position
+ * without creating thousands of off-screen inputs and material controls. */
+[data-edit-table][data-virtualized="true"] {
+  max-height: min(68vh, 48rem);
+  overflow: auto;
+  overscroll-behavior: contain;
+  contain: layout paint style;
+  contain-intrinsic-size: auto 48rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ui-border-strong) var(--ui-canvas);
+}
+[data-edit-table][data-virtualized="true"]::-webkit-scrollbar { width: 10px; height: 7px; }
+[data-edit-table][data-virtualized="true"] .virtual-table-spacer > td {
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  pointer-events: none;
+}
+
+/* Fixed application chrome: only the right-hand workspace owns page scroll. */
+html,
+body {
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow: hidden;
+}
+
+.topbar {
+  position: relative;
+  top: auto;
+  height: var(--topbar-height);
+  min-height: var(--topbar-height);
+  max-height: var(--topbar-height);
+}
+
+.shell {
+  height: calc(100dvh - var(--topbar-height));
+  min-height: 0;
+  overflow: hidden;
+}
+
+.sidebar {
+  position: relative;
+  top: auto;
+  height: 100%;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+main {
+  height: 100%;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.actionbar {
+  position: static;
+  top: auto;
+}
+
+@media (max-width: 47.5rem) {
+  .sidebar {
+    position: fixed;
+    top: var(--topbar-height);
+    height: calc(100dvh - var(--topbar-height));
+  }
+
+}
+
+/* Shared non-worksheet fields use a distinct neutral editing surface. Dense
+ * estimating tables retain their own cell-level surface and state rules. */
+.field :is(input:not([type="checkbox"], [type="radio"]), select, textarea) {
+  border-color: var(--ui-border-strong);
+  background-color: var(--ui-surface-muted);
+  transition: background-color var(--motion-fast), border-color var(--motion-fast);
+}
+
+.field :is(input:not([type="checkbox"], [type="radio"]), select, textarea):hover {
+  border-color: var(--ui-border-strong);
+  background-color: var(--ui-surface-strong);
+}
+
+.field :is(input:not([type="checkbox"], [type="radio"]), select, textarea):focus {
+  border-color: var(--focus-border);
+  background-color: var(--ui-surface);
+}
+
+/* Project Information is a durable record: dense, directly editable, and
+ * organized around project meaning instead of the order fields were added. */
+.project-record {
+  --project-grid-columns: repeat(12, minmax(0, 1fr));
+  --project-column-gap: 8px;
+  --project-row-gap: 4px;
+  --project-field-height: 28px;
+  --project-label-height: 12px;
+  --project-label-gap: 2px;
+  --project-section-padding: 8px 10px 9px;
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+}
+
+.project-record-section.card {
+  margin: 0;
+  padding: var(--project-section-padding);
+  border-color: var(--ui-border, var(--line));
+  border-radius: 6px;
+  box-shadow: none;
+}
+
+.project-section-heading,
+.project-subsection-heading {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.project-section-heading {
+  margin: 0 0 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--ui-border-subtle, var(--line));
+}
+
+.project-section-heading h2,
+.project-subsection-heading h3 {
+  margin: 0;
+  color: var(--ui-text, var(--ink));
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 18px;
+}
+
+.project-section-heading p,
+.project-subsection-heading p {
+  min-width: 0;
+  margin: 0;
+  color: var(--ui-text-secondary, var(--muted));
+  font-size: 10.5px;
+  line-height: 15px;
+  text-align: right;
+}
+
+.project-identity-grid,
+.project-details-grid,
+.project-party-grid,
+.project-milestone-grid,
+.project-solicitation-grid {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: var(--project-grid-columns);
+  column-gap: var(--project-column-gap);
+  row-gap: var(--project-row-gap);
+}
+
+.project-party-column,
+.project-party-fields,
+.project-internal-fields {
+  display: grid;
+  min-width: 0;
+  column-gap: var(--project-column-gap);
+  row-gap: var(--project-row-gap);
+}
+
+.project-identity-grid > *,
+.project-details-grid > *,
+.project-party-grid > *,
+.project-milestone-grid > *,
+.project-solicitation-grid > * {
+  min-width: 0;
+}
+
+.project-identity-name { grid-column: span 5; }
+.project-identity-number { grid-column: span 3; }
+.project-identity-status { grid-column: span 2; }
+.project-identity-abbreviation { grid-column: span 2; }
+.project-identity-address { grid-column: span 6; }
+.project-internal-responsibility { grid-column: span 6; }
+
+.project-detail-type,
+.project-detail-building,
+.project-detail-contract,
+.project-wage-field { grid-column: span 3; }
+.project-county { grid-column: span 2; }
+.project-detail-tax { grid-column: span 1; }
+.project-detail-tax-rate { grid-column: span 3; }
+.project-detail-mileage { grid-column: span 2; }
+.project-detail-colors { grid-column: span 4; }
+
+.project-record .field {
+  gap: var(--project-label-gap);
+}
+
+.project-record .field > span:first-child,
+.project-record-value > span {
+  color: var(--ui-text-secondary, var(--muted));
+  font-size: 9.5px;
+  font-weight: 650;
+  letter-spacing: .02em;
+  line-height: var(--project-label-height);
+}
+
+.project-record .field :is(input:not([type="checkbox"], [type="radio"]), select) {
+  min-height: var(--project-field-height);
+  height: var(--project-field-height);
+  padding: 3px 6px;
+  border-color: var(--ui-border-strong, #c3cfc9);
+  border-radius: 3px;
+  background-color: var(--ui-surface-muted, #f4f7f6);
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 525;
+}
+
+.project-record .field textarea {
+  padding: 5px 7px;
+  border-color: var(--ui-border-strong, var(--line-strong));
+  border-radius: 4px;
+  background: var(--ui-surface-muted, #f4f7f6);
+  font-size: 12px;
+  line-height: 17px;
+  font-weight: 525;
+}
+
+.project-record .field :is(input:not([type="checkbox"], [type="radio"]), select, textarea):hover {
+  border-color: var(--ui-border-strong, #b4c4bd);
+  background-color: var(--ui-surface-strong, #ebf2ef);
+}
+
+.project-record .field :is(input:not([type="checkbox"], [type="radio"]), select, textarea):focus {
+  border-color: var(--focus);
+  background: #fff;
+  box-shadow: var(--focus-ring);
+}
+
+.project-record .field.is-calculated input,
+.project-record [data-session-override][readonly] {
+  border-color: var(--ui-border, var(--line));
+  background: var(--calculated);
+}
+
+.project-record .field small {
+  font-size: 9.5px;
+  line-height: 13px;
+}
+
+.project-record .field:has(> input[type="checkbox"]) {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  grid-template-rows: 18px auto;
+  align-content: start;
+  column-gap: 6px;
+  padding-top: 10px;
+}
+
+.project-record .field:has(> input[type="checkbox"]) > span:first-child {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: center;
+}
+
+.project-record .field:has(> input[type="checkbox"]) > input {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: center;
+}
+
+.project-record .field:has(> input[type="checkbox"]) > small {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+.project-identity-name input {
+  min-height: var(--project-field-height) !important;
+  height: var(--project-field-height) !important;
+  color: var(--ui-text, var(--ink));
+  font-size: 15px !important;
+  font-weight: 700;
+  line-height: 19px !important;
+}
+
+.project-identity-number input {
+  min-height: var(--project-field-height) !important;
+  height: var(--project-field-height) !important;
+  font-size: 13px !important;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.project-record-value {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--project-label-gap);
+}
+
+.project-record-value strong {
+  display: flex;
+  min-height: var(--project-field-height);
+  min-width: 0;
+  align-items: center;
+  overflow-wrap: anywhere;
+  color: var(--ui-text, var(--ink));
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.project-identity-status strong {
+  min-height: var(--project-field-height);
+}
+
+.project-internal-responsibility {
+  min-width: 0;
+  align-self: end;
+}
+
+.project-internal-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.project-internal-responsibility .field > span:first-child {
+  color: var(--ui-brand-active);
+  font-weight: 700;
+}
+
+.project-record .project-address-field {
+  grid-column: auto;
+}
+
+.project-record .mileage-control {
+  min-width: 0;
+}
+
+.project-record .mileage-control button {
+  min-height: var(--project-field-height);
+  height: var(--project-field-height);
+  padding: 0 8px;
+  font-size: 10.5px;
+}
+
+.project-party-grid {
+  align-items: start;
+}
+
+.project-party-column {
+  grid-column: span 4;
+  min-width: 0;
+  align-content: start;
+  gap: 6px;
+}
+
+.project-party {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.project-party h3 {
+  margin: 0 0 4px;
+  color: var(--ui-text-secondary, var(--muted));
+  font-size: 9.5px;
+  font-weight: 750;
+  letter-spacing: .045em;
+  line-height: 13px;
+  text-transform: uppercase;
+}
+
+.project-party + .project-party {
+  padding-top: 6px;
+  border-top: 1px solid var(--ui-border-subtle, var(--line));
+}
+
+.project-party-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.project-party-fields > .field:first-child {
+  grid-column: 1 / -1;
+}
+
+.project-party:not(.project-party-owner) .project-party-fields > .field:nth-child(2) {
+  grid-column: 1 / -1;
+}
+
+.project-party-fields > .field:first-child input {
+  background: var(--ui-surface-strong);
+  color: var(--ui-text);
+  font-size: 13px;
+  font-weight: 675;
+}
+
+.project-party-fields > .field:nth-child(2) input,
+.project-party-fields > .field:nth-child(3) input {
+  color: var(--ui-text-secondary);
+}
+
+.project-contacts {
+  min-width: 0;
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--ui-border, var(--line));
+}
+
+.project-subsection-heading {
+  margin-bottom: 4px;
+}
+
+.project-record .editable-table-shell {
+  min-width: 0;
+}
+
+.project-contacts [data-edit-table] td > :is(input:not([type="checkbox"], [type="radio"]), select, textarea) {
+  border-color: var(--ui-border);
+  background: var(--ui-surface-muted);
+}
+
+.project-contacts [data-edit-table] td > :is(input:not([type="checkbox"], [type="radio"]), select, textarea):hover {
+  border-color: var(--ui-border-strong);
+  background: var(--ui-surface-strong);
+}
+
+.project-contacts [data-column-key="organization"] :is(input, select) {
+  color: var(--ui-text);
+  font-weight: 675;
+}
+
+.project-contacts [data-column-key="name"] :is(input, select) {
+  color: var(--ui-text);
+  font-weight: 600;
+}
+
+.project-contacts [data-column-key="address"] input,
+.project-contacts [data-column-key="email"] input,
+.project-contacts [data-column-key$="phone"] input,
+.project-contacts [data-column-key="role"] select {
+  color: var(--ui-text-secondary);
+  font-size: 10.5px;
+}
+
+.project-contacts .table-add-row {
+  min-height: 22px;
+  height: 22px;
+  margin-top: 3px;
+  padding: 0 6px;
+  border-color: transparent;
+  color: var(--ui-text-muted);
+  background: transparent;
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.project-contacts .table-add-row:hover:not(:disabled) {
+  border-color: var(--ui-border);
+  color: var(--ui-brand-active);
+  background: var(--ui-brand-soft);
+}
+
+.project-milestone-grid {
+  align-items: start;
+}
+
+.project-milestone-datetime { grid-column: span 3; }
+.project-milestone-date { grid-column: span 2; }
+.project-solicitation-source { grid-column: span 4; }
+.project-solicitation-addenda { grid-column: span 2; }
+
+.project-solicitation-section.card {
+  border-color: var(--ui-border-subtle);
+  background: var(--ui-surface-subtle);
+}
+
+.project-solicitation-section .project-section-heading {
+  border-bottom: 0;
+  margin-bottom: 3px;
+  padding-bottom: 0;
+}
+
+.project-solicitation-section .project-section-heading h2 {
+  color: var(--ui-text-secondary);
+  font-size: 12px;
+}
+
+.project-notes-card .project-section-heading {
+  margin-bottom: 4px;
+}
+
+.project-record .project-notes-card textarea {
+  min-height: 62px;
+}
+
+@media (max-width: 80rem) {
+  .project-party-column { grid-column: span 6; }
+
+  .project-milestone { grid-column: span 4; }
+}
+
+@media (max-width: 70rem) {
+  .project-identity-grid > * {
+    grid-column: span 6;
+  }
+
+  .project-identity-address {
+    grid-column: 1 / -1;
+  }
+
+  .project-internal-responsibility {
+    grid-column: 1 / -1;
+  }
+
+  .project-details-grid > * {
+    grid-column: span 6;
+  }
+
+  .project-details-grid > .project-wage-field,
+  .project-details-grid > .project-detail-colors { grid-column: span 12; }
+
+  .project-solicitation-source { grid-column: span 8; }
+  .project-solicitation-addenda { grid-column: span 4; }
+}
+
+@media (max-width: 55rem) {
+  .project-party-column { grid-column: span 12; }
+
+  .project-party-column + .project-party-column {
+    padding-top: 7px;
+    border-top: 1px solid var(--ui-border);
+  }
+
+  .project-milestone { grid-column: span 6; }
+}
+
+@media (max-width: 47.5rem) {
+  .project-record-section.card {
+    padding: 8px;
+  }
+
+  .project-section-heading,
+  .project-subsection-heading {
+    display: block;
+  }
+
+  .project-section-heading p,
+  .project-subsection-heading p {
+    margin-top: 2px;
+    text-align: left;
+  }
+
+  .project-identity-grid,
+  .project-internal-fields,
+  .project-party-fields,
+  .project-party-owner .project-party-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .project-identity-grid > *,
+  .project-details-grid > *,
+  .project-identity-address,
+  .project-internal-responsibility,
+  .project-party-column,
+  .project-party-fields > .field,
+  .project-party:not(.project-party-owner) .project-party-fields > .field:nth-child(2),
+  .project-milestone,
+  .project-solicitation-grid > * { grid-column: 1 / -1; }
 }

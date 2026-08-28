@@ -1,0 +1,4362 @@
+{
+  "schema_version": "1.0.0",
+  "interchange_version": "1.0.0",
+  "project": {
+    "id": "1a07de03-295a-44e1-b0e0-33deb391d6c6",
+    "revision": 13,
+    "name": "Oak Ridge Learning Center — TEST 4429",
+    "abbreviation": "ORLC",
+    "project_number": "TEST-74429",
+    "mwd_po": "",
+    "address": "3320 Innovation Drive, Plymouth, MN",
+    "zip": "55446",
+    "miles_from_rogers": 23,
+    "project_type": "K-12 education addition",
+    "building_type": "Education",
+    "estimator": "System verification",
+    "project_manager": "",
+    "owner_name": "Granite Point Properties",
+    "owner_address": "100 Civic Plaza, Plymouth, MN 55446",
+    "architect": "Prairie Line Architects",
+    "engineer": "Vector Building Engineering",
+    "general_contractor": "Ironwood Construction",
+    "construction_manager": "",
+    "plan_source": "Synthetic issued-for-bid drawing set",
+    "contract_type": "Competitive lump sum",
+    "addenda_count": 2,
+    "walkthrough": "Synthetic pre-bid walkthrough completed",
+    "frame_sealant_colors": "Black",
+    "additional_information": "Synthetic testing project generated from curated estimating profiles. Validate all values before any real-world use.",
+    "notes": "TRAINING / TEST DATA ONLY. Not a customer quotation and not suitable for commercial reliance.",
+    "proposal_scope": "Furnish and install thermally improved storefront and curtain wall, aluminum entrances, glazing, hardware, borrowed lites, sealants, and installation accessories.",
+    "proposal_inclusions": "Standard manufacturer warranties; shop drawings; normal delivery; installation materials; final perimeter sealants; one mobilization per phase.",
+    "proposal_exclusions": "Testing artifact only. Excludes permits, engineering delegated by others, temporary heat, hazardous-material remediation, after-hours premiums, and unresolved travel policy.",
+    "wage_data_id": null,
+    "wage_selection_source": null,
+    "wage_selected_at": null,
+    "tax_exempt": false,
+    "tax_rate_id": "tax_default",
+    "tax_selection_source": null,
+    "tax_selected_at": null,
+    "bid_due_date": "2026-11-13",
+    "start_date": "2027-01-01",
+    "completion_date": "2027-11-09",
+    "fabrication_due_date": "2026-11-27",
+    "fabrication_start_date": "2026-10-23",
+    "lifecycle_state": "estimate_created",
+    "archived": false,
+    "configuration_id": "cfg-2026-08-17-v2",
+    "bid_version": {
+      "major": 0,
+      "minor": 0,
+      "patch": 14,
+      "display": "B0.0.14",
+      "sequence": 14,
+      "last_event": "data_point_change",
+      "recorded_at": "2026-08-17T20:49:19.644278+00:00"
+    },
+    "created_at": "2026-08-17T20:46:07.989214+00:00",
+    "updated_at": "2026-08-17T20:49:19.648271+00:00",
+    "test_generation": {
+      "seed": 9869176407055675000,
+      "profile": "K-12 education addition",
+      "generator_version": "1.0.0",
+      "generated_at": "2026-08-17T20:46:07.989317+00:00",
+      "purpose": "training_test_only",
+      "curated": true
+    }
+  },
+  "contacts": [
+    {
+      "id": "con_8cbf8c82d50347ef80820f5df90816cd",
+      "role": "Owner",
+      "organization": "Granite Point Properties",
+      "name": "Morgan Lee",
+      "position": "Facilities Director",
+      "email": "morgan.lee@example.com",
+      "phone": "555-554-3795",
+      "active": true
+    },
+    {
+      "id": "con_e392a314f3ed4de2ba4615c2021d4d1d",
+      "role": "General Contractor",
+      "organization": "Ironwood Construction",
+      "name": "Casey Miller",
+      "position": "Lead Estimator",
+      "email": "casey.miller@example.com",
+      "phone": "555-703-8963",
+      "active": true
+    },
+    {
+      "id": "con_56415c8a0f9948f8aa5f21d311b52571",
+      "role": "General Contractor",
+      "organization": "Ironwood Construction",
+      "name": "Jordan Patel",
+      "position": "Project Manager",
+      "email": "jordan.patel@example.com",
+      "phone": "555-223-9705",
+      "active": true
+    },
+    {
+      "id": "con_dedd0d826f604e0a837c5b1e02c34aad",
+      "role": "Architect",
+      "organization": "Prairie Line Architects",
+      "name": "Avery Nguyen",
+      "position": "Project Architect",
+      "email": "avery.nguyen@example.com",
+      "phone": "555-774-1111",
+      "active": true
+    },
+    {
+      "id": "con_3f29936670ef43b5b66c0f483baebd76",
+      "role": "Engineer",
+      "organization": "Vector Building Engineering",
+      "name": "Riley Johnson",
+      "position": "Building Envelope Engineer",
+      "email": "riley.johnson@example.com",
+      "phone": "555-739-9892",
+      "active": true
+    },
+    {
+      "id": "con_e019e90cc3104214b4109e5af1590e30",
+      "role": "Supplier",
+      "organization": "Midwest Architectural Metals",
+      "name": "Taylor Brooks",
+      "position": "Architectural Sales",
+      "email": "taylor.brooks@example.com",
+      "phone": "555-346-2671",
+      "active": true
+    }
+  ],
+  "cost_codes": [
+    {
+      "id": "ccd_fb6993e5cfbd4399aced57a81934ad0a",
+      "code": "01 59 40",
+      "description": "Subsistence & Per Diem",
+      "mwd_code": "015940",
+      "mwd_description": "Subsistence & Per Diem",
+      "deduct": false,
+      "status": "active",
+      "reference_id": "csi_015940",
+      "reference_status": "owner_confirmed_reference"
+    },
+    {
+      "id": "ccd_ae664c82fcf44fe2affd2d0ba011b67c",
+      "code": "02 41 00",
+      "description": "Demolition",
+      "mwd_code": "024100",
+      "mwd_description": "Demolition",
+      "deduct": false,
+      "status": "active",
+      "reference_id": "csi_024100",
+      "reference_status": "owner_confirmed_reference"
+    },
+    {
+      "id": "ccd_5e59d46c725e4850863940c7afe924ef",
+      "code": "07 92 00",
+      "description": "Joint Sealants",
+      "mwd_code": "079200",
+      "mwd_description": "Joint Sealants",
+      "deduct": false,
+      "status": "active",
+      "reference_id": "csi_079200",
+      "reference_status": "owner_confirmed_reference"
+    },
+    {
+      "id": "ccd_65cb5e62f0ac4b8d8fab2736c4603fd8",
+      "code": "08 11 00",
+      "description": "Metal Doors and Frames",
+      "mwd_code": "081100",
+      "mwd_description": "Metal Doors and Frames",
+      "deduct": false,
+      "status": "active",
+      "reference_id": "csi_081100",
+      "reference_status": "owner_confirmed_reference"
+    },
+    {
+      "id": "ccd_a7c35f9d773742c3a788575723a2092c",
+      "code": "08 41 13",
+      "description": "Aluminum-Framed Entrances and Storefronts",
+      "mwd_code": "084113",
+      "mwd_description": "Aluminum-Framed Entrances and Storefronts",
+      "deduct": false,
+      "status": "active",
+      "reference_id": "csi_084113",
+      "reference_status": "owner_confirmed_reference"
+    },
+    {
+      "id": "ccd_6fe1ffcced4c498da3cce4a966a4f0b0",
+      "code": "08 44 13",
+      "description": "Glazed Aluminum Curtain Walls",
+      "mwd_code": "084413",
+      "mwd_description": "Glazed Aluminum Curtain Walls",
+      "deduct": false,
+      "status": "active",
+      "reference_id": "csi_084413",
+      "reference_status": "owner_confirmed_reference"
+    },
+    {
+      "id": "ccd_405ab77d8e7947849015065c0de83101",
+      "code": "08 71 00",
+      "description": "Door Hardware",
+      "mwd_code": "087100",
+      "mwd_description": "Door Hardware",
+      "deduct": false,
+      "status": "active",
+      "reference_id": "csi_087100",
+      "reference_status": "owner_confirmed_reference"
+    },
+    {
+      "id": "ccd_791ec7c37eed4c64b478fd50c93c70aa",
+      "code": "08 80 00",
+      "description": "Glazing",
+      "mwd_code": "088000",
+      "mwd_description": "Glazing",
+      "deduct": false,
+      "status": "active",
+      "reference_id": "csi_088000",
+      "reference_status": "owner_confirmed_reference"
+    },
+    {
+      "id": "ccd_46601e9fe271414e8a8521b986c15e99",
+      "code": "11 00 00",
+      "description": "Equipment",
+      "mwd_code": "110000",
+      "mwd_description": "Equipment",
+      "deduct": false,
+      "status": "active",
+      "reference_id": "csi_110000",
+      "reference_status": "owner_confirmed_reference"
+    }
+  ],
+  "quotes": [
+    {
+      "id": "quo_228339312e6142c98fe18be37045b5ab",
+      "group_id": "storefront-base",
+      "code": "08 41 13",
+      "date": "2026-08-12",
+      "vendor": "Midwest Architectural Metals",
+      "price": "142938",
+      "surcharge_percent": "0.035",
+      "tax_included": false,
+      "used": false,
+      "notes": "Synthetic comparison quote",
+      "calculated_cost": "147940.83",
+      "calculated_square_feet": "4510",
+      "calculated_unit_cost": "32.80"
+    },
+    {
+      "id": "quo_4d8bd01ea692471e843766f9fb3070ed",
+      "group_id": "storefront-base",
+      "code": "08 41 13",
+      "date": "2026-08-12",
+      "vendor": "Metro Glazing Supply",
+      "price": "152100",
+      "surcharge_percent": "0.025",
+      "tax_included": true,
+      "used": false,
+      "notes": "Synthetic comparison quote",
+      "calculated_cost": "155902.50",
+      "calculated_square_feet": "4510",
+      "calculated_unit_cost": "34.57"
+    },
+    {
+      "id": "quo_c382d8f627434d5b946ce11ad2b0f7a9",
+      "group_id": "storefront-base",
+      "code": "08 41 13",
+      "date": "2026-08-12",
+      "vendor": "Lakes Area Glass",
+      "price": "158878",
+      "surcharge_percent": "0.025",
+      "tax_included": true,
+      "used": true,
+      "notes": "Selected synthetic comparison quote",
+      "calculated_cost": "162849.95",
+      "calculated_square_feet": "4510",
+      "calculated_unit_cost": "36.11"
+    },
+    {
+      "id": "quo_fe9b65bf0c424ae3a93415a43c5225be",
+      "group_id": "curtainwall-base",
+      "code": "08 44 13",
+      "date": "2026-08-12",
+      "vendor": "Midwest Architectural Metals",
+      "price": "239131",
+      "surcharge_percent": "0.035",
+      "tax_included": true,
+      "used": true,
+      "notes": "Selected synthetic comparison quote",
+      "calculated_cost": "247500.59",
+      "calculated_square_feet": "3185",
+      "calculated_unit_cost": "77.71"
+    },
+    {
+      "id": "quo_c1d02d50bc83462ca7918105c659b02f",
+      "group_id": "curtainwall-base",
+      "code": "08 44 13",
+      "date": "2026-08-12",
+      "vendor": "Lakes Area Glass",
+      "price": "217751",
+      "surcharge_percent": "0.035",
+      "tax_included": false,
+      "used": false,
+      "notes": "Synthetic comparison quote",
+      "calculated_cost": "225372.29",
+      "calculated_square_feet": "3185",
+      "calculated_unit_cost": "70.76"
+    },
+    {
+      "id": "quo_dece7a81ef8245498f71e1366301ed09",
+      "group_id": "curtainwall-base",
+      "code": "08 44 13",
+      "date": "2026-08-12",
+      "vendor": "Metro Glazing Supply",
+      "price": "234452",
+      "surcharge_percent": "0.035",
+      "tax_included": true,
+      "used": false,
+      "notes": "Synthetic comparison quote",
+      "calculated_cost": "242657.82",
+      "calculated_square_feet": "3185",
+      "calculated_unit_cost": "76.19"
+    },
+    {
+      "id": "quo_03f92427872a446c80e4420d4a34d4b7",
+      "group_id": "glass-base",
+      "code": "08 80 00",
+      "date": "2026-08-12",
+      "vendor": "Prairie State Aluminum",
+      "price": "98560",
+      "surcharge_percent": "0.025",
+      "tax_included": false,
+      "used": false,
+      "notes": "Synthetic comparison quote",
+      "calculated_cost": "101024.00",
+      "calculated_square_feet": "168.0",
+      "calculated_unit_cost": "601.33"
+    },
+    {
+      "id": "quo_8507c97d5e9a4d27bf107e9dfb556e48",
+      "group_id": "glass-base",
+      "code": "08 80 00",
+      "date": "2026-08-12",
+      "vendor": "Metro Glazing Supply",
+      "price": "90491",
+      "surcharge_percent": "0.015",
+      "tax_included": false,
+      "used": true,
+      "notes": "Selected synthetic comparison quote",
+      "calculated_cost": "91848.37",
+      "calculated_square_feet": "168.0",
+      "calculated_unit_cost": "546.72"
+    },
+    {
+      "id": "quo_dc39ac7523214d2da7a77a69e6853eaf",
+      "group_id": "glass-base",
+      "code": "08 80 00",
+      "date": "2026-08-12",
+      "vendor": "Northland Glass Systems",
+      "price": "99636",
+      "surcharge_percent": "0.025",
+      "tax_included": false,
+      "used": false,
+      "notes": "Synthetic comparison quote",
+      "calculated_cost": "102126.90",
+      "calculated_square_feet": "168.0",
+      "calculated_unit_cost": "607.90"
+    },
+    {
+      "id": "quo_bfefebd9b75d4a5aab3f8170c61d7c7f",
+      "group_id": "storefront-alt1",
+      "code": "ALT1-08 41 13",
+      "date": "2026-08-12",
+      "vendor": "Metro Glazing Supply",
+      "price": "129624",
+      "surcharge_percent": "0.035",
+      "tax_included": false,
+      "used": false,
+      "notes": "Synthetic comparison quote",
+      "calculated_cost": "134160.84",
+      "calculated_square_feet": "1668",
+      "calculated_unit_cost": "80.43"
+    },
+    {
+      "id": "quo_729f248034d8459d8e1875109962a78d",
+      "group_id": "storefront-alt1",
+      "code": "ALT1-08 41 13",
+      "date": "2026-08-12",
+      "vendor": "Midwest Architectural Metals",
+      "price": "128858",
+      "surcharge_percent": "0.025",
+      "tax_included": true,
+      "used": true,
+      "notes": "Selected synthetic comparison quote",
+      "calculated_cost": "132079.45",
+      "calculated_square_feet": "1668",
+      "calculated_unit_cost": "79.18"
+    },
+    {
+      "id": "quo_4869068fd899479b8036e4d025b38fb0",
+      "group_id": "storefront-alt1",
+      "code": "ALT1-08 41 13",
+      "date": "2026-08-12",
+      "vendor": "Northland Glass Systems",
+      "price": "125281",
+      "surcharge_percent": "0.015",
+      "tax_included": false,
+      "used": false,
+      "notes": "Synthetic comparison quote",
+      "calculated_cost": "127160.22",
+      "calculated_square_feet": "1668",
+      "calculated_unit_cost": "76.24"
+    }
+  ],
+  "takeoff_sections": [
+    {
+      "id": "sec_86aeb0e94bdc4899bb50a07e7e340b82",
+      "definition_id": "frame-v1",
+      "name": "Level 1 Storefront",
+      "code": "08 41 13",
+      "material_overrides": {},
+      "tie_back_qty": 7,
+      "backpan_lf": 158,
+      "lines": [
+        {
+          "id": "frm_49edeb3e51bf409bab884abad349a18a",
+          "mark": "A1",
+          "quantity": 3,
+          "width_inches": 144,
+          "height_inches": 108,
+          "caulking_passes": 2,
+          "head": "Thermally broken",
+          "jamb": "Steel-reinforced",
+          "sill": "Subsill",
+          "type": "Storefront",
+          "material": "Extruded aluminum",
+          "finish": "Black fluoropolymer",
+          "notes": "Coordinate adjacent finish",
+          "calculated": {
+            "square_feet": "324",
+            "perimeter_lf": "126",
+            "caulking_passes": "2",
+            "caulking_lf": "252",
+            "head_sill_qty": "72"
+          }
+        },
+        {
+          "id": "frm_69be016ab49449d3a69f487e80f76bad",
+          "mark": "A2",
+          "quantity": 2,
+          "width_inches": 36,
+          "height_inches": 120,
+          "caulking_passes": 3,
+          "head": "Thermally broken",
+          "jamb": "Standard",
+          "sill": "High-performance",
+          "type": "Storefront",
+          "material": "Extruded aluminum",
+          "finish": "Black fluoropolymer",
+          "notes": "Field verify opening",
+          "calculated": {
+            "square_feet": "60",
+            "perimeter_lf": "52",
+            "caulking_passes": "3",
+            "caulking_lf": "156",
+            "head_sill_qty": "12"
+          }
+        },
+        {
+          "id": "frm_9eb78d35902f4464b63fe23468a3075d",
+          "mark": "A3",
+          "quantity": 3,
+          "width_inches": 42,
+          "height_inches": 84,
+          "caulking_passes": 3,
+          "head": "Thermally broken",
+          "jamb": "Steel-reinforced",
+          "sill": "Standard",
+          "type": "Storefront",
+          "material": "Extruded aluminum",
+          "finish": "Black fluoropolymer",
+          "notes": "Field verify opening",
+          "calculated": {
+            "square_feet": "74",
+            "perimeter_lf": "63",
+            "caulking_passes": "3",
+            "caulking_lf": "189",
+            "head_sill_qty": "21"
+          }
+        },
+        {
+          "id": "frm_d7d80328a64347ce964b2e01bf3679a4",
+          "mark": "A4",
+          "quantity": 4,
+          "width_inches": 48,
+          "height_inches": 144,
+          "caulking_passes": 3,
+          "head": "Standard",
+          "jamb": "Expansion jamb",
+          "sill": "Subsill",
+          "type": "Storefront",
+          "material": "Extruded aluminum",
+          "finish": "Black fluoropolymer",
+          "notes": "Coordinate adjacent finish",
+          "calculated": {
+            "square_feet": "192",
+            "perimeter_lf": "128",
+            "caulking_passes": "3",
+            "caulking_lf": "384",
+            "head_sill_qty": "32"
+          }
+        },
+        {
+          "id": "frm_37fb9ae2a08e41b9bdec3fdf575ff970",
+          "mark": "A5",
+          "quantity": 6,
+          "width_inches": 72,
+          "height_inches": 144,
+          "caulking_passes": 2,
+          "head": "Steel-reinforced",
+          "jamb": "Steel-reinforced",
+          "sill": "Subsill",
+          "type": "Storefront",
+          "material": "Extruded aluminum",
+          "finish": "Black fluoropolymer",
+          "notes": "Typical condition",
+          "calculated": {
+            "square_feet": "432",
+            "perimeter_lf": "216",
+            "caulking_passes": "2",
+            "caulking_lf": "432",
+            "head_sill_qty": "72"
+          }
+        },
+        {
+          "id": "frm_3e6276ee6ad74f01848cbf82d5d7965a",
+          "mark": "A6",
+          "quantity": 6,
+          "width_inches": 84,
+          "height_inches": 84,
+          "caulking_passes": 3,
+          "head": "Steel-reinforced",
+          "jamb": "Standard",
+          "sill": "Standard",
+          "type": "Storefront",
+          "material": "Extruded aluminum",
+          "finish": "Black fluoropolymer",
+          "notes": "Coordinate adjacent finish",
+          "calculated": {
+            "square_feet": "294",
+            "perimeter_lf": "168",
+            "caulking_passes": "3",
+            "caulking_lf": "504",
+            "head_sill_qty": "84"
+          }
+        },
+        {
+          "id": "frm_294cfe0fa3df4022aefd517cd5e970f2",
+          "mark": "A7",
+          "quantity": 6,
+          "width_inches": 144,
+          "height_inches": 144,
+          "caulking_passes": 2,
+          "head": "Thermally broken",
+          "jamb": "Standard",
+          "sill": "Subsill",
+          "type": "Storefront",
+          "material": "Extruded aluminum",
+          "finish": "Black fluoropolymer",
+          "notes": "Coordinate adjacent finish",
+          "calculated": {
+            "square_feet": "864",
+            "perimeter_lf": "288",
+            "caulking_passes": "2",
+            "caulking_lf": "576",
+            "head_sill_qty": "144"
+          }
+        },
+        {
+          "id": "frm_f01711df532547278a702ea1d130dd63",
+          "mark": "A8",
+          "quantity": 6,
+          "width_inches": 36,
+          "height_inches": 120,
+          "caulking_passes": 4,
+          "head": "Steel-reinforced",
+          "jamb": "Expansion jamb",
+          "sill": "Standard",
+          "type": "Storefront",
+          "material": "Extruded aluminum",
+          "finish": "Black fluoropolymer",
+          "notes": "Typical condition",
+          "calculated": {
+            "square_feet": "180",
+            "perimeter_lf": "156",
+            "caulking_passes": "4",
+            "caulking_lf": "624",
+            "head_sill_qty": "36"
+          }
+        }
+      ],
+      "totals": {
+        "quantity": "36",
+        "square_feet": "2420",
+        "perimeter_lf": "1197",
+        "caulking_lf": "3117",
+        "head_sill_qty": "473"
+      }
+    },
+    {
+      "id": "sec_bb82851cc24f475ab01f5f9ece8f0b2f",
+      "definition_id": "frame-v1",
+      "name": "Main Curtain Wall",
+      "code": "08 44 13",
+      "material_overrides": {},
+      "tie_back_qty": 12,
+      "backpan_lf": 73,
+      "lines": [
+        {
+          "id": "frm_aea7efcf1e974f30a1eb6db889a07f32",
+          "mark": "B1",
+          "quantity": 2,
+          "width_inches": 36,
+          "height_inches": 120,
+          "caulking_passes": 4,
+          "head": "Thermally broken",
+          "jamb": "Standard",
+          "sill": "Subsill",
+          "type": "Curtain wall",
+          "material": "Extruded aluminum",
+          "finish": "Clear anodized",
+          "notes": "Typical condition",
+          "calculated": {
+            "square_feet": "60",
+            "perimeter_lf": "52",
+            "caulking_passes": "4",
+            "caulking_lf": "208",
+            "head_sill_qty": "12"
+          }
+        },
+        {
+          "id": "frm_88c7787067e3471e942d4451bf85d524",
+          "mark": "B2",
+          "quantity": 4,
+          "width_inches": 84,
+          "height_inches": 108,
+          "caulking_passes": 4,
+          "head": "Standard",
+          "jamb": "Standard",
+          "sill": "Standard",
+          "type": "Curtain wall",
+          "material": "Extruded aluminum",
+          "finish": "Clear anodized",
+          "notes": "Field verify opening",
+          "calculated": {
+            "square_feet": "252",
+            "perimeter_lf": "128",
+            "caulking_passes": "4",
+            "caulking_lf": "512",
+            "head_sill_qty": "56"
+          }
+        },
+        {
+          "id": "frm_4c9ab04df09b4b79a18969a793afd13a",
+          "mark": "B3",
+          "quantity": 1,
+          "width_inches": 72,
+          "height_inches": 108,
+          "caulking_passes": 3,
+          "head": "Standard",
+          "jamb": "Standard",
+          "sill": "Subsill",
+          "type": "Curtain wall",
+          "material": "Extruded aluminum",
+          "finish": "Clear anodized",
+          "notes": "Field verify opening",
+          "calculated": {
+            "square_feet": "54",
+            "perimeter_lf": "30",
+            "caulking_passes": "3",
+            "caulking_lf": "90",
+            "head_sill_qty": "12"
+          }
+        },
+        {
+          "id": "frm_1b2e393c90204afa835bb12103d2bc0f",
+          "mark": "B4",
+          "quantity": 1,
+          "width_inches": 60,
+          "height_inches": 108,
+          "caulking_passes": 4,
+          "head": "Thermally broken",
+          "jamb": "Expansion jamb",
+          "sill": "High-performance",
+          "type": "Curtain wall",
+          "material": "Extruded aluminum",
+          "finish": "Clear anodized",
+          "notes": "Per architectural elevations",
+          "calculated": {
+            "square_feet": "45",
+            "perimeter_lf": "28",
+            "caulking_passes": "4",
+            "caulking_lf": "112",
+            "head_sill_qty": "10"
+          }
+        },
+        {
+          "id": "frm_7ebc47d0f9054968b71271e3db6c6fb1",
+          "mark": "B5",
+          "quantity": 6,
+          "width_inches": 120,
+          "height_inches": 108,
+          "caulking_passes": 2,
+          "head": "Steel-reinforced",
+          "jamb": "Standard",
+          "sill": "High-performance",
+          "type": "Curtain wall",
+          "material": "Extruded aluminum",
+          "finish": "Clear anodized",
+          "notes": "Coordinate adjacent finish",
+          "calculated": {
+            "square_feet": "540",
+            "perimeter_lf": "228",
+            "caulking_passes": "2",
+            "caulking_lf": "456",
+            "head_sill_qty": "120"
+          }
+        },
+        {
+          "id": "frm_4f075f16e13b477581eeb91b37a57282",
+          "mark": "B6",
+          "quantity": 2,
+          "width_inches": 144,
+          "height_inches": 96,
+          "caulking_passes": 3,
+          "head": "Steel-reinforced",
+          "jamb": "Expansion jamb",
+          "sill": "Subsill",
+          "type": "Curtain wall",
+          "material": "Extruded aluminum",
+          "finish": "Clear anodized",
+          "notes": "Per architectural elevations",
+          "calculated": {
+            "square_feet": "192",
+            "perimeter_lf": "80",
+            "caulking_passes": "3",
+            "caulking_lf": "240",
+            "head_sill_qty": "48"
+          }
+        },
+        {
+          "id": "frm_2ac61dd447ea41eb9d976eb91feaf61d",
+          "mark": "B7",
+          "quantity": 2,
+          "width_inches": 42,
+          "height_inches": 84,
+          "caulking_passes": 2,
+          "head": "Steel-reinforced",
+          "jamb": "Steel-reinforced",
+          "sill": "High-performance",
+          "type": "Curtain wall",
+          "material": "Extruded aluminum",
+          "finish": "Clear anodized",
+          "notes": "Per architectural elevations",
+          "calculated": {
+            "square_feet": "49",
+            "perimeter_lf": "42",
+            "caulking_passes": "2",
+            "caulking_lf": "84",
+            "head_sill_qty": "14"
+          }
+        },
+        {
+          "id": "frm_c3a562bf257449d6a463fe46d4a6438d",
+          "mark": "B8",
+          "quantity": 3,
+          "width_inches": 48,
+          "height_inches": 84,
+          "caulking_passes": 3,
+          "head": "Steel-reinforced",
+          "jamb": "Expansion jamb",
+          "sill": "High-performance",
+          "type": "Curtain wall",
+          "material": "Extruded aluminum",
+          "finish": "Clear anodized",
+          "notes": "Field verify opening",
+          "calculated": {
+            "square_feet": "84",
+            "perimeter_lf": "66",
+            "caulking_passes": "3",
+            "caulking_lf": "198",
+            "head_sill_qty": "24"
+          }
+        }
+      ],
+      "totals": {
+        "quantity": "21",
+        "square_feet": "1276",
+        "perimeter_lf": "654",
+        "caulking_lf": "1900",
+        "head_sill_qty": "296"
+      }
+    },
+    {
+      "id": "sec_0a0539be7ab74ceea656c3c35d481f4b",
+      "definition_id": "frame-v1",
+      "name": "Interior Glazed Frames",
+      "code": "08 41 13",
+      "material_overrides": {},
+      "tie_back_qty": 16,
+      "backpan_lf": 97,
+      "lines": [
+        {
+          "id": "frm_bb834ad28e8840dd8c706cb3502e1d46",
+          "mark": "C1",
+          "quantity": 1,
+          "width_inches": 48,
+          "height_inches": 96,
+          "caulking_passes": 2,
+          "head": "Standard",
+          "jamb": "Steel-reinforced",
+          "sill": "Subsill",
+          "type": "Interior glazed partition",
+          "material": "Extruded aluminum",
+          "finish": "Black fluoropolymer",
+          "notes": "Field verify opening",
+          "calculated": {
+            "square_feet": "32",
+            "perimeter_lf": "24",
+            "caulking_passes": "2",
+            "caulking_lf": "48",
+            "head_sill_qty": "8"
+          }
+        },
+        {
+          "id": "frm_f45920aa4350470fa46945295d6564be",
+          "mark": "C2",
+          "quantity": 4,
+          "width_inches": 120,
+          "height_inches": 84,
+          "caulking_passes": 3,
+          "head": "Standard",
+          "jamb": "Steel-reinforced",
+          "sill": "High-performance",
+          "type": "Interior glazed partition",
+          "material": "Extruded aluminum",
+          "finish": "Black fluoropolymer",
+          "notes": "Typical condition",
+          "calculated": {
+            "square_feet": "280",
+            "perimeter_lf": "136",
+            "caulking_passes": "3",
+            "caulking_lf": "408",
+            "head_sill_qty": "80"
+          }
+        },
+        {
+          "id": "frm_5ece777033414cc7a649b69ebffcca39",
+          "mark": "C3",
+          "quantity": 2,
+          "width_inches": 144,
+          "height_inches": 120,
+          "caulking_passes": 4,
+          "head": "Standard",
+          "jamb": "Standard",
+          "sill": "High-performance",
+          "type": "Interior glazed partition",
+          "material": "Extruded aluminum",
+          "finish": "Black fluoropolymer",
+          "notes": "Field verify opening",
+          "calculated": {
+            "square_feet": "240",
+            "perimeter_lf": "88",
+            "caulking_passes": "4",
+            "caulking_lf": "352",
+            "head_sill_qty": "48"
+          }
+        },
+        {
+          "id": "frm_51c41562c4db4c7ca568a143efc5a85d",
+          "mark": "C4",
+          "quantity": 4,
+          "width_inches": 72,
+          "height_inches": 84,
+          "caulking_passes": 3,
+          "head": "Thermally broken",
+          "jamb": "Steel-reinforced",
+          "sill": "Standard",
+          "type": "Interior glazed partition",
+          "material": "Extruded aluminum",
+          "finish": "Black fluoropolymer",
+          "notes": "Per architectural elevations",
+          "calculated": {
+            "square_feet": "168",
+            "perimeter_lf": "104",
+            "caulking_passes": "3",
+            "caulking_lf": "312",
+            "head_sill_qty": "48"
+          }
+        },
+        {
+          "id": "frm_123722a5279040b9a2c7223c768659b7",
+          "mark": "C5",
+          "quantity": 6,
+          "width_inches": 72,
+          "height_inches": 108,
+          "caulking_passes": 3,
+          "head": "Thermally broken",
+          "jamb": "Steel-reinforced",
+          "sill": "Standard",
+          "type": "Interior glazed partition",
+          "material": "Extruded aluminum",
+          "finish": "Black fluoropolymer",
+          "notes": "Field verify opening",
+          "calculated": {
+            "square_feet": "324",
+            "perimeter_lf": "180",
+            "caulking_passes": "3",
+            "caulking_lf": "540",
+            "head_sill_qty": "72"
+          }
+        },
+        {
+          "id": "frm_27182c7b7c0040c08ade0287541dfd47",
+          "mark": "C6",
+          "quantity": 4,
+          "width_inches": 42,
+          "height_inches": 108,
+          "caulking_passes": 3,
+          "head": "Thermally broken",
+          "jamb": "Expansion jamb",
+          "sill": "Subsill",
+          "type": "Interior glazed partition",
+          "material": "Extruded aluminum",
+          "finish": "Black fluoropolymer",
+          "notes": "Field verify opening",
+          "calculated": {
+            "square_feet": "126",
+            "perimeter_lf": "100",
+            "caulking_passes": "3",
+            "caulking_lf": "300",
+            "head_sill_qty": "28"
+          }
+        },
+        {
+          "id": "frm_d1b6075e655346adbd77aa8284f80f5d",
+          "mark": "C7",
+          "quantity": 6,
+          "width_inches": 120,
+          "height_inches": 120,
+          "caulking_passes": 3,
+          "head": "Standard",
+          "jamb": "Expansion jamb",
+          "sill": "Subsill",
+          "type": "Interior glazed partition",
+          "material": "Extruded aluminum",
+          "finish": "Black fluoropolymer",
+          "notes": "Coordinate adjacent finish",
+          "calculated": {
+            "square_feet": "600",
+            "perimeter_lf": "240",
+            "caulking_passes": "3",
+            "caulking_lf": "720",
+            "head_sill_qty": "120"
+          }
+        },
+        {
+          "id": "frm_a65415f2622a47749ff141402877f32c",
+          "mark": "C8",
+          "quantity": 4,
+          "width_inches": 120,
+          "height_inches": 96,
+          "caulking_passes": 4,
+          "head": "Steel-reinforced",
+          "jamb": "Standard",
+          "sill": "Standard",
+          "type": "Interior glazed partition",
+          "material": "Extruded aluminum",
+          "finish": "Black fluoropolymer",
+          "notes": "Typical condition",
+          "calculated": {
+            "square_feet": "320",
+            "perimeter_lf": "144",
+            "caulking_passes": "4",
+            "caulking_lf": "576",
+            "head_sill_qty": "80"
+          }
+        }
+      ],
+      "totals": {
+        "quantity": "31",
+        "square_feet": "2090",
+        "perimeter_lf": "1016",
+        "caulking_lf": "3256",
+        "head_sill_qty": "484"
+      }
+    },
+    {
+      "id": "sec_9ad84201dd804260b02a378827223710",
+      "definition_id": "frame-v1",
+      "name": "Upper-Level Ribbon Windows",
+      "code": "08 44 13",
+      "material_overrides": {},
+      "tie_back_qty": 23,
+      "backpan_lf": 141,
+      "lines": [
+        {
+          "id": "frm_d7a47972b4774ed584f9f0c4b7db16e8",
+          "mark": "D1",
+          "quantity": 4,
+          "width_inches": 84,
+          "height_inches": 96,
+          "caulking_passes": 3,
+          "head": "Thermally broken",
+          "jamb": "Steel-reinforced",
+          "sill": "Subsill",
+          "type": "Ribbon window",
+          "material": "Extruded aluminum",
+          "finish": "Dark bronze anodized",
+          "notes": "Field verify opening",
+          "calculated": {
+            "square_feet": "224",
+            "perimeter_lf": "120",
+            "caulking_passes": "3",
+            "caulking_lf": "360",
+            "head_sill_qty": "56"
+          }
+        },
+        {
+          "id": "frm_99a56b8d91ac46199e1cc8c9d0548d72",
+          "mark": "D2",
+          "quantity": 1,
+          "width_inches": 36,
+          "height_inches": 84,
+          "caulking_passes": 4,
+          "head": "Standard",
+          "jamb": "Standard",
+          "sill": "High-performance",
+          "type": "Ribbon window",
+          "material": "Extruded aluminum",
+          "finish": "Dark bronze anodized",
+          "notes": "Field verify opening",
+          "calculated": {
+            "square_feet": "21",
+            "perimeter_lf": "20",
+            "caulking_passes": "4",
+            "caulking_lf": "80",
+            "head_sill_qty": "6"
+          }
+        },
+        {
+          "id": "frm_7a3bb080efe247f9a76ce9d9c94c4e9f",
+          "mark": "D3",
+          "quantity": 6,
+          "width_inches": 96,
+          "height_inches": 120,
+          "caulking_passes": 3,
+          "head": "Thermally broken",
+          "jamb": "Expansion jamb",
+          "sill": "High-performance",
+          "type": "Ribbon window",
+          "material": "Extruded aluminum",
+          "finish": "Dark bronze anodized",
+          "notes": "Coordinate adjacent finish",
+          "calculated": {
+            "square_feet": "480",
+            "perimeter_lf": "216",
+            "caulking_passes": "3",
+            "caulking_lf": "648",
+            "head_sill_qty": "96"
+          }
+        },
+        {
+          "id": "frm_e9693bee0c954ebf911cbb428aec53b4",
+          "mark": "D4",
+          "quantity": 2,
+          "width_inches": 84,
+          "height_inches": 96,
+          "caulking_passes": 4,
+          "head": "Standard",
+          "jamb": "Standard",
+          "sill": "Standard",
+          "type": "Ribbon window",
+          "material": "Extruded aluminum",
+          "finish": "Dark bronze anodized",
+          "notes": "Per architectural elevations",
+          "calculated": {
+            "square_feet": "112",
+            "perimeter_lf": "60",
+            "caulking_passes": "4",
+            "caulking_lf": "240",
+            "head_sill_qty": "28"
+          }
+        },
+        {
+          "id": "frm_41c2a62455ed4b79a6df53921af8833d",
+          "mark": "D5",
+          "quantity": 6,
+          "width_inches": 60,
+          "height_inches": 108,
+          "caulking_passes": 3,
+          "head": "Thermally broken",
+          "jamb": "Standard",
+          "sill": "Subsill",
+          "type": "Ribbon window",
+          "material": "Extruded aluminum",
+          "finish": "Dark bronze anodized",
+          "notes": "Coordinate adjacent finish",
+          "calculated": {
+            "square_feet": "270",
+            "perimeter_lf": "168",
+            "caulking_passes": "3",
+            "caulking_lf": "504",
+            "head_sill_qty": "60"
+          }
+        },
+        {
+          "id": "frm_c18a47d36c2746cca447a380ac417f2a",
+          "mark": "D6",
+          "quantity": 6,
+          "width_inches": 60,
+          "height_inches": 108,
+          "caulking_passes": 2,
+          "head": "Standard",
+          "jamb": "Standard",
+          "sill": "Subsill",
+          "type": "Ribbon window",
+          "material": "Extruded aluminum",
+          "finish": "Dark bronze anodized",
+          "notes": "Per architectural elevations",
+          "calculated": {
+            "square_feet": "270",
+            "perimeter_lf": "168",
+            "caulking_passes": "2",
+            "caulking_lf": "336",
+            "head_sill_qty": "60"
+          }
+        },
+        {
+          "id": "frm_73e994665aae49219820ced5266e144f",
+          "mark": "D7",
+          "quantity": 4,
+          "width_inches": 144,
+          "height_inches": 108,
+          "caulking_passes": 2,
+          "head": "Standard",
+          "jamb": "Expansion jamb",
+          "sill": "Subsill",
+          "type": "Ribbon window",
+          "material": "Extruded aluminum",
+          "finish": "Dark bronze anodized",
+          "notes": "Field verify opening",
+          "calculated": {
+            "square_feet": "432",
+            "perimeter_lf": "168",
+            "caulking_passes": "2",
+            "caulking_lf": "336",
+            "head_sill_qty": "96"
+          }
+        },
+        {
+          "id": "frm_24cadcabaeb04da3ba9254461626064f",
+          "mark": "D8",
+          "quantity": 1,
+          "width_inches": 120,
+          "height_inches": 120,
+          "caulking_passes": 4,
+          "head": "Thermally broken",
+          "jamb": "Steel-reinforced",
+          "sill": "Standard",
+          "type": "Ribbon window",
+          "material": "Extruded aluminum",
+          "finish": "Dark bronze anodized",
+          "notes": "Field verify opening",
+          "calculated": {
+            "square_feet": "100",
+            "perimeter_lf": "40",
+            "caulking_passes": "4",
+            "caulking_lf": "160",
+            "head_sill_qty": "20"
+          }
+        }
+      ],
+      "totals": {
+        "quantity": "30",
+        "square_feet": "1909",
+        "perimeter_lf": "960",
+        "caulking_lf": "2664",
+        "head_sill_qty": "422"
+      }
+    },
+    {
+      "id": "sec_593c787059d2476a86c4f28891b11fdd",
+      "definition_id": "frame-v1",
+      "name": "ALT1 Value-Engineered Storefront",
+      "code": "ALT1-08 41 13",
+      "material_overrides": {},
+      "tie_back_qty": 24,
+      "backpan_lf": 88,
+      "lines": [
+        {
+          "id": "frm_c2d2c96b6e5a4d55b7aac86021009636",
+          "mark": "E1",
+          "quantity": 3,
+          "width_inches": 96,
+          "height_inches": 108,
+          "caulking_passes": 3,
+          "head": "Thermally broken",
+          "jamb": "Standard",
+          "sill": "Standard",
+          "type": "Storefront",
+          "material": "Extruded aluminum",
+          "finish": "Medium bronze fluoropolymer",
+          "notes": "Typical condition",
+          "calculated": {
+            "square_feet": "216",
+            "perimeter_lf": "102",
+            "caulking_passes": "3",
+            "caulking_lf": "306",
+            "head_sill_qty": "48"
+          }
+        },
+        {
+          "id": "frm_853876e44a19454fbf2812e277f9840f",
+          "mark": "E2",
+          "quantity": 4,
+          "width_inches": 96,
+          "height_inches": 96,
+          "caulking_passes": 3,
+          "head": "Standard",
+          "jamb": "Expansion jamb",
+          "sill": "Subsill",
+          "type": "Storefront",
+          "material": "Extruded aluminum",
+          "finish": "Medium bronze fluoropolymer",
+          "notes": "Typical condition",
+          "calculated": {
+            "square_feet": "256",
+            "perimeter_lf": "128",
+            "caulking_passes": "3",
+            "caulking_lf": "384",
+            "head_sill_qty": "64"
+          }
+        },
+        {
+          "id": "frm_44dab3b3e6344e69ab20dbec64c34b4a",
+          "mark": "E3",
+          "quantity": 2,
+          "width_inches": 42,
+          "height_inches": 84,
+          "caulking_passes": 3,
+          "head": "Standard",
+          "jamb": "Standard",
+          "sill": "Subsill",
+          "type": "Storefront",
+          "material": "Extruded aluminum",
+          "finish": "Medium bronze fluoropolymer",
+          "notes": "Coordinate adjacent finish",
+          "calculated": {
+            "square_feet": "49",
+            "perimeter_lf": "42",
+            "caulking_passes": "3",
+            "caulking_lf": "126",
+            "head_sill_qty": "14"
+          }
+        },
+        {
+          "id": "frm_9f8f7040f9d64d18b042c29501583706",
+          "mark": "E4",
+          "quantity": 6,
+          "width_inches": 84,
+          "height_inches": 84,
+          "caulking_passes": 2,
+          "head": "Standard",
+          "jamb": "Expansion jamb",
+          "sill": "High-performance",
+          "type": "Storefront",
+          "material": "Extruded aluminum",
+          "finish": "Medium bronze fluoropolymer",
+          "notes": "Coordinate adjacent finish",
+          "calculated": {
+            "square_feet": "294",
+            "perimeter_lf": "168",
+            "caulking_passes": "2",
+            "caulking_lf": "336",
+            "head_sill_qty": "84"
+          }
+        },
+        {
+          "id": "frm_1ea63573eb3d4d6e8d8c17ace7c8b9ac",
+          "mark": "E5",
+          "quantity": 1,
+          "width_inches": 42,
+          "height_inches": 84,
+          "caulking_passes": 2,
+          "head": "Steel-reinforced",
+          "jamb": "Steel-reinforced",
+          "sill": "Standard",
+          "type": "Storefront",
+          "material": "Extruded aluminum",
+          "finish": "Medium bronze fluoropolymer",
+          "notes": "Field verify opening",
+          "calculated": {
+            "square_feet": "25",
+            "perimeter_lf": "21",
+            "caulking_passes": "2",
+            "caulking_lf": "42",
+            "head_sill_qty": "7"
+          }
+        },
+        {
+          "id": "frm_0f9eaad704df459186a803ca5dff263e",
+          "mark": "E6",
+          "quantity": 5,
+          "width_inches": 144,
+          "height_inches": 120,
+          "caulking_passes": 4,
+          "head": "Standard",
+          "jamb": "Steel-reinforced",
+          "sill": "High-performance",
+          "type": "Storefront",
+          "material": "Extruded aluminum",
+          "finish": "Medium bronze fluoropolymer",
+          "notes": "Field verify opening",
+          "calculated": {
+            "square_feet": "600",
+            "perimeter_lf": "220",
+            "caulking_passes": "4",
+            "caulking_lf": "880",
+            "head_sill_qty": "120"
+          }
+        },
+        {
+          "id": "frm_921a804051c04c419ae44e1fa9751dc2",
+          "mark": "E7",
+          "quantity": 3,
+          "width_inches": 36,
+          "height_inches": 108,
+          "caulking_passes": 2,
+          "head": "Thermally broken",
+          "jamb": "Steel-reinforced",
+          "sill": "Subsill",
+          "type": "Storefront",
+          "material": "Extruded aluminum",
+          "finish": "Medium bronze fluoropolymer",
+          "notes": "Per architectural elevations",
+          "calculated": {
+            "square_feet": "81",
+            "perimeter_lf": "72",
+            "caulking_passes": "2",
+            "caulking_lf": "144",
+            "head_sill_qty": "18"
+          }
+        },
+        {
+          "id": "frm_264d4a9cb7af4a1b9b03e368b3725547",
+          "mark": "E8",
+          "quantity": 6,
+          "width_inches": 42,
+          "height_inches": 84,
+          "caulking_passes": 3,
+          "head": "Thermally broken",
+          "jamb": "Standard",
+          "sill": "High-performance",
+          "type": "Storefront",
+          "material": "Extruded aluminum",
+          "finish": "Medium bronze fluoropolymer",
+          "notes": "Per architectural elevations",
+          "calculated": {
+            "square_feet": "147",
+            "perimeter_lf": "126",
+            "caulking_passes": "3",
+            "caulking_lf": "378",
+            "head_sill_qty": "42"
+          }
+        }
+      ],
+      "totals": {
+        "quantity": "30",
+        "square_feet": "1668",
+        "perimeter_lf": "879",
+        "caulking_lf": "2596",
+        "head_sill_qty": "397"
+      }
+    }
+  ],
+  "doors": [
+    {
+      "id": "dor_da8c227359ef45938434c393d22d9399",
+      "door_number": "101",
+      "mark": "D1",
+      "leaf_quantity": 1,
+      "width_inches": 36,
+      "height_inches": 84,
+      "type": "Medium stile entrance",
+      "material": "Aluminum",
+      "finish": "Clear anodized",
+      "description": "Glazed aluminum entrance door",
+      "glass": "1-inch insulated",
+      "style": "ADA bottom rail",
+      "rails": "Standard top / optional mid / 10-inch bottom",
+      "hardware_group_id": "HW2",
+      "fire_rating": "None",
+      "notes": "Synthetic door schedule; coordinate final handing."
+    },
+    {
+      "id": "dor_e4282ba580e348e18a14cf61798148ee",
+      "door_number": "102",
+      "mark": "D2",
+      "leaf_quantity": 2,
+      "width_inches": 48,
+      "height_inches": 84,
+      "type": "Wide stile entrance",
+      "material": "Aluminum",
+      "finish": "Clear anodized",
+      "description": "Glazed aluminum entrance door",
+      "glass": "Laminated safety glass",
+      "style": "10-inch bottom rail",
+      "rails": "Standard top / optional mid / 10-inch bottom",
+      "hardware_group_id": "HW4",
+      "fire_rating": "None",
+      "notes": "Synthetic door schedule; coordinate final handing."
+    },
+    {
+      "id": "dor_d26948c8434f4bd1bc239c8a343878be",
+      "door_number": "103",
+      "mark": "D3",
+      "leaf_quantity": 2,
+      "width_inches": 36,
+      "height_inches": 96,
+      "type": "Wide stile entrance",
+      "material": "Aluminum",
+      "finish": "Clear anodized",
+      "description": "Glazed aluminum entrance door",
+      "glass": "1/4-inch tempered",
+      "style": "Full vision",
+      "rails": "Standard top / optional mid / 10-inch bottom",
+      "hardware_group_id": "HW1",
+      "fire_rating": "None",
+      "notes": "Synthetic door schedule; coordinate final handing."
+    },
+    {
+      "id": "dor_46d10236a02942728b262241680d1a94",
+      "door_number": "104",
+      "mark": "D4",
+      "leaf_quantity": 2,
+      "width_inches": 48,
+      "height_inches": 96,
+      "type": "Narrow stile entrance",
+      "material": "Aluminum",
+      "finish": "Clear anodized",
+      "description": "Glazed aluminum entrance door",
+      "glass": "1/4-inch tempered",
+      "style": "10-inch bottom rail",
+      "rails": "Standard top / optional mid / 10-inch bottom",
+      "hardware_group_id": "HW4",
+      "fire_rating": "None",
+      "notes": "Synthetic door schedule; coordinate final handing."
+    },
+    {
+      "id": "dor_c80095e22a5c493d8a9cac3b779b9b3a",
+      "door_number": "105",
+      "mark": "D5",
+      "leaf_quantity": 2,
+      "width_inches": 36,
+      "height_inches": 96,
+      "type": "Medium stile entrance",
+      "material": "Aluminum",
+      "finish": "Black fluoropolymer",
+      "description": "Glazed aluminum entrance door",
+      "glass": "1-inch insulated",
+      "style": "10-inch bottom rail",
+      "rails": "Standard top / optional mid / 10-inch bottom",
+      "hardware_group_id": "HW2",
+      "fire_rating": "None",
+      "notes": "Synthetic door schedule; coordinate final handing."
+    },
+    {
+      "id": "dor_f8efcae6a5fe47b0a77a445503f52539",
+      "door_number": "106",
+      "mark": "D6",
+      "leaf_quantity": 1,
+      "width_inches": 42,
+      "height_inches": 96,
+      "type": "Narrow stile entrance",
+      "material": "Aluminum",
+      "finish": "Dark bronze anodized",
+      "description": "Glazed aluminum entrance door",
+      "glass": "Laminated safety glass",
+      "style": "Full vision",
+      "rails": "Standard top / optional mid / 10-inch bottom",
+      "hardware_group_id": "HW1",
+      "fire_rating": "None",
+      "notes": "Synthetic door schedule; coordinate final handing."
+    },
+    {
+      "id": "dor_9be06fdadb7346d3952f79ec536cc3ef",
+      "door_number": "107",
+      "mark": "D7",
+      "leaf_quantity": 1,
+      "width_inches": 36,
+      "height_inches": 96,
+      "type": "All-glass entrance",
+      "material": "Aluminum",
+      "finish": "Clear anodized",
+      "description": "Glazed aluminum entrance door",
+      "glass": "1/4-inch tempered",
+      "style": "Full vision",
+      "rails": "Standard top / optional mid / 10-inch bottom",
+      "hardware_group_id": "HW3",
+      "fire_rating": "None",
+      "notes": "Synthetic door schedule; coordinate final handing."
+    },
+    {
+      "id": "dor_b108bf029b0b44d1add22231b1b6f637",
+      "door_number": "108",
+      "mark": "D8",
+      "leaf_quantity": 1,
+      "width_inches": 42,
+      "height_inches": 96,
+      "type": "Narrow stile entrance",
+      "material": "Aluminum",
+      "finish": "Black fluoropolymer",
+      "description": "Glazed aluminum entrance door",
+      "glass": "1/4-inch tempered",
+      "style": "Full vision",
+      "rails": "Standard top / optional mid / 10-inch bottom",
+      "hardware_group_id": "HW5",
+      "fire_rating": "None",
+      "notes": "Synthetic door schedule; coordinate final handing."
+    },
+    {
+      "id": "dor_3303b4ecdd304da0ba6db5740e0496e9",
+      "door_number": "109",
+      "mark": "D9",
+      "leaf_quantity": 1,
+      "width_inches": 42,
+      "height_inches": 96,
+      "type": "Narrow stile entrance",
+      "material": "Aluminum",
+      "finish": "Dark bronze anodized",
+      "description": "Glazed aluminum entrance door",
+      "glass": "1/4-inch tempered",
+      "style": "ADA bottom rail",
+      "rails": "Standard top / optional mid / 10-inch bottom",
+      "hardware_group_id": "HW3",
+      "fire_rating": "None",
+      "notes": "Synthetic door schedule; coordinate final handing."
+    },
+    {
+      "id": "dor_0da82c32ffef44c19cd31c7fcf523b89",
+      "door_number": "110",
+      "mark": "D10",
+      "leaf_quantity": 1,
+      "width_inches": 36,
+      "height_inches": 84,
+      "type": "Medium stile entrance",
+      "material": "Aluminum",
+      "finish": "Black fluoropolymer",
+      "description": "Glazed aluminum entrance door",
+      "glass": "1-inch insulated",
+      "style": "ADA bottom rail",
+      "rails": "Standard top / optional mid / 10-inch bottom",
+      "hardware_group_id": "HW6",
+      "fire_rating": "None",
+      "notes": "Synthetic door schedule; coordinate final handing."
+    },
+    {
+      "id": "dor_7923dd19f1d040ee8b3cfe9f7c6ef933",
+      "door_number": "111",
+      "mark": "D11",
+      "leaf_quantity": 1,
+      "width_inches": 36,
+      "height_inches": 84,
+      "type": "Medium stile entrance",
+      "material": "Aluminum",
+      "finish": "Black fluoropolymer",
+      "description": "Glazed aluminum entrance door",
+      "glass": "1/4-inch tempered",
+      "style": "10-inch bottom rail",
+      "rails": "Standard top / optional mid / 10-inch bottom",
+      "hardware_group_id": "HW4",
+      "fire_rating": "None",
+      "notes": "Synthetic door schedule; coordinate final handing."
+    },
+    {
+      "id": "dor_96747ac7c1d04d4f834a610b538d22ec",
+      "door_number": "112",
+      "mark": "D12",
+      "leaf_quantity": 2,
+      "width_inches": 36,
+      "height_inches": 96,
+      "type": "All-glass entrance",
+      "material": "Aluminum",
+      "finish": "Medium bronze fluoropolymer",
+      "description": "Glazed aluminum entrance door",
+      "glass": "Laminated safety glass",
+      "style": "10-inch bottom rail",
+      "rails": "Standard top / optional mid / 10-inch bottom",
+      "hardware_group_id": "HW2",
+      "fire_rating": "None",
+      "notes": "Synthetic door schedule; coordinate final handing."
+    },
+    {
+      "id": "dor_afd8d36b7bc945c68c060404d066ac0f",
+      "door_number": "113",
+      "mark": "D13",
+      "leaf_quantity": 2,
+      "width_inches": 42,
+      "height_inches": 84,
+      "type": "Wide stile entrance",
+      "material": "Aluminum",
+      "finish": "Black fluoropolymer",
+      "description": "Glazed aluminum entrance door",
+      "glass": "Laminated safety glass",
+      "style": "Full vision",
+      "rails": "Standard top / optional mid / 10-inch bottom",
+      "hardware_group_id": "HW3",
+      "fire_rating": "None",
+      "notes": "Synthetic door schedule; coordinate final handing."
+    },
+    {
+      "id": "dor_6bacebcb9166403381cb0bcb32c7b998",
+      "door_number": "114",
+      "mark": "D14",
+      "leaf_quantity": 1,
+      "width_inches": 48,
+      "height_inches": 84,
+      "type": "Medium stile entrance",
+      "material": "Aluminum",
+      "finish": "Medium bronze fluoropolymer",
+      "description": "Glazed aluminum entrance door",
+      "glass": "Laminated safety glass",
+      "style": "Full vision",
+      "rails": "Standard top / optional mid / 10-inch bottom",
+      "hardware_group_id": "HW1",
+      "fire_rating": "None",
+      "notes": "Synthetic door schedule; coordinate final handing."
+    },
+    {
+      "id": "dor_bfc4077b41574815abad5751f1d0f9c9",
+      "door_number": "115",
+      "mark": "D15",
+      "leaf_quantity": 1,
+      "width_inches": 48,
+      "height_inches": 96,
+      "type": "All-glass entrance",
+      "material": "Aluminum",
+      "finish": "Dark bronze anodized",
+      "description": "Glazed aluminum entrance door",
+      "glass": "Laminated safety glass",
+      "style": "Full vision",
+      "rails": "Standard top / optional mid / 10-inch bottom",
+      "hardware_group_id": "HW5",
+      "fire_rating": "None",
+      "notes": "Synthetic door schedule; coordinate final handing."
+    },
+    {
+      "id": "dor_c0c0935421ad48ee86809a834fed6cae",
+      "door_number": "116",
+      "mark": "D16",
+      "leaf_quantity": 1,
+      "width_inches": 42,
+      "height_inches": 84,
+      "type": "Narrow stile entrance",
+      "material": "Aluminum",
+      "finish": "Clear anodized",
+      "description": "Glazed aluminum entrance door",
+      "glass": "1/4-inch tempered",
+      "style": "ADA bottom rail",
+      "rails": "Standard top / optional mid / 10-inch bottom",
+      "hardware_group_id": "HW6",
+      "fire_rating": "None",
+      "notes": "Synthetic door schedule; coordinate final handing."
+    },
+    {
+      "id": "dor_8dceb2f276044ca88a88d6f2e22f0991",
+      "door_number": "117",
+      "mark": "D17",
+      "leaf_quantity": 2,
+      "width_inches": 36,
+      "height_inches": 96,
+      "type": "Narrow stile entrance",
+      "material": "Aluminum",
+      "finish": "Medium bronze fluoropolymer",
+      "description": "Glazed aluminum entrance door",
+      "glass": "1-inch insulated",
+      "style": "ADA bottom rail",
+      "rails": "Standard top / optional mid / 10-inch bottom",
+      "hardware_group_id": "HW6",
+      "fire_rating": "None",
+      "notes": "Synthetic door schedule; coordinate final handing."
+    },
+    {
+      "id": "dor_7849d4cfcf1c4d12ba9411916e795ddd",
+      "door_number": "118",
+      "mark": "D18",
+      "leaf_quantity": 1,
+      "width_inches": 36,
+      "height_inches": 96,
+      "type": "All-glass entrance",
+      "material": "Aluminum",
+      "finish": "Clear anodized",
+      "description": "Glazed aluminum entrance door",
+      "glass": "1-inch insulated",
+      "style": "Full vision",
+      "rails": "Standard top / optional mid / 10-inch bottom",
+      "hardware_group_id": "HW4",
+      "fire_rating": "None",
+      "notes": "Synthetic door schedule; coordinate final handing."
+    }
+  ],
+  "hardware_assignments": [
+    {
+      "id": "hwa_9fa5398958e64e658062975b61de8a14",
+      "door_id": "dor_da8c227359ef45938434c393d22d9399",
+      "hardware_group_id": "HW2",
+      "quantity": 1,
+      "code": "08 71 00",
+      "notes": "Synthetic hardware assignment linked to door schedule."
+    },
+    {
+      "id": "hwa_a773adbc873142f2a7c7b967cd663dd0",
+      "door_id": "dor_e4282ba580e348e18a14cf61798148ee",
+      "hardware_group_id": "HW4",
+      "quantity": 1,
+      "code": "08 71 00",
+      "notes": "Synthetic hardware assignment linked to door schedule."
+    },
+    {
+      "id": "hwa_638e7d39a9d84223bcec4b2b5268f37c",
+      "door_id": "dor_d26948c8434f4bd1bc239c8a343878be",
+      "hardware_group_id": "HW1",
+      "quantity": 1,
+      "code": "08 71 00",
+      "notes": "Synthetic hardware assignment linked to door schedule."
+    },
+    {
+      "id": "hwa_a5c3b8769cea45bfae20d95dd6b1ae2b",
+      "door_id": "dor_46d10236a02942728b262241680d1a94",
+      "hardware_group_id": "HW4",
+      "quantity": 1,
+      "code": "08 71 00",
+      "notes": "Synthetic hardware assignment linked to door schedule."
+    },
+    {
+      "id": "hwa_0b2c0128846445e5980ec9a05ecb647d",
+      "door_id": "dor_c80095e22a5c493d8a9cac3b779b9b3a",
+      "hardware_group_id": "HW2",
+      "quantity": 1,
+      "code": "08 71 00",
+      "notes": "Synthetic hardware assignment linked to door schedule."
+    },
+    {
+      "id": "hwa_9d1c3e753ad941e2bf346e517e1ead31",
+      "door_id": "dor_f8efcae6a5fe47b0a77a445503f52539",
+      "hardware_group_id": "HW1",
+      "quantity": 1,
+      "code": "08 71 00",
+      "notes": "Synthetic hardware assignment linked to door schedule."
+    },
+    {
+      "id": "hwa_320d92a7e4ce4962b779212781c49c64",
+      "door_id": "dor_9be06fdadb7346d3952f79ec536cc3ef",
+      "hardware_group_id": "HW3",
+      "quantity": 1,
+      "code": "08 71 00",
+      "notes": "Synthetic hardware assignment linked to door schedule."
+    },
+    {
+      "id": "hwa_7acf382ea4994137986905b328efeda0",
+      "door_id": "dor_b108bf029b0b44d1add22231b1b6f637",
+      "hardware_group_id": "HW5",
+      "quantity": 1,
+      "code": "08 71 00",
+      "notes": "Synthetic hardware assignment linked to door schedule."
+    },
+    {
+      "id": "hwa_802f06a22eca415ab8125e04a31a167f",
+      "door_id": "dor_3303b4ecdd304da0ba6db5740e0496e9",
+      "hardware_group_id": "HW3",
+      "quantity": 1,
+      "code": "08 71 00",
+      "notes": "Synthetic hardware assignment linked to door schedule."
+    },
+    {
+      "id": "hwa_775b47cf060c4d92a751ee4dda24d923",
+      "door_id": "dor_0da82c32ffef44c19cd31c7fcf523b89",
+      "hardware_group_id": "HW6",
+      "quantity": 1,
+      "code": "08 71 00",
+      "notes": "Synthetic hardware assignment linked to door schedule."
+    },
+    {
+      "id": "hwa_3d769580ea8f41908fd6da939c04a0f0",
+      "door_id": "dor_7923dd19f1d040ee8b3cfe9f7c6ef933",
+      "hardware_group_id": "HW4",
+      "quantity": 1,
+      "code": "08 71 00",
+      "notes": "Synthetic hardware assignment linked to door schedule."
+    },
+    {
+      "id": "hwa_2bfa6d3e5e8b4ce99e842a6721b53055",
+      "door_id": "dor_96747ac7c1d04d4f834a610b538d22ec",
+      "hardware_group_id": "HW2",
+      "quantity": 1,
+      "code": "08 71 00",
+      "notes": "Synthetic hardware assignment linked to door schedule."
+    },
+    {
+      "id": "hwa_62a17af99c8e4c52953a4642884748d5",
+      "door_id": "dor_afd8d36b7bc945c68c060404d066ac0f",
+      "hardware_group_id": "HW3",
+      "quantity": 1,
+      "code": "08 71 00",
+      "notes": "Synthetic hardware assignment linked to door schedule."
+    },
+    {
+      "id": "hwa_a168dd3dbc58430fa836421b3777da5d",
+      "door_id": "dor_6bacebcb9166403381cb0bcb32c7b998",
+      "hardware_group_id": "HW1",
+      "quantity": 1,
+      "code": "08 71 00",
+      "notes": "Synthetic hardware assignment linked to door schedule."
+    },
+    {
+      "id": "hwa_6ad67213801646418c46748b6cb90079",
+      "door_id": "dor_bfc4077b41574815abad5751f1d0f9c9",
+      "hardware_group_id": "HW5",
+      "quantity": 1,
+      "code": "08 71 00",
+      "notes": "Synthetic hardware assignment linked to door schedule."
+    },
+    {
+      "id": "hwa_0a12f6161abc468d8b5d3d4080681ee2",
+      "door_id": "dor_c0c0935421ad48ee86809a834fed6cae",
+      "hardware_group_id": "HW6",
+      "quantity": 1,
+      "code": "08 71 00",
+      "notes": "Synthetic hardware assignment linked to door schedule."
+    },
+    {
+      "id": "hwa_336507afd2b94c5fa37656265acae8d4",
+      "door_id": "dor_8dceb2f276044ca88a88d6f2e22f0991",
+      "hardware_group_id": "HW6",
+      "quantity": 1,
+      "code": "08 71 00",
+      "notes": "Synthetic hardware assignment linked to door schedule."
+    },
+    {
+      "id": "hwa_4639916204f24f51a0e94aa298281fa2",
+      "door_id": "dor_7849d4cfcf1c4d12ba9411916e795ddd",
+      "hardware_group_id": "HW4",
+      "quantity": 1,
+      "code": "08 71 00",
+      "notes": "Synthetic hardware assignment linked to door schedule."
+    }
+  ],
+  "equipment": [
+    {
+      "id": "eqp_398d7e4fb4c24a18b6bd7b3d034c6a70",
+      "code": "11 00 00",
+      "description": "Compact rough-terrain lift",
+      "quantity": "1",
+      "duration": 12,
+      "duration_unit": "day",
+      "rate": "315",
+      "delivery": "850",
+      "taxable": true,
+      "notes": "Synthetic rental assumption; verify duration and supplier rate.",
+      "calculated_cost": "4630.00"
+    },
+    {
+      "id": "eqp_65e9973b756f4e2ebee0aba496a10c39",
+      "code": "11 00 00",
+      "description": "60-foot articulating boom lift",
+      "quantity": "3",
+      "duration": 4,
+      "duration_unit": "week",
+      "rate": "1725",
+      "delivery": "1250",
+      "taxable": true,
+      "notes": "Synthetic rental assumption; verify duration and supplier rate.",
+      "calculated_cost": "21950.00"
+    },
+    {
+      "id": "eqp_c69b82520d4742b09d0daa0972cecec4",
+      "code": "11 00 00",
+      "description": "Glazing manipulator",
+      "quantity": 1,
+      "duration": 8,
+      "duration_unit": "day",
+      "rate": "485",
+      "delivery": "700",
+      "taxable": true,
+      "notes": "Synthetic rental assumption; verify duration and supplier rate.",
+      "calculated_cost": "4580.00"
+    },
+    {
+      "id": "eqp_a9216b5318474011b70deedfd2781147",
+      "code": "11 00 00",
+      "description": "Mobile scaffold package",
+      "quantity": 2,
+      "duration": 3,
+      "duration_unit": "week",
+      "rate": "625",
+      "delivery": "350",
+      "taxable": true,
+      "notes": "Synthetic rental assumption; verify duration and supplier rate.",
+      "calculated_cost": "4100.00"
+    },
+    {
+      "id": "eqp_f0aaa6710e58445ea7c0f5715a3a2c1f",
+      "code": "11 00 00",
+      "description": "Material storage container",
+      "quantity": 1,
+      "duration": 4,
+      "duration_unit": "month",
+      "rate": "425",
+      "delivery": "450",
+      "taxable": true,
+      "notes": "Synthetic rental assumption; verify duration and supplier rate.",
+      "calculated_cost": "2150.00"
+    }
+  ],
+  "borrowed_lites": [
+    {
+      "id": "brl_a8f4b2b0f97b4746b51a32d52b6bc50b",
+      "code": "08 80 00",
+      "mark": "BL-1",
+      "quantity": 1,
+      "width_inches": 18,
+      "height_inches": 36,
+      "rate": "36",
+      "notes": "Synthetic borrowed-lite takeoff; five-SF minimum applies per row quantity.",
+      "calculated_square_feet": "5"
+    },
+    {
+      "id": "brl_344c63173a534428bc01784df742e7a1",
+      "code": "08 80 00",
+      "mark": "BL-2",
+      "quantity": 2,
+      "width_inches": 36,
+      "height_inches": 48,
+      "rate": "36",
+      "notes": "Synthetic borrowed-lite takeoff; five-SF minimum applies per row quantity.",
+      "calculated_square_feet": "24"
+    },
+    {
+      "id": "brl_a108b5de2f2747b7b24ba96e6d458231",
+      "code": "08 80 00",
+      "mark": "BL-3",
+      "quantity": 1,
+      "width_inches": 30,
+      "height_inches": 48,
+      "rate": "28",
+      "notes": "Synthetic borrowed-lite takeoff; five-SF minimum applies per row quantity.",
+      "calculated_square_feet": "10.0"
+    },
+    {
+      "id": "brl_21d092a673c3446183fe304b7323360d",
+      "code": "08 80 00",
+      "mark": "BL-4",
+      "quantity": 4,
+      "width_inches": 36,
+      "height_inches": 18,
+      "rate": "42",
+      "notes": "Synthetic borrowed-lite takeoff; five-SF minimum applies per row quantity.",
+      "calculated_square_feet": "18.0"
+    },
+    {
+      "id": "brl_ed780bdd5a454faeb45d6b1a09d358bd",
+      "code": "08 80 00",
+      "mark": "BL-5",
+      "quantity": 4,
+      "width_inches": 36,
+      "height_inches": 36,
+      "rate": "42",
+      "notes": "Synthetic borrowed-lite takeoff; five-SF minimum applies per row quantity.",
+      "calculated_square_feet": "36"
+    },
+    {
+      "id": "brl_e473d53c7cfa483b960525f3e542fa1f",
+      "code": "08 80 00",
+      "mark": "BL-6",
+      "quantity": 3,
+      "width_inches": 30,
+      "height_inches": 60,
+      "rate": "42",
+      "notes": "Synthetic borrowed-lite takeoff; five-SF minimum applies per row quantity.",
+      "calculated_square_feet": "37.5"
+    },
+    {
+      "id": "brl_8acb0848e0814c5c914d2750f85320e5",
+      "code": "08 80 00",
+      "mark": "BL-7",
+      "quantity": 3,
+      "width_inches": 30,
+      "height_inches": 12,
+      "rate": "36",
+      "notes": "Synthetic borrowed-lite takeoff; five-SF minimum applies per row quantity.",
+      "calculated_square_feet": "7.5"
+    },
+    {
+      "id": "brl_f9a4b9335ce341c7af8c8d23a6d3ed7a",
+      "code": "08 80 00",
+      "mark": "BL-8",
+      "quantity": 2,
+      "width_inches": 36,
+      "height_inches": 60,
+      "rate": "32",
+      "notes": "Synthetic borrowed-lite takeoff; five-SF minimum applies per row quantity.",
+      "calculated_square_feet": "30"
+    }
+  ],
+  "labor_estimates": [
+    {
+      "id": "lbr_89cedeee261c4ee4bbf17f02a5971d67",
+      "category": "field",
+      "code": "08 41 13",
+      "description": "Storefront layout and installation",
+      "quantity": 1680,
+      "quantity_unit": "SF",
+      "crew": 2,
+      "productivity": 5.5,
+      "rate": "86",
+      "notes": "Synthetic productivity and rate; replace with effective project-specific records.",
+      "calculated_hours": "152.7272727272727272727272727",
+      "calculated_cost": "13134.55"
+    },
+    {
+      "id": "lbr_8cb17c5b0881411c80d7f9e5e32a0ebe",
+      "category": "field",
+      "code": "08 44 13",
+      "description": "Curtain-wall layout and installation",
+      "quantity": 2750,
+      "quantity_unit": "SF",
+      "crew": 3,
+      "productivity": 4.2,
+      "rate": "89",
+      "notes": "Synthetic productivity and rate; replace with effective project-specific records.",
+      "calculated_hours": "218.2539682539682539682539683",
+      "calculated_cost": "19424.60"
+    },
+    {
+      "id": "lbr_26b9aa7db4c742c5af5a1cc84ff0d942",
+      "category": "field",
+      "code": "08 11 00",
+      "description": "Entrance door installation",
+      "quantity": 18,
+      "quantity_unit": "doors",
+      "crew": 1,
+      "productivity": 0.34,
+      "rate": "86",
+      "notes": "Synthetic productivity and rate; replace with effective project-specific records.",
+      "calculated_hours": "52.94117647058823529411764706",
+      "calculated_cost": "4552.94"
+    },
+    {
+      "id": "lbr_0ada840d95cb4e3e8e50c21ed68286db",
+      "category": "field",
+      "code": "08 71 00",
+      "description": "Door hardware installation",
+      "quantity": 18,
+      "quantity_unit": "openings",
+      "crew": 1,
+      "productivity": 0.22,
+      "rate": "91",
+      "notes": "Synthetic productivity and rate; replace with effective project-specific records.",
+      "calculated_hours": "81.81818181818181818181818182",
+      "calculated_cost": "7445.45"
+    },
+    {
+      "id": "lbr_0373ec4ff8574dc8a697abee4510f2a1",
+      "category": "field",
+      "code": "08 80 00",
+      "description": "Glass setting and glazing",
+      "quantity": 3180,
+      "quantity_unit": "SF",
+      "crew": 2,
+      "productivity": 8,
+      "rate": "86",
+      "notes": "Synthetic productivity and rate; replace with effective project-specific records.",
+      "calculated_hours": "198.75",
+      "calculated_cost": "17092.50"
+    },
+    {
+      "id": "lbr_865950f71fc144d38905376e2d89bd0e",
+      "category": "field",
+      "code": "07 92 00",
+      "description": "Exterior perimeter sealants",
+      "quantity": 1240,
+      "quantity_unit": "LF",
+      "crew": 1,
+      "productivity": 22,
+      "rate": "84",
+      "notes": "Synthetic productivity and rate; replace with effective project-specific records.",
+      "calculated_hours": "56.36363636363636363636363636",
+      "calculated_cost": "4734.55"
+    },
+    {
+      "id": "lbr_467d9678ebf049f9bcace04714b5e5c4",
+      "category": "shop",
+      "code": "08 41 13",
+      "description": "Storefront fabrication",
+      "quantity": 1680,
+      "quantity_unit": "SF",
+      "crew": 1,
+      "productivity": 18,
+      "rate": "67",
+      "notes": "Synthetic productivity and rate; replace with effective project-specific records.",
+      "calculated_hours": "93.33333333333333333333333333",
+      "calculated_cost": "6253.33"
+    },
+    {
+      "id": "lbr_a20589b916f347e6b364960420fc8672",
+      "category": "shop",
+      "code": "08 44 13",
+      "description": "Curtain-wall fabrication",
+      "quantity": 2750,
+      "quantity_unit": "SF",
+      "crew": 2,
+      "productivity": 16,
+      "rate": "69",
+      "notes": "Synthetic productivity and rate; replace with effective project-specific records.",
+      "calculated_hours": "85.9375",
+      "calculated_cost": "5929.69"
+    },
+    {
+      "id": "lbr_d19fe569f71d464b87a853c2d16b5691",
+      "category": "shop",
+      "code": "08 11 00",
+      "description": "Entrance preparation",
+      "quantity": 18,
+      "quantity_unit": "doors",
+      "crew": 1,
+      "productivity": 1.8,
+      "rate": "67",
+      "notes": "Synthetic productivity and rate; replace with effective project-specific records.",
+      "calculated_hours": "10",
+      "calculated_cost": "670.00"
+    },
+    {
+      "id": "lbr_3b2375d6473f4f8dbd4bf9fabf39680d",
+      "category": "shop",
+      "code": "08 71 00",
+      "description": "Hardware preparation",
+      "quantity": 18,
+      "quantity_unit": "openings",
+      "crew": 1,
+      "productivity": 1.5,
+      "rate": "70",
+      "notes": "Synthetic productivity and rate; replace with effective project-specific records.",
+      "calculated_hours": "12",
+      "calculated_cost": "840.00"
+    },
+    {
+      "id": "lbr_01858ae506b549eaa5bace9abd031749",
+      "category": "design",
+      "code": "08 41 13",
+      "description": "Storefront shop drawings",
+      "quantity": 1,
+      "quantity_unit": "package",
+      "crew": 1,
+      "productivity": 0.025,
+      "rate": "95",
+      "notes": "Synthetic productivity and rate; replace with effective project-specific records.",
+      "calculated_hours": "40",
+      "calculated_cost": "3800.00"
+    },
+    {
+      "id": "lbr_37d58382b4fe4bbe9a68d9582281f8d4",
+      "category": "design",
+      "code": "08 44 13",
+      "description": "Curtain-wall engineering coordination",
+      "quantity": 1,
+      "quantity_unit": "package",
+      "crew": 1,
+      "productivity": 0.016,
+      "rate": "105",
+      "notes": "Synthetic productivity and rate; replace with effective project-specific records.",
+      "calculated_hours": "62.5",
+      "calculated_cost": "6562.50"
+    },
+    {
+      "id": "lbr_c82740bdbb894622b63994231d467a5f",
+      "category": "design",
+      "code": "08 80 00",
+      "description": "Glazing submittals",
+      "quantity": 1,
+      "quantity_unit": "package",
+      "crew": 1,
+      "productivity": 0.05,
+      "rate": "92",
+      "notes": "Synthetic productivity and rate; replace with effective project-specific records.",
+      "calculated_hours": "20",
+      "calculated_cost": "1840.00"
+    },
+    {
+      "id": "lbr_e33247614977497abdc3e639cb42a254",
+      "category": "field",
+      "code": "ALT1-08 41 13",
+      "description": "ALT1 storefront installation",
+      "quantity": 1420,
+      "quantity_unit": "SF",
+      "crew": 2,
+      "productivity": 5.5,
+      "rate": "86",
+      "notes": "Synthetic productivity and rate; replace with effective project-specific records.",
+      "calculated_hours": "129.0909090909090909090909091",
+      "calculated_cost": "11101.82"
+    }
+  ],
+  "travel_estimates": [
+    {
+      "id": "trv_7ea7800370254c2f838ed7171e4498d4",
+      "code": "01 59 40",
+      "enabled": false,
+      "crew_load": 6,
+      "days_per_week": 5,
+      "row_days": 65,
+      "excluded_days": 3,
+      "lodging": "0",
+      "per_diem_rate": "0",
+      "notes": "Pending policy: local commute example retained but disabled."
+    },
+    {
+      "id": "trv_d432906d039b4522becbc357ae9e0b34",
+      "code": "01 59 40",
+      "enabled": false,
+      "crew_load": 4,
+      "days_per_week": 4,
+      "row_days": 24,
+      "excluded_days": 2,
+      "lodging": "0",
+      "per_diem_rate": "0",
+      "notes": "Pending policy: punch-list travel example retained but disabled."
+    },
+    {
+      "id": "trv_939cb29e758e477a9153563b60931462",
+      "code": "ALT1-01 59 40",
+      "enabled": false,
+      "crew_load": 3,
+      "days_per_week": 5,
+      "row_days": 18,
+      "excluded_days": 0,
+      "lodging": "0",
+      "per_diem_rate": "0",
+      "notes": "Pending policy: alternate travel example retained but disabled."
+    }
+  ],
+  "working_estimate": {
+    "id": "wrk_e2cd6b2616a948d6ad37b2fa951dfa5d",
+    "alternate_inclusion": {
+      "ALT1": true,
+      "ALT2": false,
+      "ALT3": false,
+      "ALT4": false
+    },
+    "markup_overrides": {
+      "base_product": "0.12",
+      "LAF": "0.18",
+      "LAS": "0.15"
+    },
+    "contingency_enabled": false,
+    "contingency_override": null,
+    "contingency_override_reason": "",
+    "bond_enabled": false,
+    "bond_override": null,
+    "bond_override_reason": "",
+    "borrowed_lite_source_by_code": {},
+    "lines": [
+      {
+        "id": "est_273db57e6bab5e12ee827d3b",
+        "code": "08 41 13",
+        "category": "installation_material",
+        "description": "Aluminum-Framed Entrances and Storefronts — Bracing and Anchoring",
+        "cost": null,
+        "area": "2420",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_86aeb0e94bdc4899bb50a07e7e340b82",
+            "material_rule_id": "mat_bracing",
+            "source_quantity": "1197",
+            "factor": "1",
+            "rate": "1.50",
+            "pre_tax_cost": "1795.50",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "1795.50",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "215.46",
+        "selling_value": "2010.96",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_e4bd53019275afd85d01d7ed",
+        "code": "08 41 13",
+        "category": "installation_material",
+        "description": "Aluminum-Framed Entrances and Storefronts — Sheet Metal Membrane Air Barriers",
+        "cost": null,
+        "area": "2420",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_86aeb0e94bdc4899bb50a07e7e340b82",
+            "material_rule_id": "mat_membrane",
+            "source_quantity": "1197",
+            "factor": "1.00",
+            "rate": "1.00",
+            "pre_tax_cost": "1197.00",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "1197.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "143.64",
+        "selling_value": "1340.64",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_bb522237898ce331d1b16afd",
+        "code": "08 41 13",
+        "category": "installation_material",
+        "description": "Aluminum-Framed Entrances and Storefronts — Flashing and Sheet Metal",
+        "cost": null,
+        "area": "2420",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_86aeb0e94bdc4899bb50a07e7e340b82",
+            "material_rule_id": "mat_flashing",
+            "source_quantity": "473",
+            "factor": "1.00",
+            "rate": "8.00",
+            "pre_tax_cost": "3784.00",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "3784.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "454.08",
+        "selling_value": "4238.08",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_dd4c5857ec21c0c59674f741",
+        "code": "08 41 13",
+        "category": "installation_material",
+        "description": "Aluminum-Framed Entrances and Storefronts — Backer Rods",
+        "cost": null,
+        "area": "2420",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_86aeb0e94bdc4899bb50a07e7e340b82",
+            "material_rule_id": "mat_backer",
+            "source_quantity": "3117",
+            "factor": "1.00",
+            "rate": "0.50",
+            "pre_tax_cost": "1558.50",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "1558.50",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "187.02",
+        "selling_value": "1745.52",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_1537739bec1ec936dbc26e39",
+        "code": "08 41 13",
+        "category": "installation_material",
+        "description": "Aluminum-Framed Entrances and Storefronts — Joint Sealants",
+        "cost": null,
+        "area": "2420",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_86aeb0e94bdc4899bb50a07e7e340b82",
+            "material_rule_id": "mat_sealant",
+            "source_quantity": "3117",
+            "factor": "0.08",
+            "rate": "12.00",
+            "pre_tax_cost": "2992.32",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "2992.32",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "359.08",
+        "selling_value": "3351.40",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_aa26747464b83d600acd0a97",
+        "code": "08 41 13",
+        "category": "installation_material",
+        "description": "Aluminum-Framed Entrances and Storefronts — Tie Back",
+        "cost": null,
+        "area": "2420",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_86aeb0e94bdc4899bb50a07e7e340b82",
+            "material_rule_id": "mat_tieback",
+            "source_quantity": "7",
+            "factor": "1",
+            "rate": "45.00",
+            "pre_tax_cost": "315.00",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "315.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "37.80",
+        "selling_value": "352.80",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_286d37341d51d48d5a0f26b0",
+        "code": "08 41 13",
+        "category": "installation_material",
+        "description": "Aluminum-Framed Entrances and Storefronts — Backpans / Insulation",
+        "cost": null,
+        "area": "2420",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_86aeb0e94bdc4899bb50a07e7e340b82",
+            "material_rule_id": "mat_backpan",
+            "source_quantity": "158",
+            "factor": "1",
+            "rate": "48.32",
+            "pre_tax_cost": "7634.56",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "7634.56",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "916.15",
+        "selling_value": "8550.71",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_830c9251598ab22d10bed5d0",
+        "code": "08 44 13",
+        "category": "installation_material",
+        "description": "Glazed Aluminum Curtain Walls — Bracing and Anchoring",
+        "cost": null,
+        "area": "1276",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_bb82851cc24f475ab01f5f9ece8f0b2f",
+            "material_rule_id": "mat_bracing",
+            "source_quantity": "654",
+            "factor": "1",
+            "rate": "1.50",
+            "pre_tax_cost": "981.00",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "981.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "117.72",
+        "selling_value": "1098.72",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_505d6172df2560fa507ec5a5",
+        "code": "08 44 13",
+        "category": "installation_material",
+        "description": "Glazed Aluminum Curtain Walls — Sheet Metal Membrane Air Barriers",
+        "cost": null,
+        "area": "1276",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_bb82851cc24f475ab01f5f9ece8f0b2f",
+            "material_rule_id": "mat_membrane",
+            "source_quantity": "654",
+            "factor": "1.00",
+            "rate": "1.00",
+            "pre_tax_cost": "654.00",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "654.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "78.48",
+        "selling_value": "732.48",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_76cd067ac3d47ac1933de09f",
+        "code": "08 44 13",
+        "category": "installation_material",
+        "description": "Glazed Aluminum Curtain Walls — Flashing and Sheet Metal",
+        "cost": null,
+        "area": "1276",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_bb82851cc24f475ab01f5f9ece8f0b2f",
+            "material_rule_id": "mat_flashing",
+            "source_quantity": "296",
+            "factor": "1.00",
+            "rate": "8.00",
+            "pre_tax_cost": "2368.00",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "2368.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "284.16",
+        "selling_value": "2652.16",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_d15963b6ebc41d2c5e698530",
+        "code": "08 44 13",
+        "category": "installation_material",
+        "description": "Glazed Aluminum Curtain Walls — Backer Rods",
+        "cost": null,
+        "area": "1276",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_bb82851cc24f475ab01f5f9ece8f0b2f",
+            "material_rule_id": "mat_backer",
+            "source_quantity": "1900",
+            "factor": "1.00",
+            "rate": "0.50",
+            "pre_tax_cost": "950.00",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "950.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "114.00",
+        "selling_value": "1064.00",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_c5ba3319506dfe93b3df0f97",
+        "code": "08 44 13",
+        "category": "installation_material",
+        "description": "Glazed Aluminum Curtain Walls — Joint Sealants",
+        "cost": null,
+        "area": "1276",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_bb82851cc24f475ab01f5f9ece8f0b2f",
+            "material_rule_id": "mat_sealant",
+            "source_quantity": "1900",
+            "factor": "0.08",
+            "rate": "12.00",
+            "pre_tax_cost": "1824.00",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "1824.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "218.88",
+        "selling_value": "2042.88",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_dbc145c829e4f7d1d0156cb8",
+        "code": "08 44 13",
+        "category": "installation_material",
+        "description": "Glazed Aluminum Curtain Walls — Tie Back",
+        "cost": null,
+        "area": "1276",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_bb82851cc24f475ab01f5f9ece8f0b2f",
+            "material_rule_id": "mat_tieback",
+            "source_quantity": "12",
+            "factor": "1",
+            "rate": "45.00",
+            "pre_tax_cost": "540.00",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "540.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "64.80",
+        "selling_value": "604.80",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_8bd44899015f9258626b0066",
+        "code": "08 44 13",
+        "category": "installation_material",
+        "description": "Glazed Aluminum Curtain Walls — Backpans / Insulation",
+        "cost": null,
+        "area": "1276",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_bb82851cc24f475ab01f5f9ece8f0b2f",
+            "material_rule_id": "mat_backpan",
+            "source_quantity": "73",
+            "factor": "1",
+            "rate": "48.32",
+            "pre_tax_cost": "3527.36",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "3527.36",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "423.28",
+        "selling_value": "3950.64",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_1163f219e9ef244f183db0b0",
+        "code": "08 41 13",
+        "category": "installation_material",
+        "description": "Aluminum-Framed Entrances and Storefronts — Bracing and Anchoring",
+        "cost": null,
+        "area": "2090",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_0a0539be7ab74ceea656c3c35d481f4b",
+            "material_rule_id": "mat_bracing",
+            "source_quantity": "1016",
+            "factor": "1",
+            "rate": "1.50",
+            "pre_tax_cost": "1524.00",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "1524.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "182.88",
+        "selling_value": "1706.88",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_c08583d856cb3a279b895244",
+        "code": "08 41 13",
+        "category": "installation_material",
+        "description": "Aluminum-Framed Entrances and Storefronts — Sheet Metal Membrane Air Barriers",
+        "cost": null,
+        "area": "2090",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_0a0539be7ab74ceea656c3c35d481f4b",
+            "material_rule_id": "mat_membrane",
+            "source_quantity": "1016",
+            "factor": "1.00",
+            "rate": "1.00",
+            "pre_tax_cost": "1016.00",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "1016.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "121.92",
+        "selling_value": "1137.92",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_a076d780a767878d9c61ec0a",
+        "code": "08 41 13",
+        "category": "installation_material",
+        "description": "Aluminum-Framed Entrances and Storefronts — Flashing and Sheet Metal",
+        "cost": null,
+        "area": "2090",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_0a0539be7ab74ceea656c3c35d481f4b",
+            "material_rule_id": "mat_flashing",
+            "source_quantity": "484",
+            "factor": "1.00",
+            "rate": "8.00",
+            "pre_tax_cost": "3872.00",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "3872.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "464.64",
+        "selling_value": "4336.64",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_a95442e038ba91bafc908843",
+        "code": "08 41 13",
+        "category": "installation_material",
+        "description": "Aluminum-Framed Entrances and Storefronts — Backer Rods",
+        "cost": null,
+        "area": "2090",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_0a0539be7ab74ceea656c3c35d481f4b",
+            "material_rule_id": "mat_backer",
+            "source_quantity": "3256",
+            "factor": "1.00",
+            "rate": "0.50",
+            "pre_tax_cost": "1628.00",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "1628.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "195.36",
+        "selling_value": "1823.36",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_9bb8ba050b9cf3b5c2cbb5a1",
+        "code": "08 41 13",
+        "category": "installation_material",
+        "description": "Aluminum-Framed Entrances and Storefronts — Joint Sealants",
+        "cost": null,
+        "area": "2090",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_0a0539be7ab74ceea656c3c35d481f4b",
+            "material_rule_id": "mat_sealant",
+            "source_quantity": "3256",
+            "factor": "0.08",
+            "rate": "12.00",
+            "pre_tax_cost": "3125.76",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "3125.76",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "375.09",
+        "selling_value": "3500.85",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_b124c2ae8d08911dde5db647",
+        "code": "08 41 13",
+        "category": "installation_material",
+        "description": "Aluminum-Framed Entrances and Storefronts — Tie Back",
+        "cost": null,
+        "area": "2090",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_0a0539be7ab74ceea656c3c35d481f4b",
+            "material_rule_id": "mat_tieback",
+            "source_quantity": "16",
+            "factor": "1",
+            "rate": "45.00",
+            "pre_tax_cost": "720.00",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "720.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "86.40",
+        "selling_value": "806.40",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_ce7fa778aefe7dcc36cf3cff",
+        "code": "08 41 13",
+        "category": "installation_material",
+        "description": "Aluminum-Framed Entrances and Storefronts — Backpans / Insulation",
+        "cost": null,
+        "area": "2090",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_0a0539be7ab74ceea656c3c35d481f4b",
+            "material_rule_id": "mat_backpan",
+            "source_quantity": "97",
+            "factor": "1",
+            "rate": "48.32",
+            "pre_tax_cost": "4687.04",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "4687.04",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "562.44",
+        "selling_value": "5249.48",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_7d7e14d653fe12eca01b64e1",
+        "code": "08 44 13",
+        "category": "installation_material",
+        "description": "Glazed Aluminum Curtain Walls — Bracing and Anchoring",
+        "cost": null,
+        "area": "1909",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_9ad84201dd804260b02a378827223710",
+            "material_rule_id": "mat_bracing",
+            "source_quantity": "960",
+            "factor": "1",
+            "rate": "1.50",
+            "pre_tax_cost": "1440.00",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "1440.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "172.80",
+        "selling_value": "1612.80",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_9ede01218a44b34c73e037f0",
+        "code": "08 44 13",
+        "category": "installation_material",
+        "description": "Glazed Aluminum Curtain Walls — Sheet Metal Membrane Air Barriers",
+        "cost": null,
+        "area": "1909",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_9ad84201dd804260b02a378827223710",
+            "material_rule_id": "mat_membrane",
+            "source_quantity": "960",
+            "factor": "1.00",
+            "rate": "1.00",
+            "pre_tax_cost": "960.00",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "960.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "115.20",
+        "selling_value": "1075.20",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_27fb5c55dddd12fe875fed7d",
+        "code": "08 44 13",
+        "category": "installation_material",
+        "description": "Glazed Aluminum Curtain Walls — Flashing and Sheet Metal",
+        "cost": null,
+        "area": "1909",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_9ad84201dd804260b02a378827223710",
+            "material_rule_id": "mat_flashing",
+            "source_quantity": "422",
+            "factor": "1.00",
+            "rate": "8.00",
+            "pre_tax_cost": "3376.00",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "3376.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "405.12",
+        "selling_value": "3781.12",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_96c9543bbe43341ab2b0c408",
+        "code": "08 44 13",
+        "category": "installation_material",
+        "description": "Glazed Aluminum Curtain Walls — Backer Rods",
+        "cost": null,
+        "area": "1909",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_9ad84201dd804260b02a378827223710",
+            "material_rule_id": "mat_backer",
+            "source_quantity": "2664",
+            "factor": "1.00",
+            "rate": "0.50",
+            "pre_tax_cost": "1332.00",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "1332.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "159.84",
+        "selling_value": "1491.84",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_bc8c9b026affb4d9e0d41ca9",
+        "code": "08 44 13",
+        "category": "installation_material",
+        "description": "Glazed Aluminum Curtain Walls — Joint Sealants",
+        "cost": null,
+        "area": "1909",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_9ad84201dd804260b02a378827223710",
+            "material_rule_id": "mat_sealant",
+            "source_quantity": "2664",
+            "factor": "0.08",
+            "rate": "12.00",
+            "pre_tax_cost": "2557.44",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "2557.44",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "306.89",
+        "selling_value": "2864.33",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_72c32463f7216d84e2fe684d",
+        "code": "08 44 13",
+        "category": "installation_material",
+        "description": "Glazed Aluminum Curtain Walls — Tie Back",
+        "cost": null,
+        "area": "1909",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_9ad84201dd804260b02a378827223710",
+            "material_rule_id": "mat_tieback",
+            "source_quantity": "23",
+            "factor": "1",
+            "rate": "45.00",
+            "pre_tax_cost": "1035.00",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "1035.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "124.20",
+        "selling_value": "1159.20",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_35a23ff0e404bf21312b7486",
+        "code": "08 44 13",
+        "category": "installation_material",
+        "description": "Glazed Aluminum Curtain Walls — Backpans / Insulation",
+        "cost": null,
+        "area": "1909",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_9ad84201dd804260b02a378827223710",
+            "material_rule_id": "mat_backpan",
+            "source_quantity": "141",
+            "factor": "1",
+            "rate": "48.32",
+            "pre_tax_cost": "6813.12",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "6813.12",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "817.57",
+        "selling_value": "7630.69",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_b5e072ea9f511ec381e24e60",
+        "code": "ALT1-08 41 13",
+        "category": "installation_material",
+        "description": "Aluminum-Framed Entrances and Storefronts — Bracing and Anchoring",
+        "cost": null,
+        "area": "1668",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_593c787059d2476a86c4f28891b11fdd",
+            "material_rule_id": "mat_bracing",
+            "source_quantity": "879",
+            "factor": "1",
+            "rate": "1.50",
+            "pre_tax_cost": "1318.50",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "1318.50",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "158.22",
+        "selling_value": "1476.72",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_6e4a5d99968dc3e89f8a0631",
+        "code": "ALT1-08 41 13",
+        "category": "installation_material",
+        "description": "Aluminum-Framed Entrances and Storefronts — Sheet Metal Membrane Air Barriers",
+        "cost": null,
+        "area": "1668",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_593c787059d2476a86c4f28891b11fdd",
+            "material_rule_id": "mat_membrane",
+            "source_quantity": "879",
+            "factor": "1.00",
+            "rate": "1.00",
+            "pre_tax_cost": "879.00",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "879.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "105.48",
+        "selling_value": "984.48",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_4fb8523083f4f411b58ca983",
+        "code": "ALT1-08 41 13",
+        "category": "installation_material",
+        "description": "Aluminum-Framed Entrances and Storefronts — Flashing and Sheet Metal",
+        "cost": null,
+        "area": "1668",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_593c787059d2476a86c4f28891b11fdd",
+            "material_rule_id": "mat_flashing",
+            "source_quantity": "397",
+            "factor": "1.00",
+            "rate": "8.00",
+            "pre_tax_cost": "3176.00",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "3176.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "381.12",
+        "selling_value": "3557.12",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_2d9b01302a470679ce24d885",
+        "code": "ALT1-08 41 13",
+        "category": "installation_material",
+        "description": "Aluminum-Framed Entrances and Storefronts — Backer Rods",
+        "cost": null,
+        "area": "1668",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_593c787059d2476a86c4f28891b11fdd",
+            "material_rule_id": "mat_backer",
+            "source_quantity": "2596",
+            "factor": "1.00",
+            "rate": "0.50",
+            "pre_tax_cost": "1298.00",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "1298.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "155.76",
+        "selling_value": "1453.76",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_9fb8ad2f936ebe3612096b66",
+        "code": "ALT1-08 41 13",
+        "category": "installation_material",
+        "description": "Aluminum-Framed Entrances and Storefronts — Joint Sealants",
+        "cost": null,
+        "area": "1668",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_593c787059d2476a86c4f28891b11fdd",
+            "material_rule_id": "mat_sealant",
+            "source_quantity": "2596",
+            "factor": "0.08",
+            "rate": "12.00",
+            "pre_tax_cost": "2492.16",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "2492.16",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "299.06",
+        "selling_value": "2791.22",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_68a5b602cfe556152a6d7fc0",
+        "code": "ALT1-08 41 13",
+        "category": "installation_material",
+        "description": "Aluminum-Framed Entrances and Storefronts — Tie Back",
+        "cost": null,
+        "area": "1668",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_593c787059d2476a86c4f28891b11fdd",
+            "material_rule_id": "mat_tieback",
+            "source_quantity": "24",
+            "factor": "1",
+            "rate": "45.00",
+            "pre_tax_cost": "1080.00",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "1080.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "129.60",
+        "selling_value": "1209.60",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_5b36a415400afa01d58b30d4",
+        "code": "ALT1-08 41 13",
+        "category": "installation_material",
+        "description": "Aluminum-Framed Entrances and Storefronts — Backpans / Insulation",
+        "cost": null,
+        "area": "1668",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_593c787059d2476a86c4f28891b11fdd",
+            "material_rule_id": "mat_backpan",
+            "source_quantity": "88",
+            "factor": "1",
+            "rate": "48.32",
+            "pre_tax_cost": "4252.16",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "4252.16",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "510.26",
+        "selling_value": "4762.42",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_76ace9d87270e38bedf9d260",
+        "code": "08 41 13",
+        "category": "base_product",
+        "description": "Aluminum-Framed Entrances and Storefronts",
+        "cost": null,
+        "area": "4510",
+        "tax_treatment": "included",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "quote",
+            "source_id": "quo_c382d8f627434d5b946ce11ad2b0f7a9",
+            "entered_price": "158878",
+            "surcharge_percent": "0.025",
+            "tax_included": true,
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "162849.95",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "19541.99",
+        "selling_value": "182391.94",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_5cfc3feef4df081983475e04",
+        "code": "08 44 13",
+        "category": "base_product",
+        "description": "Glazed Aluminum Curtain Walls",
+        "cost": null,
+        "area": "3185",
+        "tax_treatment": "included",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "quote",
+            "source_id": "quo_fe9b65bf0c424ae3a93415a43c5225be",
+            "entered_price": "239131",
+            "surcharge_percent": "0.035",
+            "tax_included": true,
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "247500.59",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "29700.07",
+        "selling_value": "277200.66",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_0b7724033e52c0a9ba85834c",
+        "code": "08 80 00",
+        "category": "base_product",
+        "description": "Glazing",
+        "cost": null,
+        "area": "168.0",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "quote",
+            "source_id": "quo_8507c97d5e9a4d27bf107e9dfb556e48",
+            "entered_price": "90491",
+            "surcharge_percent": "0.015",
+            "tax_included": false,
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "91848.37",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "11021.80",
+        "selling_value": "102870.17",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_a3e19fa5edda618f5d64f4e7",
+        "code": "ALT1-08 41 13",
+        "category": "base_product",
+        "description": "Aluminum-Framed Entrances and Storefronts",
+        "cost": null,
+        "area": "1668",
+        "tax_treatment": "included",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "quote",
+            "source_id": "quo_729f248034d8459d8e1875109962a78d",
+            "entered_price": "128858",
+            "surcharge_percent": "0.025",
+            "tax_included": true,
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "132079.45",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "15849.53",
+        "selling_value": "147928.98",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_96dc69202e4106bef859280f",
+        "code": "11 00 00",
+        "category": "equipment",
+        "description": "Compact rough-terrain lift",
+        "cost": null,
+        "area": "0",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "equipment",
+            "source_id": "eqp_398d7e4fb4c24a18b6bd7b3d034c6a70",
+            "rate_version": "cfg-2026-08-17-v2",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "4630.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "555.60",
+        "selling_value": "5185.60",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_9432d855e79890c819011151",
+        "code": "11 00 00",
+        "category": "equipment",
+        "description": "60-foot articulating boom lift",
+        "cost": null,
+        "area": "0",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "equipment",
+            "source_id": "eqp_65e9973b756f4e2ebee0aba496a10c39",
+            "rate_version": "cfg-2026-08-17-v2",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "21950.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "2634.00",
+        "selling_value": "24584.00",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_afd2d5aed6df0c7e6b6ec89d",
+        "code": "11 00 00",
+        "category": "equipment",
+        "description": "Glazing manipulator",
+        "cost": null,
+        "area": "0",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "equipment",
+            "source_id": "eqp_c69b82520d4742b09d0daa0972cecec4",
+            "rate_version": "cfg-2026-08-17-v2",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "4580.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "549.60",
+        "selling_value": "5129.60",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_ed54bd970c06db6cd7e8535b",
+        "code": "11 00 00",
+        "category": "equipment",
+        "description": "Mobile scaffold package",
+        "cost": null,
+        "area": "0",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "equipment",
+            "source_id": "eqp_a9216b5318474011b70deedfd2781147",
+            "rate_version": "cfg-2026-08-17-v2",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "4100.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "492.00",
+        "selling_value": "4592.00",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_e6090d664a6685881afa8202",
+        "code": "11 00 00",
+        "category": "equipment",
+        "description": "Material storage container",
+        "cost": null,
+        "area": "0",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "equipment",
+            "source_id": "eqp_f0aaa6710e58445ea7c0f5715a3a2c1f",
+            "rate_version": "cfg-2026-08-17-v2",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "2150.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.12",
+        "markup_value": "258.00",
+        "selling_value": "2408.00",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_8f11d4acfa1111301e465415",
+        "code": "08 41 13",
+        "category": "field_labor",
+        "description": "Storefront layout and installation",
+        "cost": null,
+        "area": "0",
+        "tax_treatment": "not_applicable",
+        "markup_type": "LAF",
+        "lineage": [
+          {
+            "source_type": "labor",
+            "source_id": "lbr_89cedeee261c4ee4bbf17f02a5971d67",
+            "quantity": 1680,
+            "crew": 2,
+            "productivity": 5.5,
+            "calculated_hours": "152.7272727272727272727272727",
+            "override": null,
+            "override_reason": null,
+            "rate": "86",
+            "rate_version": "cfg-2026-08-17-v2",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "13134.55",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.18",
+        "markup_value": "2364.22",
+        "selling_value": "15498.77",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_da4910e0ebd60eb32d984316",
+        "code": "08 44 13",
+        "category": "field_labor",
+        "description": "Curtain-wall layout and installation",
+        "cost": null,
+        "area": "0",
+        "tax_treatment": "not_applicable",
+        "markup_type": "LAF",
+        "lineage": [
+          {
+            "source_type": "labor",
+            "source_id": "lbr_8cb17c5b0881411c80d7f9e5e32a0ebe",
+            "quantity": 2750,
+            "crew": 3,
+            "productivity": 4.2,
+            "calculated_hours": "218.2539682539682539682539683",
+            "override": null,
+            "override_reason": null,
+            "rate": "89",
+            "rate_version": "cfg-2026-08-17-v2",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "19424.60",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.18",
+        "markup_value": "3496.43",
+        "selling_value": "22921.03",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_0c01563a2026869ff98376bc",
+        "code": "08 11 00",
+        "category": "field_labor",
+        "description": "Entrance door installation",
+        "cost": null,
+        "area": "0",
+        "tax_treatment": "not_applicable",
+        "markup_type": "LAF",
+        "lineage": [
+          {
+            "source_type": "labor",
+            "source_id": "lbr_26b9aa7db4c742c5af5a1cc84ff0d942",
+            "quantity": 18,
+            "crew": 1,
+            "productivity": 0.34,
+            "calculated_hours": "52.94117647058823529411764706",
+            "override": null,
+            "override_reason": null,
+            "rate": "86",
+            "rate_version": "cfg-2026-08-17-v2",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "4552.94",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.18",
+        "markup_value": "819.53",
+        "selling_value": "5372.47",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_de3fdff20a5b46251dfec8e9",
+        "code": "08 71 00",
+        "category": "field_labor",
+        "description": "Door hardware installation",
+        "cost": null,
+        "area": "0",
+        "tax_treatment": "not_applicable",
+        "markup_type": "LAF",
+        "lineage": [
+          {
+            "source_type": "labor",
+            "source_id": "lbr_0ada840d95cb4e3e8e50c21ed68286db",
+            "quantity": 18,
+            "crew": 1,
+            "productivity": 0.22,
+            "calculated_hours": "81.81818181818181818181818182",
+            "override": null,
+            "override_reason": null,
+            "rate": "91",
+            "rate_version": "cfg-2026-08-17-v2",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "7445.45",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.18",
+        "markup_value": "1340.18",
+        "selling_value": "8785.63",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_5523c02104a7aa3add8d8773",
+        "code": "08 80 00",
+        "category": "field_labor",
+        "description": "Glass setting and glazing",
+        "cost": null,
+        "area": "0",
+        "tax_treatment": "not_applicable",
+        "markup_type": "LAF",
+        "lineage": [
+          {
+            "source_type": "labor",
+            "source_id": "lbr_0373ec4ff8574dc8a697abee4510f2a1",
+            "quantity": 3180,
+            "crew": 2,
+            "productivity": 8,
+            "calculated_hours": "198.75",
+            "override": null,
+            "override_reason": null,
+            "rate": "86",
+            "rate_version": "cfg-2026-08-17-v2",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "17092.50",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.18",
+        "markup_value": "3076.65",
+        "selling_value": "20169.15",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_83b895205ebba3c8a15e1aa5",
+        "code": "07 92 00",
+        "category": "field_labor",
+        "description": "Exterior perimeter sealants",
+        "cost": null,
+        "area": "0",
+        "tax_treatment": "not_applicable",
+        "markup_type": "LAF",
+        "lineage": [
+          {
+            "source_type": "labor",
+            "source_id": "lbr_865950f71fc144d38905376e2d89bd0e",
+            "quantity": 1240,
+            "crew": 1,
+            "productivity": 22,
+            "calculated_hours": "56.36363636363636363636363636",
+            "override": null,
+            "override_reason": null,
+            "rate": "84",
+            "rate_version": "cfg-2026-08-17-v2",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "4734.55",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.18",
+        "markup_value": "852.22",
+        "selling_value": "5586.77",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_8b09ecfafb8cc2be5bd90b18",
+        "code": "08 41 13",
+        "category": "shop_labor",
+        "description": "Storefront fabrication",
+        "cost": null,
+        "area": "0",
+        "tax_treatment": "not_applicable",
+        "markup_type": "LAS",
+        "lineage": [
+          {
+            "source_type": "labor",
+            "source_id": "lbr_467d9678ebf049f9bcace04714b5e5c4",
+            "quantity": 1680,
+            "crew": 1,
+            "productivity": 18,
+            "calculated_hours": "93.33333333333333333333333333",
+            "override": null,
+            "override_reason": null,
+            "rate": "67",
+            "rate_version": "cfg-2026-08-17-v2",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "6253.33",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.15",
+        "markup_value": "938.00",
+        "selling_value": "7191.33",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_b5d39b122a0d618e6dc95635",
+        "code": "08 44 13",
+        "category": "shop_labor",
+        "description": "Curtain-wall fabrication",
+        "cost": null,
+        "area": "0",
+        "tax_treatment": "not_applicable",
+        "markup_type": "LAS",
+        "lineage": [
+          {
+            "source_type": "labor",
+            "source_id": "lbr_a20589b916f347e6b364960420fc8672",
+            "quantity": 2750,
+            "crew": 2,
+            "productivity": 16,
+            "calculated_hours": "85.9375",
+            "override": null,
+            "override_reason": null,
+            "rate": "69",
+            "rate_version": "cfg-2026-08-17-v2",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "5929.69",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.15",
+        "markup_value": "889.45",
+        "selling_value": "6819.14",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_554d1327aeb8c8268e06279a",
+        "code": "08 11 00",
+        "category": "shop_labor",
+        "description": "Entrance preparation",
+        "cost": null,
+        "area": "0",
+        "tax_treatment": "not_applicable",
+        "markup_type": "LAS",
+        "lineage": [
+          {
+            "source_type": "labor",
+            "source_id": "lbr_d19fe569f71d464b87a853c2d16b5691",
+            "quantity": 18,
+            "crew": 1,
+            "productivity": 1.8,
+            "calculated_hours": "10",
+            "override": null,
+            "override_reason": null,
+            "rate": "67",
+            "rate_version": "cfg-2026-08-17-v2",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "670.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.15",
+        "markup_value": "100.50",
+        "selling_value": "770.50",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_9a44a64a605407919c5e1213",
+        "code": "08 71 00",
+        "category": "shop_labor",
+        "description": "Hardware preparation",
+        "cost": null,
+        "area": "0",
+        "tax_treatment": "not_applicable",
+        "markup_type": "LAS",
+        "lineage": [
+          {
+            "source_type": "labor",
+            "source_id": "lbr_3b2375d6473f4f8dbd4bf9fabf39680d",
+            "quantity": 18,
+            "crew": 1,
+            "productivity": 1.5,
+            "calculated_hours": "12",
+            "override": null,
+            "override_reason": null,
+            "rate": "70",
+            "rate_version": "cfg-2026-08-17-v2",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "840.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.15",
+        "markup_value": "126.00",
+        "selling_value": "966.00",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_d173f1d5748c81ebb7aeb5b6",
+        "code": "08 41 13",
+        "category": "design_labor",
+        "description": "Storefront shop drawings",
+        "cost": null,
+        "area": "0",
+        "tax_treatment": "not_applicable",
+        "markup_type": "LAF",
+        "lineage": [
+          {
+            "source_type": "labor",
+            "source_id": "lbr_01858ae506b549eaa5bace9abd031749",
+            "quantity": 1,
+            "crew": 1,
+            "productivity": 0.025,
+            "calculated_hours": "40",
+            "override": null,
+            "override_reason": null,
+            "rate": "95",
+            "rate_version": "cfg-2026-08-17-v2",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "3800.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.18",
+        "markup_value": "684.00",
+        "selling_value": "4484.00",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_e66e04ffddf831c668d1c318",
+        "code": "08 44 13",
+        "category": "design_labor",
+        "description": "Curtain-wall engineering coordination",
+        "cost": null,
+        "area": "0",
+        "tax_treatment": "not_applicable",
+        "markup_type": "LAF",
+        "lineage": [
+          {
+            "source_type": "labor",
+            "source_id": "lbr_37d58382b4fe4bbe9a68d9582281f8d4",
+            "quantity": 1,
+            "crew": 1,
+            "productivity": 0.016,
+            "calculated_hours": "62.5",
+            "override": null,
+            "override_reason": null,
+            "rate": "105",
+            "rate_version": "cfg-2026-08-17-v2",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "6562.50",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.18",
+        "markup_value": "1181.25",
+        "selling_value": "7743.75",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_2b45fbf17a64cabd5b39a6f6",
+        "code": "08 80 00",
+        "category": "design_labor",
+        "description": "Glazing submittals",
+        "cost": null,
+        "area": "0",
+        "tax_treatment": "not_applicable",
+        "markup_type": "LAF",
+        "lineage": [
+          {
+            "source_type": "labor",
+            "source_id": "lbr_c82740bdbb894622b63994231d467a5f",
+            "quantity": 1,
+            "crew": 1,
+            "productivity": 0.05,
+            "calculated_hours": "20",
+            "override": null,
+            "override_reason": null,
+            "rate": "92",
+            "rate_version": "cfg-2026-08-17-v2",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "1840.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.18",
+        "markup_value": "331.20",
+        "selling_value": "2171.20",
+        "configuration_id": "cfg-2026-08-17-v2"
+      },
+      {
+        "id": "est_787d13b4f6d492eec3f0d12e",
+        "code": "ALT1-08 41 13",
+        "category": "field_labor",
+        "description": "ALT1 storefront installation",
+        "cost": null,
+        "area": "0",
+        "tax_treatment": "not_applicable",
+        "markup_type": "LAF",
+        "lineage": [
+          {
+            "source_type": "labor",
+            "source_id": "lbr_e33247614977497abdc3e639cb42a254",
+            "quantity": 1420,
+            "crew": 2,
+            "productivity": 5.5,
+            "calculated_hours": "129.0909090909090909090909091",
+            "override": null,
+            "override_reason": null,
+            "rate": "86",
+            "rate_version": "cfg-2026-08-17-v2",
+            "configuration_id": "cfg-2026-08-17-v2"
+          }
+        ],
+        "direct_cost": "11101.82",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.18",
+        "markup_value": "1998.33",
+        "selling_value": "13100.15",
+        "configuration_id": "cfg-2026-08-17-v2"
+      }
+    ],
+    "totals": {
+      "direct_cost": "853773.71",
+      "markup_profit": "108244.95",
+      "selling_value": "962018.66",
+      "margin_percentage": "0.1125185555132579237080494884",
+      "square_feet": "9531.0",
+      "price_per_square_foot": "100.94",
+      "reconciliation": "ok",
+      "contingency": "0.00",
+      "bond": "0.00"
+    },
+    "validation": []
+  },
+  "estimate_revisions": [],
+  "alternates": [
+    {
+      "id": "alt_97d89eb21b044df68b3a5f601dbceea2",
+      "variant": "ALT1",
+      "name": "Value-engineered storefront system",
+      "included": true,
+      "description": "Synthetic priced alternate using matching quote, frame, labor, and travel-source records.",
+      "status": "testing"
+    },
+    {
+      "id": "alt_e288517692dd485ebd7da9d9d0aa3664",
+      "variant": "ALT2",
+      "name": "Alternate finish",
+      "included": false,
+      "description": "Placeholder for testing; no commercial value asserted.",
+      "status": "pending_scope"
+    }
+  ],
+  "reviews": [],
+  "submissions": [],
+  "proposal_artifacts": [],
+  "bid_tabulations": [
+    {
+      "id": "tab_296722865b92459584421f153cc169b6",
+      "participant": "Ironwood Construction",
+      "bid_value": "975000",
+      "alternates": "ALT1 included",
+      "qualifications": "Synthetic comparison only",
+      "source": "Test bid opening",
+      "date": "2026-11-13",
+      "status": "pending",
+      "notes": "Not a real competitor bid."
+    },
+    {
+      "id": "tab_ec0a9c253b9f4f64a1bfa36dc3b08a7d",
+      "participant": "Metro Envelope Systems",
+      "bid_value": "800000",
+      "alternates": "ALT1 separate",
+      "qualifications": "Synthetic comparison only",
+      "source": "Test bid opening",
+      "date": "2026-11-13",
+      "status": "pending",
+      "notes": "Fictitious participant."
+    },
+    {
+      "id": "tab_8b9948e21e1047bb95404e22445342d6",
+      "participant": "Twin Cities Glassworks",
+      "bid_value": "900000",
+      "alternates": "No alternates",
+      "qualifications": "Synthetic comparison only",
+      "source": "Test bid opening",
+      "date": "2026-11-13",
+      "status": "pending",
+      "notes": "Fictitious participant."
+    },
+    {
+      "id": "tab_5b89296d7e034ca6bdd8a5f8eeb19fd8",
+      "participant": "Internal target",
+      "bid_value": "0",
+      "alternates": "Calculated in Bid area",
+      "qualifications": "Training benchmark",
+      "source": "Generated test project",
+      "date": "2026-11-13",
+      "status": "pending",
+      "notes": "Update after calculation review."
+    }
+  ],
+  "award": null,
+  "contract_allocations": [],
+  "change_orders": [],
+  "sov_lines": [],
+  "closeout": null,
+  "configuration_lineage": [
+    {
+      "configuration_id": "cfg-2026-08-17-v2",
+      "adopted_at": "2026-08-17T20:46:07.989214+00:00",
+      "actor": "System verification"
+    }
+  ],
+  "audit_events": [
+    {
+      "id": "aud_4c71ff8c9e6c460cad75598f03bb3940",
+      "timestamp": "2026-08-17T20:46:07.989214+00:00",
+      "actor": "System verification",
+      "role": "Estimator",
+      "entity_type": "project",
+      "entity_id": "1a07de03-295a-44e1-b0e0-33deb391d6c6",
+      "operation": "create",
+      "prior_value": null,
+      "new_value": {
+        "name": "Oak Ridge Learning Center — TEST 4429"
+      },
+      "reason": "New project",
+      "correlation_id": "cor_453cf33a2e984da0b01914dd72fe4cbe"
+    },
+    {
+      "id": "aud_cd683939199b4fb897600c30f2862303",
+      "timestamp": "2026-08-17T20:46:08.025593+00:00",
+      "actor": "System verification",
+      "role": "Estimator",
+      "entity_type": "project",
+      "entity_id": "1a07de03-295a-44e1-b0e0-33deb391d6c6",
+      "operation": "generate_test_project",
+      "prior_value": null,
+      "new_value": {
+        "seed": 9869176407055674429,
+        "profile": "K-12 education addition",
+        "generator_version": "1.0.0"
+      },
+      "reason": "Generated curated synthetic project for training and workflow testing",
+      "correlation_id": "cor_15f1a091cb3340dea67e0a7041591317"
+    },
+    {
+      "id": "aud_c837a70c1b6142bdb1e475701610b39c",
+      "timestamp": "2026-08-17T20:49:08.147443+00:00",
+      "actor": "Local User",
+      "role": "Estimator",
+      "entity_type": "project_datapoint",
+      "entity_id": "1a07de03-295a-44e1-b0e0-33deb391d6c6",
+      "operation": "data_point_change",
+      "prior_value": {
+        "path": "equipment.0.quantity",
+        "value": 2
+      },
+      "new_value": {
+        "path": "equipment.0.quantity",
+        "value": "3"
+      },
+      "reason": "Datapoint modified",
+      "correlation_id": "cor_5d0f75c916ba41e3a057fdc7d9c4bae8"
+    },
+    {
+      "id": "aud_3bcb4333b0e84555ac6af62f9f21dfee",
+      "timestamp": "2026-08-17T20:49:10.358983+00:00",
+      "actor": "Local User",
+      "role": "Estimator",
+      "entity_type": "project_datapoint",
+      "entity_id": "1a07de03-295a-44e1-b0e0-33deb391d6c6",
+      "operation": "data_point_change",
+      "prior_value": {
+        "path": "equipment.0.quantity",
+        "value": "3"
+      },
+      "new_value": {
+        "path": "equipment.0.quantity",
+        "value": "2"
+      },
+      "reason": "Datapoint modified",
+      "correlation_id": "cor_302a0edbdd264cb381d31d1a90b58ca5"
+    },
+    {
+      "id": "aud_6dc9acc7989c4fcf81fcf8db8dcb8936",
+      "timestamp": "2026-08-17T20:49:11.688062+00:00",
+      "actor": "Local User",
+      "role": "Estimator",
+      "entity_type": "project_datapoint",
+      "entity_id": "1a07de03-295a-44e1-b0e0-33deb391d6c6",
+      "operation": "data_point_change",
+      "prior_value": {
+        "path": "equipment.0.quantity",
+        "value": "2"
+      },
+      "new_value": {
+        "path": "equipment.0.quantity",
+        "value": "3"
+      },
+      "reason": "Datapoint modified",
+      "correlation_id": "cor_46d713cc9f8b4435b8719737aa21c3c2"
+    },
+    {
+      "id": "aud_e61114faa55342d99b31c59fe0ce4971",
+      "timestamp": "2026-08-17T20:49:13.056491+00:00",
+      "actor": "Local User",
+      "role": "Estimator",
+      "entity_type": "project_datapoint",
+      "entity_id": "1a07de03-295a-44e1-b0e0-33deb391d6c6",
+      "operation": "data_point_change",
+      "prior_value": {
+        "path": "equipment.0.quantity",
+        "value": "3"
+      },
+      "new_value": {
+        "path": "equipment.0.quantity",
+        "value": "4"
+      },
+      "reason": "Datapoint modified",
+      "correlation_id": "cor_a3a5595ddbef46fd891534b2b6d46a61"
+    },
+    {
+      "id": "aud_c8e4f2912a974bf9aaebc91b2c61bce5",
+      "timestamp": "2026-08-17T20:49:14.657757+00:00",
+      "actor": "Local User",
+      "role": "Estimator",
+      "entity_type": "project_datapoint",
+      "entity_id": "1a07de03-295a-44e1-b0e0-33deb391d6c6",
+      "operation": "data_point_change",
+      "prior_value": {
+        "path": "equipment.0.quantity",
+        "value": "4"
+      },
+      "new_value": {
+        "path": "equipment.0.quantity",
+        "value": "3"
+      },
+      "reason": "Datapoint modified",
+      "correlation_id": "cor_8b2e4be3ae504074aefab5d3ed4afbb0"
+    },
+    {
+      "id": "aud_389bcdfae95c4d0b9b19772e873df1b5",
+      "timestamp": "2026-08-17T20:49:14.657767+00:00",
+      "actor": "Local User",
+      "role": "Estimator",
+      "entity_type": "project_datapoint",
+      "entity_id": "1a07de03-295a-44e1-b0e0-33deb391d6c6",
+      "operation": "data_point_change",
+      "prior_value": {
+        "path": "equipment.0.quantity",
+        "value": "3"
+      },
+      "new_value": {
+        "path": "equipment.0.quantity",
+        "value": "2"
+      },
+      "reason": "Datapoint modified",
+      "correlation_id": "cor_8b2e4be3ae504074aefab5d3ed4afbb0"
+    },
+    {
+      "id": "aud_8048cfe06d764fe98b8ec228cbe998e8",
+      "timestamp": "2026-08-17T20:49:16.377438+00:00",
+      "actor": "Local User",
+      "role": "Estimator",
+      "entity_type": "project_datapoint",
+      "entity_id": "1a07de03-295a-44e1-b0e0-33deb391d6c6",
+      "operation": "data_point_change",
+      "prior_value": {
+        "path": "equipment.0.quantity",
+        "value": "2"
+      },
+      "new_value": {
+        "path": "equipment.0.quantity",
+        "value": "1"
+      },
+      "reason": "Datapoint modified",
+      "correlation_id": "cor_2f44b3b161de43c78cbe4e33403424af"
+    },
+    {
+      "id": "aud_42f3457195144085ae295838f877b6fa",
+      "timestamp": "2026-08-17T20:49:17.278522+00:00",
+      "actor": "Local User",
+      "role": "Estimator",
+      "entity_type": "project_datapoint",
+      "entity_id": "1a07de03-295a-44e1-b0e0-33deb391d6c6",
+      "operation": "data_point_change",
+      "prior_value": {
+        "path": "equipment.1.quantity",
+        "value": 1
+      },
+      "new_value": {
+        "path": "equipment.1.quantity",
+        "value": "2"
+      },
+      "reason": "Datapoint modified",
+      "correlation_id": "cor_5c09e80e789142d5bf833ab408bfc538"
+    },
+    {
+      "id": "aud_a4dced1563264d12ad98d5dfd9b478c9",
+      "timestamp": "2026-08-17T20:49:17.679253+00:00",
+      "actor": "Local User",
+      "role": "Estimator",
+      "entity_type": "project_datapoint",
+      "entity_id": "1a07de03-295a-44e1-b0e0-33deb391d6c6",
+      "operation": "data_point_change",
+      "prior_value": {
+        "path": "equipment.1.quantity",
+        "value": "2"
+      },
+      "new_value": {
+        "path": "equipment.1.quantity",
+        "value": "3"
+      },
+      "reason": "Datapoint modified",
+      "correlation_id": "cor_2d2b1e639c6542b2b03ee84abda64a92"
+    },
+    {
+      "id": "aud_8724a5afca204cd1933977f3a0c9313f",
+      "timestamp": "2026-08-17T20:49:17.679261+00:00",
+      "actor": "Local User",
+      "role": "Estimator",
+      "entity_type": "project_datapoint",
+      "entity_id": "1a07de03-295a-44e1-b0e0-33deb391d6c6",
+      "operation": "data_point_change",
+      "prior_value": {
+        "path": "equipment.1.quantity",
+        "value": "3"
+      },
+      "new_value": {
+        "path": "equipment.1.quantity",
+        "value": "4"
+      },
+      "reason": "Datapoint modified",
+      "correlation_id": "cor_2d2b1e639c6542b2b03ee84abda64a92"
+    },
+    {
+      "id": "aud_1914de430c864202a6533fea9b840432",
+      "timestamp": "2026-08-17T20:49:17.969198+00:00",
+      "actor": "Local User",
+      "role": "Estimator",
+      "entity_type": "project_datapoint",
+      "entity_id": "1a07de03-295a-44e1-b0e0-33deb391d6c6",
+      "operation": "data_point_change",
+      "prior_value": {
+        "path": "equipment.1.quantity",
+        "value": "4"
+      },
+      "new_value": {
+        "path": "equipment.1.quantity",
+        "value": "5"
+      },
+      "reason": "Datapoint modified",
+      "correlation_id": "cor_9af88017a8444448b41de3360a9bd664"
+    },
+    {
+      "id": "aud_f157f1061ca14fcd981b3e0d9183a6cc",
+      "timestamp": "2026-08-17T20:49:19.024323+00:00",
+      "actor": "Local User",
+      "role": "Estimator",
+      "entity_type": "project_datapoint",
+      "entity_id": "1a07de03-295a-44e1-b0e0-33deb391d6c6",
+      "operation": "data_point_change",
+      "prior_value": {
+        "path": "equipment.1.quantity",
+        "value": "5"
+      },
+      "new_value": {
+        "path": "equipment.1.quantity",
+        "value": "4"
+      },
+      "reason": "Datapoint modified",
+      "correlation_id": "cor_010e3a95bbe942f8a2ca25daf6c7c28c"
+    },
+    {
+      "id": "aud_ec2956c0f24a4cf8839aaf450e7e0841",
+      "timestamp": "2026-08-17T20:49:19.376911+00:00",
+      "actor": "Local User",
+      "role": "Estimator",
+      "entity_type": "project_datapoint",
+      "entity_id": "1a07de03-295a-44e1-b0e0-33deb391d6c6",
+      "operation": "data_point_change",
+      "prior_value": {
+        "path": "equipment.1.quantity",
+        "value": "4"
+      },
+      "new_value": {
+        "path": "equipment.1.quantity",
+        "value": "1"
+      },
+      "reason": "Datapoint modified",
+      "correlation_id": "cor_265f0c7e8f274314a8f2eb0519201c8f"
+    },
+    {
+      "id": "aud_91f87621222348edbbc856cdcf5f8a54",
+      "timestamp": "2026-08-17T20:49:19.644310+00:00",
+      "actor": "Local User",
+      "role": "Estimator",
+      "entity_type": "project_datapoint",
+      "entity_id": "1a07de03-295a-44e1-b0e0-33deb391d6c6",
+      "operation": "data_point_change",
+      "prior_value": {
+        "path": "equipment.1.quantity",
+        "value": "1"
+      },
+      "new_value": {
+        "path": "equipment.1.quantity",
+        "value": "3"
+      },
+      "reason": "Datapoint modified",
+      "correlation_id": "cor_de1fc3f9e2694876915719b1e174a73f"
+    }
+  ]
+}

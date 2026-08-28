@@ -12,8 +12,10 @@ from decimal import Decimal, InvalidOperation
 import re
 from typing import Any, Callable
 
+from .phone import format_phone_if_valid
 
-CURRENT_SCHEMA_VERSION = "1.4.0"
+
+CURRENT_SCHEMA_VERSION = "1.5.0"
 
 PROJECT_TYPES = (
     "New Construction - Curtainwall",
@@ -433,12 +435,51 @@ def _migrate_1_3_0_to_1_4_0(document: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
+def _format_phone(value: Any) -> Any:
+    return format_phone_if_valid(value)
+
+
+def _migrate_1_4_0_to_1_5_0(document: dict[str, Any]) -> dict[str, Any]:
+    """Add structured participant, completion, Borrowed Lite, and tab-order fields."""
+    result = deepcopy(document)
+    project = result.setdefault("project", {})
+    for field in (
+        "architect_address", "engineer_address", "general_contractor_address",
+        "construction_manager_address",
+    ):
+        project.setdefault(field, "")
+    project.setdefault("completion_date", None)
+    project.setdefault("final_completion_date", None)
+    walkthrough = project.get("walkthrough")
+    if walkthrough and "T" not in str(walkthrough):
+        project.setdefault("walkthrough_notes", walkthrough)
+        project["walkthrough"] = None
+    project["owner_phone"] = _format_phone(project.get("owner_phone"))
+    for index, section in enumerate(result.setdefault("takeoff_sections", [])):
+        section.setdefault("tab_order", index)
+    for contact in result.setdefault("contacts", []):
+        contact.setdefault("address", "")
+        for field in ("phone", "office_phone", "mobile_phone"):
+            if field in contact:
+                contact[field] = _format_phone(contact.get(field))
+    for row in result.setdefault("borrowed_lites", []):
+        row.setdefault("location", "")
+    result.setdefault("schema_migrations", []).append({
+        "id": "project-1.4.0-to-1.5.0", "from_version": "1.4.0", "to_version": "1.5.0",
+        "scope": "active_project_only", "structured_project_fields": True,
+    })
+    result["schema_version"] = "1.5.0"
+    result["interchange_version"] = "1.5.0"
+    return result
+
+
 Migration = Callable[[dict[str, Any]], dict[str, Any]]
 MIGRATIONS: dict[str, tuple[str, Migration]] = {
     "1.0.0": ("1.1.0", _migrate_1_0_0_to_1_1_0),
     "1.1.0": ("1.2.0", _migrate_1_1_0_to_1_2_0),
     "1.2.0": ("1.3.0", _migrate_1_2_0_to_1_3_0),
     "1.3.0": ("1.4.0", _migrate_1_3_0_to_1_4_0),
+    "1.4.0": ("1.5.0", _migrate_1_4_0_to_1_5_0),
 }
 
 

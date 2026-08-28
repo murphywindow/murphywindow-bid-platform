@@ -352,6 +352,7 @@ def calculate_project(doc: dict, config: dict, *, include_alternates: bool = Tru
     ensure_ids(doc)
     doc["project"]["abbreviation"] = project_abbreviation(doc["project"].get("name"))
     taxable, tax_rate = _tax(doc, config)
+    frame_square_footage_method = config.get("application_settings", {}).get("frame_square_footage_method", "per_frame_then_quantity")
     raw: list[dict] = []
     warnings: list[dict] = []
 
@@ -442,7 +443,7 @@ def calculate_project(doc: dict, config: dict, *, include_alternates: bool = Tru
                     entity_type="frame_line", section_id=section.get("id"),
                 ))
             try:
-                q = frame_quantities(row.get("quantity"), row.get("width_inches"), row.get("height_inches"), row.get("caulking_passes"))
+                q = frame_quantities(row.get("quantity"), row.get("width_inches"), row.get("height_inches"), row.get("caulking_passes"), square_footage_method=frame_square_footage_method)
                 row["calculated"] = jsonable(q)
                 if q["perimeter_lf"] is not None and row.get("caulking_passes") in (None, ""):
                     row["caulking_passes"] = jsonable(q["caulking_passes"])
@@ -498,6 +499,9 @@ def calculate_project(doc: dict, config: dict, *, include_alternates: bool = Tru
                         source += dec(value, Decimal(0)) or Decimal(0)
             elif source_key == "manual_quantity":
                 source = dec(rule.get("manual_quantity"), Decimal(0)) or Decimal(0)
+            elif source_key == "custom":
+                custom_quantity = override.get("custom_quantity_override")
+                source = dec(custom_quantity if custom_quantity not in (None, "") else rule.get("manual_quantity"), Decimal(0)) or Decimal(0)
             else:
                 # The workbook's Tie Back and Backpan inputs remain section-level
                 # until their future line-level placement is confirmed.
@@ -514,9 +518,10 @@ def calculate_project(doc: dict, config: dict, *, include_alternates: bool = Tru
             if factor_override in (None, "") and "factor" in override:
                 factor_override = override.get("factor")
             operand = operand_override if operand_override not in (None, "") else factor_override if factor_override not in (None, "") else controlled_operand
-            formula_override = any(value not in (None, "") for value in (source_override, operator_override, operand_override, factor_override, unit_override))
+            custom_quantity_override = override.get("custom_quantity_override")
+            formula_override = any(value not in (None, "") for value in (source_override, operator_override, operand_override, factor_override, unit_override, custom_quantity_override))
             try:
-                calculated_quantity = installation_material_quantity(source, operator, operand)
+                calculated_quantity = source if source_key == "custom" else installation_material_quantity(source, operator, operand)
             except ValueError as exc:
                 calculated_quantity = None
                 warnings.append(_warning(
@@ -545,6 +550,7 @@ def calculate_project(doc: dict, config: dict, *, include_alternates: bool = Tru
                 "controlled_operand": jsonable(dec(controlled_operand)),
                 "operand_override": jsonable(dec(operand_override)) if operand_override not in (None, "") else None,
                 "operand": jsonable(dec(operand)), "calculated_quantity": jsonable(calculated_quantity),
+                "custom_quantity_override": jsonable(dec(custom_quantity_override)) if custom_quantity_override not in (None, "") else None,
                 "is_formula_override": formula_override,
                 "controlled_factor": jsonable(dec(controlled_operand)), "factor_override": jsonable(dec(factor_override)) if factor_override not in (None, "") else None,
                 "factor": jsonable(dec(operand)) if operator == "multiply" else None, "controlled_rate": jsonable(rate_values["controlled_rate"]),
@@ -642,10 +648,10 @@ def calculate_project(doc: dict, config: dict, *, include_alternates: bool = Tru
         cost = adjustment["final_adjusted_value"]
         q["calculated_cost"] = jsonable(cost)
         quote_area_source = q.get("square_feet_source")
-        if quote_area_source != "manual" and (q.get("square_feet") in (None, "") or quote_area_source == "frame_default"):
-            frame_default = frame_area_by_code.get(code_key, Decimal(0))
-            q["square_feet"] = jsonable(frame_default) if frame_default else None
-            q["square_feet_source"] = "frame_default" if frame_default else (quote_area_source or "unassigned")
+        if quote_area_source != "manual" and (q.get("square_feet") in (None, "") or quote_area_source in {"frame_default", "takeoff_default"}):
+            takeoff_default = area_by_code.get(code_key, Decimal(0))
+            q["square_feet"] = jsonable(takeoff_default) if takeoff_default else None
+            q["square_feet_source"] = "takeoff_default" if takeoff_default else "unassigned"
         quote_area = dec(q.get("square_feet"))
         q["calculated_square_feet"] = jsonable(quote_area)
         q["calculated_unit_cost"] = jsonable(quote_unit_cost(cost, quote_area))

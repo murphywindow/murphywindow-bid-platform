@@ -56,8 +56,7 @@ def test_generate_duplicate_prevention_historical_isolation_branch_ancestry_void
     p1 = body["proposal"]
     assert p1["number"] == "P1" and p1["name"] == "Original Bid"
     assert p1["parent_proposal_id"] is None
-    snapshot_path = store.proposal_path(project_id, p1["id"])
-    original_snapshot_bytes = snapshot_path.read_bytes()
+    original_snapshot_bytes = json.dumps(store.load_proposal_snapshot(project_id, p1["id"]), sort_keys=True).encode()
 
     duplicate = client.post(f"/api/projects/{project_id}/proposals", headers=headers(), json={
         "expected_revision": body["project"]["project"]["revision"], "proposal_name": "Same State, Other Name",
@@ -81,7 +80,7 @@ def test_generate_duplicate_prevention_historical_isolation_branch_ancestry_void
     working = branch.json()["project"]
     assert working["project"]["proposal_scope"] == "VE scope"
     assert working["working_branch"]["source_proposal_id"] == p1["id"]
-    assert snapshot_path.read_bytes() == original_snapshot_bytes
+    assert json.dumps(store.load_proposal_snapshot(project_id, p1["id"]), sort_keys=True).encode() == original_snapshot_bytes
 
     generated_p2 = client.post(f"/api/projects/{project_id}/proposals", headers=headers(), json={
         "expected_revision": working["project"]["revision"], "proposal_name": "VE Revision",
@@ -102,13 +101,13 @@ def test_generate_duplicate_prevention_historical_isolation_branch_ancestry_void
         "expected_revision": latest["project"]["revision"], "reason": "Withdrawn by estimator",
     })
     assert voided.status_code == 200 and voided.json()["proposal"]["status"] == "voided"
-    assert snapshot_path.read_bytes() == original_snapshot_bytes
+    assert json.dumps(store.load_proposal_snapshot(project_id, p1["id"]), sort_keys=True).encode() == original_snapshot_bytes
     still_viewable = client.get(f"/api/projects/{project_id}/proposals/{p1['id']}", headers=headers())
     assert still_viewable.status_code == 200 and still_viewable.json()["proposal"]["status"] == "voided"
     artifact = generated_p2.json()["artifact"]
     pdf = client.get(f"/api/projects/{project_id}/proposal/{artifact['id']}.pdf", headers=headers())
     assert pdf.status_code == 200 and pdf.headers["x-proposal-artifact"] == artifact["id"]
-    assert pdf.content == store.proposal_artifact_path(project_id, artifact["id"]).read_bytes()
+    assert pdf.content == store.load_proposal_artifact(project_id, artifact["id"])
     assert client.get(f"/api/projects/{project_id}/proposal/{artifact['id']}.pdf", headers=headers()).content == pdf.content
 
 
@@ -141,7 +140,8 @@ def test_failed_project_index_commit_rolls_back_new_snapshot(proposal_client, mo
     })
     assert response.status_code == 500
     assert store.list_proposal_snapshot_ids(project_id) == []
-    assert list(store.proposal_artifacts.rglob("*.pdf")) == []
+    with store.provider.transaction() as connection:
+        assert connection.execute("SELECT COUNT(*) FROM proposal_artifacts WHERE project_id=?",(project_id,)).fetchone()[0] == 0
     persisted = store.load_project(project_id)[0]
     assert persisted.get("proposal_history", []) == []
 
@@ -166,7 +166,7 @@ def test_branch_from_history_updates_all_customer_facing_fields_without_mutating
         "expected_revision": current["project"]["revision"], "proposal_name": "Frozen Original",
     }).json()
     proposal = generated["proposal"]
-    frozen_bytes = store.proposal_path(project_id, proposal["id"]).read_bytes()
+    frozen_bytes = json.dumps(store.load_proposal_snapshot(project_id, proposal["id"]), sort_keys=True).encode()
     changes = [
         {"path": "project.proposal_scope", "new": "Branched scope"},
         {"path": "project.proposal_inclusions", "new": "Branched inclusions"},
@@ -184,7 +184,7 @@ def test_branch_from_history_updates_all_customer_facing_fields_without_mutating
     ]
     assert project["working_branch"]["source_proposal_id"] == proposal["id"]
     assert project["working_branch"]["has_unpublished_changes"] is True
-    assert store.proposal_path(project_id, proposal["id"]).read_bytes() == frozen_bytes
+    assert json.dumps(store.load_proposal_snapshot(project_id, proposal["id"]), sort_keys=True).encode() == frozen_bytes
 
 
 def test_comparison_is_changed_only_business_aware_and_reconciles():

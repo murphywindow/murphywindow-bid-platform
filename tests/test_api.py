@@ -1,7 +1,7 @@
 import json
 import re
 from copy import deepcopy
-from decimal import Decimal
+from decimal import Decimal, ROUND_CEILING
 
 import pytest
 from fastapi.testclient import TestClient
@@ -16,13 +16,18 @@ from app.version import SOFTWARE_VERSION
 def client(tmp_path, monkeypatch):
     import app.main as main
     test_store = JsonStore(tmp_path)
-    test_store.save_configuration(default_configuration())
+    test_store.save_configuration(default_configuration(test_store.ensure_packaged_cost_code_reference()))
     monkeypatch.setattr(main, "store", test_store)
     return TestClient(main.app)
 
 
 def h(role="Estimator", actor="Tester"):
     return {"X-Role":role,"X-Actor":actor}
+
+
+def configured_default():
+    import app.main as main
+    return default_configuration(main.store.load_cost_code_reference())
 
 
 def create_project(client, name="API Contract"):
@@ -82,6 +87,22 @@ def test_decimal_precision_configuration_is_admin_only_persisted_and_validated(c
     assert precision["quantity"] == 1 and precision["square_footage"] == 4
     configured["application_settings"]["decimal_precision"]["currency"] = 7
     invalid = client.post("/api/configurations", headers=h("Systems Administrator"), json={"source_id": source["id"], "configuration": configured})
+    assert invalid.status_code == 422
+
+
+def test_frame_square_footage_method_is_persisted_and_validated(client):
+    source = client.get("/api/configurations", headers=h("Systems Administrator")).json()["configurations"][0]
+    configured = deepcopy(source)
+    configured["application_settings"]["frame_square_footage_method"] = "quantity_then_round_up"
+    created = client.post("/api/configurations", headers=h("Systems Administrator"), json={
+        "source_id": source["id"], "configuration": configured, "reason": "Frame area rounding policy",
+    })
+    assert created.status_code == 200
+    assert created.json()["configuration"]["application_settings"]["frame_square_footage_method"] == "quantity_then_round_up"
+    configured["application_settings"]["frame_square_footage_method"] = "unsupported"
+    invalid = client.post("/api/configurations", headers=h("Systems Administrator"), json={
+        "source_id": source["id"], "configuration": configured,
+    })
     assert invalid.status_code == 422
 
 
@@ -177,7 +198,7 @@ def test_display_only_configuration_autosave_recalculates_without_confirmation(c
 
 
 def first_controlled_cost_code():
-    reference = next(row for row in default_configuration()["csi_references"] if row.get("active", True))
+    reference = next(row for row in configured_default()["csi_references"] if row.get("active", True))
     return {
         "id": "ccd_api_contract",
         "code": reference["display_code"],
@@ -276,7 +297,7 @@ def test_optional_alternate_name_uses_stable_id_and_specific_audit_events(client
 
 def test_actual_material_cost_code_may_use_full_reference_outside_project_scope(client):
     document = create_project(client, "Actual Cost Code API")
-    references = [row for row in default_configuration()["csi_references"] if row.get("active", True)]
+    references = [row for row in configured_default()["csi_references"] if row.get("active", True)]
     grouping, actual = references[0], next(row for row in references[1:] if row["display_code"] != references[0]["display_code"])
     document["cost_codes"] = [{
         "id": "ccd_grouping", "code": grouping["display_code"],
@@ -333,7 +354,7 @@ def test_actual_material_cost_code_may_use_full_reference_outside_project_scope(
 
 def test_quote_grouping_code_change_preserves_manual_selection_provenance_and_audits_identity(client):
     document = create_project(client, "Quote grouping audit")
-    references = [row for row in default_configuration()["csi_references"] if row.get("active", True)][:2]
+    references = [row for row in configured_default()["csi_references"] if row.get("active", True)][:2]
     first, second = references
     document["cost_codes"] = [
         {"id": "ccd_quote_a", "code": first["display_code"], "description": first["description"], "deduct": False},
@@ -369,7 +390,7 @@ def test_quote_grouping_code_change_preserves_manual_selection_provenance_and_au
 
 
 def test_direct_workspace_routes_return_fresh_application_shell(client):
-    response = client.get("/projects/prj_00000000000000000000000000004320/frames")
+    response = client.get("/projects/06e84ea0-a276-45e2-af97-0d220556b945/frames")
     assert response.status_code == 200
     assert "Murphy Window" in response.text
     assert response.headers["cache-control"] == "no-store, no-cache, must-revalidate, max-age=0"
@@ -380,6 +401,15 @@ def test_direct_workspace_routes_return_fresh_application_shell(client):
     assert basic_css.status_code == 200
     assert "functional baseline" in basic_css.text
     assert basic_css.headers["cache-control"] == "no-store, no-cache, must-revalidate, max-age=0"
+
+
+def test_legacy_project_information_route_redirects_to_canonical_info_url(client):
+    response = client.get(
+        "/projects/06e84ea0-a276-45e2-af97-0d220556b945/project?popup=example",
+        follow_redirects=False,
+    )
+    assert response.status_code == 307
+    assert response.headers["location"] == "/projects/06e84ea0-a276-45e2-af97-0d220556b945/info?popup=example"
 
 
 def test_frame_save_and_reopen_recalculates_fractional_outputs_instead_of_reusing_whole_values(client):
@@ -411,7 +441,8 @@ def test_frame_save_and_reopen_recalculates_fractional_outputs_instead_of_reusin
 
     quantity, width, height, passes = map(Decimal, ("6.60", "42.75", "120.67", "3.18"))
     perimeter = Decimal(2) * (width / Decimal(12) + height / Decimal(12)) * quantity
-    assert Decimal(calculated["square_feet"]) == quantity * width * height / Decimal(144)
+    per_frame_square_feet = (width * height / Decimal(144)).to_integral_value(rounding=ROUND_CEILING)
+    assert Decimal(calculated["square_feet"]) == per_frame_square_feet * quantity
     assert Decimal(calculated["perimeter_lf"]) == perimeter
     assert Decimal(calculated["caulking_lf"]) == perimeter * passes
     assert Decimal(calculated["head_sill_qty"]) == quantity * width / Decimal(6)
@@ -423,7 +454,7 @@ def test_health_static_and_project_crud_conflict(client):
     assert health.status_code == 200
     assert health.json()["software_version"] == SOFTWARE_VERSION
     assert re.fullmatch(r"(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)", health.json()["software_version"])
-    assert health.json()["schema_version"] == SCHEMA_VERSION == "1.4.0"
+    assert health.json()["schema_version"] == SCHEMA_VERSION == "1.5.0"
     assert client.get("/openapi.json").json()["info"]["version"] == SOFTWARE_VERSION
     assert "Murphy Window" in client.get("/").text
     created=client.post("/api/projects",headers=h(),json={"name":"API Job"})
@@ -468,7 +499,10 @@ def test_new_controlled_project_values_are_enforced_server_side(client, field, i
     assert response.status_code == 422
     assert response.json()["error"]["code"] == error_code
     reopened = client.get(f"/api/projects/{project_id}", headers=h()).json()["project"]
-    assert reopened["project"][field] in (None, "")
+    if field == "wage_type":
+        assert reopened["project"][field] == "Non-PW"
+    else:
+        assert reopened["project"][field] in (None, "")
 
 
 def test_new_source_rows_must_reference_a_project_cost_code(client):
@@ -575,7 +609,7 @@ def test_quote_square_feet_manual_edit_is_not_replaced_by_later_frame_calculatio
     assert first.status_code == 200
     saved = first.json()["project"]
     assert Decimal(saved["quotes"][0]["square_feet"]) == Decimal("1")
-    assert saved["quotes"][0]["square_feet_source"] == "frame_default"
+    assert saved["quotes"][0]["square_feet_source"] == "takeoff_default"
 
     saved["quotes"][0]["square_feet"] = "25"
     second = client.put(
@@ -749,7 +783,7 @@ def test_project_specific_section_material_api_adds_applies_and_removes_dependen
     assert material["id"] not in (final["lines"][0].get("installation_material_ids") or [])
     assert removed.json()["project"]["audit_events"][-1]["operation"] == "material_remove"
 
-    controlled = default_configuration()["material_rules"][0]
+    controlled = configured_default()["material_rules"][0]
     controlled_removed = client.request(
         "DELETE",
         f"/api/projects/{project_id}/frame-sections/sec_custom_material/materials/{controlled['id']}",
@@ -776,7 +810,7 @@ def test_duplicate_export_backup_import_and_job_data(client):
     export=client.get(f"/api/projects/{pid}/export",headers=h()); assert export.status_code == 200
     assert export.headers["content-type"].startswith("application/json")
     assert client.post(f"/api/projects/{pid}/backup",headers=h(),json={}).status_code == 200
-    data=client.get(f"/api/projects/{pid}/job-data",headers=h()).json();assert data["version"] == "1.4.0"
+    data=client.get(f"/api/projects/{pid}/job-data",headers=h()).json();assert data["version"] == "1.5.0"
     imported=client.post("/api/projects/import",headers=h(),json={"project_document":json.loads(export.text),"as_duplicate":True})
     assert imported.status_code == 200 and imported.json()["project"]["project"]["id"] != pid
 
@@ -835,7 +869,7 @@ def test_owner_search_returns_owner_organizations_with_fill_details(client):
     assert [row["id"] for row in results] == [owner["id"]]
     assert results[0]["legal_name"] == "North Star Property Holdings, LLC"
     assert results[0]["address"] == "100 Civic Plaza, Minneapolis, MN 55401"
-    assert results[0]["primary_phone"] == "612-555-0100"
+    assert results[0]["primary_phone"] == "(612) 555-0100"
 
 
 def test_structured_address_search_proxies_existing_provider_and_request_identity(client, monkeypatch):
@@ -892,14 +926,12 @@ def test_structured_address_search_proxies_existing_provider_and_request_identit
 def test_custom_cost_code_requires_hashed_local_secret_and_never_persists_password(client, tmp_path):
     import app.main as main
 
-    secret_path = tmp_path / "secrets" / "custom-code.json"
-    secret_path.parent.mkdir(parents=True)
     test_username = "custom-code-test-user"
     valid_password = "test-only credential with spaces"
-    secret_path.write_text(json.dumps({
+    main.store.save_application_credential("custom-code", {
         "username": test_username,
         "password_hash": hash_password(valid_password, iterations=MINIMUM_ITERATIONS, salt=b"api-contract-salt"),
-    }), encoding="utf-8")
+    })
     doc = create_project(client, "Custom Cost Code auth")
     project_id = doc["project"]["id"]
     invalid = client.post(
@@ -934,7 +966,7 @@ def test_custom_cost_code_requires_hashed_local_secret_and_never_persists_passwo
 
     response_text = created.text
     reopened_text = client.get(f"/api/projects/{project_id}", headers=h()).text
-    persisted_text = main.store.project_path(project_id).read_text(encoding="utf-8")
+    persisted_text = json.dumps(main.store.load_project(project_id)[0])
     for text in (response_text, reopened_text, persisted_text):
         assert valid_password not in text
         assert "wrong test credential" not in text
@@ -944,13 +976,11 @@ def test_custom_cost_code_requires_hashed_local_secret_and_never_persists_passwo
 def test_mileage_is_locked_except_for_scoped_administrator_session_override(client):
     import app.main as main
 
-    secret_path = main.custom_code_secret_path()
-    secret_path.parent.mkdir(parents=True, exist_ok=True)
     username, password = "override-test-admin", "session-only-test-password"
-    secret_path.write_text(json.dumps({
+    main.store.save_application_credential("custom-code", {
         "username": username,
         "password_hash": hash_password(password, iterations=MINIMUM_ITERATIONS, salt=b"override-api-salt"),
-    }), encoding="utf-8")
+    })
     doc = create_project(client, "Session override contract")
     project_id = doc["project"]["id"]
     doc["project"]["miles_from_rogers"] = "47.5"
@@ -1064,15 +1094,15 @@ def test_import_migrates_supported_legacy_project_document_to_current_schema(cli
 
     assert imported.status_code == 200
     migrated = imported.json()["project"]
-    assert migrated["schema_version"] == SCHEMA_VERSION == "1.4.0"
-    assert migrated["interchange_version"] == "1.4.0"
+    assert migrated["schema_version"] == SCHEMA_VERSION == "1.5.0"
+    assert migrated["interchange_version"] == "1.5.0"
     assert migrated["project"]["project_type"] == "Training / Sandbox"
     assert migrated["project"]["project_type_status"] == "legacy_unsupported"
     assert migrated["project"]["contract_type"] == "Legacy negotiated contract"
     assert migrated["project"]["contract_type_status"] == "legacy_unsupported"
     assert migrated["project"]["bid_due_date"] == "2026-09-01"
     assert migrated["project"]["bid_due_date_status"] == "legacy_date_only"
-    assert migrated["schema_migrations"][-1]["id"] == "project-1.3.0-to-1.4.0"
+    assert migrated["schema_migrations"][-1]["id"] == "project-1.4.0-to-1.5.0"
 
 
 def test_bid_source_edit_requires_confirmation_and_updates_only_canonical_record(client):

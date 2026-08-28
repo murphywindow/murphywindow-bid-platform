@@ -59,7 +59,11 @@
   }
 
   function parseDecimal(value, label) {
-    const cleaned = String(value ?? "").replace(/[,\s]/g, "");
+    let raw = String(value ?? "").trim().replace(/[“”″]/g, '"').replace(/[‘’′]/g, "'");
+    const parenthesized = /^\(.*\)$/.test(raw);
+    if (parenthesized) raw = `-${raw.slice(1, -1)}`;
+    raw = raw.replace(/^([+-]?)\$/, "$1").replace(/(?:\s*(?:"|'|in(?:ch(?:es)?)?\.?|ft\.?|feet|sf|sq\.?\s*ft\.?|sqft|lf|lin(?:ear)?\.?\s*ft\.?|ea(?:ch)?|pcs?|pieces?|%|percent))\s*$/i, "");
+    const cleaned = raw.replace(/[,\s]/g, "");
     if (!cleaned) return null;
     if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(cleaned) || !Number.isFinite(Number(cleaned))) {
       throw new Error(`Enter a valid ${label}.`);
@@ -164,6 +168,29 @@
   function clampedHorizontalScroll(current, delta, scrollWidth, clientWidth) {
     const maximum = Math.max(0, Number(scrollWidth || 0) - Number(clientWidth || 0));
     return Math.min(maximum, Math.max(0, Number(current || 0) + Number(delta || 0)));
+  }
+
+  function edgeAutoScrollDelta(pointer, start, end, edge = 48, maximum = 28) {
+    const position = Number(pointer), low = Number(start), high = Number(end), zone = Math.max(1, Number(edge) || 1), speed = Math.max(0, Number(maximum) || 0);
+    if (![position, low, high].every(Number.isFinite) || high <= low || !speed) return 0;
+    if (position < low + zone) return -Math.ceil(speed * Math.min(1, (low + zone - position) / zone));
+    if (position > high - zone) return Math.ceil(speed * Math.min(1, (position - (high - zone)) / zone));
+    return 0;
+  }
+
+  function virtualWindowStart({ scrollTop = 0, totalRows = 0, windowSize = 100, rowHeight = 28, overscan = 30, headerHeight = 0, step = 10 } = {}) {
+    const total = Math.max(0, Number(totalRows) || 0), size = Math.max(1, Number(windowSize) || 1);
+    const height = Math.max(1, Number(rowHeight) || 1), batch = Math.max(1, Number(step) || 1);
+    const firstVisible = Math.max(0, Math.floor((Number(scrollTop || 0) - Number(headerHeight || 0)) / height));
+    const desired = Math.floor(Math.max(0, firstVisible - Math.max(0, Number(overscan) || 0)) / batch) * batch;
+    return Math.max(0, Math.min(desired, Math.max(0, total - size)));
+  }
+
+  function virtualWindowSize({ totalRows = 0, columnCount = 1, cellBudget = 720, minRows = 28, maxRows = 72 } = {}) {
+    const total = Math.max(0, Number(totalRows) || 0), columns = Math.max(1, Number(columnCount) || 1);
+    const minimum = Math.max(1, Number(minRows) || 1), maximum = Math.max(minimum, Number(maxRows) || minimum);
+    const budgetRows = Math.max(minimum, Math.floor(Math.max(1, Number(cellBudget) || 1) / columns));
+    return Math.min(total, maximum, budgetRows);
   }
 
   const SORT_TOOLTIP = "Click to sort; click again to reverse; click a third time to restore original order. Shift-click to sort by multiple columns.";
@@ -387,18 +414,182 @@
       this.onChange = this.onChange.bind(this);
       this.onKeyDown = this.onKeyDown.bind(this);
       this.onPaste = this.onPaste.bind(this);
+      this.onCopy = this.onCopy.bind(this);
+      this.onPointerDown = this.onPointerDown.bind(this);
+      this.onPointerOver = this.onPointerOver.bind(this);
+      this.onPointerMove = this.onPointerMove.bind(this);
+      this.onPointerUp = this.onPointerUp.bind(this);
+      this.onSelectStart = this.onSelectStart.bind(this);
       this.onFocusIn = this.onFocusIn.bind(this);
       rootElement.addEventListener("input", this.onInput);
       rootElement.addEventListener("change", this.onChange);
       rootElement.addEventListener("keydown", this.onKeyDown);
       rootElement.addEventListener("paste", this.onPaste);
+      rootElement.addEventListener("copy", this.onCopy);
+      rootElement.addEventListener("pointerdown", this.onPointerDown);
+      rootElement.addEventListener("pointerover", this.onPointerOver);
+      this.pointerEventRoot = rootElement.ownerDocument || rootElement;
+      this.pointerEventRoot.addEventListener?.("pointermove", this.onPointerMove);
+      this.pointerEventRoot.addEventListener?.("pointerup", this.onPointerUp);
+      this.pointerEventRoot.addEventListener?.("pointercancel", this.onPointerUp);
+      rootElement.addEventListener("selectstart", this.onSelectStart);
       rootElement.addEventListener("focusin", this.onFocusIn);
     }
 
     cellFrom(event) { return event.target.closest?.("[data-table-cell]"); }
+    selectionCellFrom(event) {
+      const editable = this.cellFrom(event);
+      if (editable) return editable.closest?.("td[data-column-key]") || editable;
+      return event.target.closest?.("[data-edit-table] td[data-column-key]");
+    }
     tableFrom(cell) { return cell?.closest?.("[data-edit-table]"); }
     rowFrom(cell) { return cell?.closest?.("[data-table-row]"); }
     value(cell) { return cell.type === "checkbox" ? cell.checked : cell.value; }
+
+    cellPosition(cell) {
+      const table = this.tableFrom(cell), row = this.rowFrom(cell);
+      if (!table || !row) return null;
+      const rows = [...table.querySelectorAll("[data-table-row]")];
+      const tableCell = cell.matches?.("td[data-column-key]") ? cell : cell.closest?.("td[data-column-key]");
+      const localRow = rows.indexOf(row), wrap = table.closest?.("[data-edit-table]"), virtualStart = Number(wrap?.dataset?.virtualStart || 0), virtualized = wrap?.dataset?.virtualized === "true", rowIndex = virtualized && row.dataset.rowKind !== "draft" ? virtualStart + localRow : localRow;
+      const declaredColumn = Number(cell.dataset?.columnIndex), column = Number.isFinite(declaredColumn) ? declaredColumn : Number(tableCell?.cellIndex);
+      if (!tableCell || rowIndex < 0 || !Number.isFinite(column)) return null;
+      return { table, row: rowIndex, column, cell: tableCell };
+    }
+
+    clearSelection() {
+      for (const element of this.root.querySelectorAll?.(".table-cell-selected, .table-row-selected") || []) {
+        element.classList.remove("table-cell-selected", "table-row-selected");
+        element.removeAttribute?.("aria-selected");
+      }
+      this.selectedCells = [];
+    }
+
+    selectCell(cell, extend = false, wholeRow = false) {
+      const position = this.cellPosition(cell);
+      if (!position) return;
+      if (!extend || !this.selectionAnchor || this.selectionAnchor.table !== position.table) this.selectionAnchor = position;
+      this.selectionFocus = position;
+      this.clearSelection();
+      const rows = [...position.table.querySelectorAll("[data-table-row]")];
+      const rowStart = Math.min(this.selectionAnchor.row, position.row), rowEnd = Math.max(this.selectionAnchor.row, position.row);
+      const editableColumns = [...position.table.querySelectorAll("td[data-column-key]")].map(item => Number(item.cellIndex)).filter(Number.isFinite);
+      const columnStart = wholeRow ? Math.min(...editableColumns) : Math.min(this.selectionAnchor.column, position.column);
+      const columnEnd = wholeRow ? Math.max(...editableColumns) : Math.max(this.selectionAnchor.column, position.column);
+      this.selectedCells = [];
+      const wrap = position.table.closest?.("[data-edit-table]"), virtualStart = Number(wrap?.dataset?.virtualStart || 0), virtualized = wrap?.dataset?.virtualized === "true";
+      rows.forEach((row, localRowIndex) => {
+        const rowIndex = virtualized && row.dataset.rowKind !== "draft" ? virtualStart + localRowIndex : localRowIndex;
+        if (rowIndex < rowStart || rowIndex > rowEnd) return;
+        const selected = [...row.querySelectorAll("td[data-column-key]")].filter(item => item.cellIndex >= columnStart && item.cellIndex <= columnEnd);
+        for (const item of selected) {
+          item.classList.add("table-cell-selected");
+          item.setAttribute?.("aria-selected", "true");
+          this.selectedCells.push(item);
+        }
+        if (wholeRow && selected.length) row.classList.add("table-row-selected");
+      });
+    }
+
+    onPointerDown(event) {
+      const cell = this.selectionCellFrom(event);
+      if (!cell || event.button > 0) return;
+      this.pointerSelecting = true;
+      this.pointerStartCell = cell;
+      // Every data-cell drag belongs to the grid, including controls that are
+      // already focused. This prevents Mark/Qty text selection from blocking
+      // rectangular selection while preserving ordinary click-to-focus.
+      this.rangeSelecting = true;
+      this.suppressNativeSelection(true);
+      this.selectCell(cell, event.shiftKey);
+    }
+
+    onPointerOver(event) {
+      if (!this.pointerSelecting || !(event.buttons & 1)) return;
+      const cell = this.selectionCellFrom(event);
+      if (cell) {
+        if (cell !== this.pointerStartCell) {
+          this.rangeSelecting = true;
+          this.suppressNativeSelection(true);
+        }
+        this.selectCell(cell, true);
+      }
+    }
+
+    selectionCellAtPoint(table, clientX, clientY) {
+      const rows = [...(table?.querySelectorAll?.("[data-table-row]") || [])].filter(row => row.querySelector?.("td[data-column-key]"));
+      if (!rows.length) return null;
+      const distance = (value, start, end) => value < start ? start - value : value > end ? value - end : 0;
+      const row = rows.reduce((best, candidate) => {
+        const rect = candidate.getBoundingClientRect?.();
+        if (!rect) return best;
+        const score = distance(clientY, rect.top, rect.bottom);
+        return !best || score < best.score ? { candidate, score } : best;
+      }, null)?.candidate;
+      const cells = [...(row?.querySelectorAll?.("td[data-column-key]") || [])];
+      return cells.reduce((best, candidate) => {
+        const rect = candidate.getBoundingClientRect?.();
+        if (!rect) return best;
+        const score = distance(clientX, rect.left, rect.right);
+        return !best || score < best.score ? { candidate, score } : best;
+      }, null)?.candidate || null;
+    }
+
+    onPointerMove(event) {
+      if (!this.pointerSelecting) return;
+      if (!(event.buttons & 1)) { this.onPointerUp(); return; }
+      this.pointerClientX = Number(event.clientX);
+      this.pointerClientY = Number(event.clientY);
+      const table = this.selectionFocus?.table || this.tableFrom(this.pointerStartCell);
+      const cell = this.selectionCellAtPoint(table, this.pointerClientX, this.pointerClientY) || this.selectionCellFrom(event);
+      if (cell) {
+        if (cell !== this.pointerStartCell) { this.rangeSelecting = true; this.suppressNativeSelection(true); }
+        this.selectCell(cell, true);
+      }
+      this.scheduleSelectionAutoScroll();
+    }
+
+    scheduleSelectionAutoScroll() {
+      if (this.selectionAutoScrollFrame || !this.pointerSelecting) return;
+      const view = this.root?.ownerDocument?.defaultView || (typeof window !== "undefined" ? window : null);
+      const tick = () => {
+        this.selectionAutoScrollFrame = null;
+        if (!this.pointerSelecting) return;
+        const table = this.selectionFocus?.table || this.tableFrom(this.pointerStartCell), wrap = table?.closest?.(".table-wrap,[data-edit-table]");
+        const rect = wrap?.getBoundingClientRect?.();
+        if (!table || !wrap || !rect) return;
+        let dx = Number(wrap.scrollWidth || 0) > Number(wrap.clientWidth || 0) + 1 ? edgeAutoScrollDelta(this.pointerClientX, rect.left, rect.right) : 0;
+        let dy = Number(wrap.scrollHeight || 0) > Number(wrap.clientHeight || 0) + 1 ? edgeAutoScrollDelta(this.pointerClientY, rect.top, rect.bottom) : 0;
+        if (dx < 0 && !wrap.scrollLeft || dx > 0 && wrap.scrollLeft >= wrap.scrollWidth - wrap.clientWidth - 1) dx = 0;
+        if (dy < 0 && !wrap.scrollTop || dy > 0 && wrap.scrollTop >= wrap.scrollHeight - wrap.clientHeight - 1) dy = 0;
+        if (dx) wrap.scrollLeft += dx;
+        if (dy) wrap.scrollTop += dy;
+        const cell = this.selectionCellAtPoint(table, this.pointerClientX, this.pointerClientY);
+        if (cell) this.selectCell(cell, true);
+        if ((dx || dy) && this.pointerSelecting) this.selectionAutoScrollFrame = view?.requestAnimationFrame ? view.requestAnimationFrame(tick) : setTimeout(tick, 16);
+      };
+      this.selectionAutoScrollFrame = view?.requestAnimationFrame ? view.requestAnimationFrame(tick) : setTimeout(tick, 16);
+    }
+
+    suppressNativeSelection(active) {
+      const document = this.root?.ownerDocument || (typeof globalThis.document !== "undefined" ? globalThis.document : null);
+      document?.documentElement?.classList?.toggle("table-range-selecting", Boolean(active));
+      if (active) document?.defaultView?.getSelection?.()?.removeAllRanges?.();
+    }
+
+    onSelectStart(event) {
+      if (this.rangeSelecting && event.target.closest?.("[data-edit-table]")) event.preventDefault();
+    }
+
+    onPointerUp() {
+      this.pointerSelecting = false;
+      this.pointerStartCell = null;
+      this.rangeSelecting = false;
+      this.suppressNativeSelection(false);
+      const view = this.root?.ownerDocument?.defaultView || (typeof window !== "undefined" ? window : null);
+      if (this.selectionAutoScrollFrame) view?.cancelAnimationFrame?.(this.selectionAutoScrollFrame);
+      this.selectionAutoScrollFrame = null;
+    }
 
     applyValidation(cell, result) {
       const table = this.tableFrom(cell), row = this.rowFrom(cell);
@@ -528,7 +719,11 @@
       else setTimeout(align, 0);
     }
 
-    onFocusIn(event) { this.scheduleFocusVisibility(event.target); }
+    onFocusIn(event) {
+      const cell = this.cellFrom(event);
+      if (cell && !this.pointerSelecting && !this.keyboardExtending) this.selectCell(cell);
+      this.scheduleFocusVisibility(event.target);
+    }
 
     focusPosition(table, position) {
       if (!position) return;
@@ -536,12 +731,19 @@
       const target = rows[position.rowIndex]?.querySelector(`[data-table-cell][data-column-index="${position.columnIndex}"]`);
       target?.focus?.({ preventScroll: true });
       target?.select?.();
+      if (target && table.closest?.('[data-virtualized="true"]')) target.scrollIntoView?.({ block: "nearest", inline: "nearest" });
       this.scheduleFocusVisibility(target);
     }
 
     onKeyDown(event) {
       const cell = this.cellFrom(event);
-      if (!cell || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+      if (!cell || event.defaultPrevented || event.altKey || event.metaKey) return;
+      if (event.key === " " && event.shiftKey) {
+        event.preventDefault();
+        this.selectCell(cell, false, true);
+        return;
+      }
+      if (event.ctrlKey) return;
       if (event.key === "Enter" && (cell.tagName === "TEXTAREA" || event.shiftKey)) return;
       const arrow = arrowNavigationIntent(cell, event.key);
       if (event.key !== "Tab" && event.key !== "Enter" && !arrow) return;
@@ -566,7 +768,7 @@
       const cell = this.cellFrom(event);
       if (!cell) return;
       const text = event.clipboardData?.getData("text/plain");
-      if (text === undefined || (!text.includes("\t") && !/[\r\n]/.test(text))) return;
+      if (text === undefined) return;
       event.preventDefault();
       const table = this.tableFrom(cell), row = this.rowFrom(cell);
       const definition = this.options.definition?.(table.dataset.editTable);
@@ -585,6 +787,36 @@
         const target = table.querySelector(`[data-table-row][data-row-id="${CSS.escape(error.rowId)}"] [data-table-cell][data-field="${CSS.escape(error.field)}"]`);
         if (target) this.applyValidation(target, { ok: false, message: error.message });
       });
+    }
+
+    onCopy(event) {
+      if (!event.clipboardData) return;
+      const anchor = this.selectionAnchor, focus = this.selectionFocus;
+      if (anchor && focus && anchor.table === focus.table) {
+        const rowStart = Math.min(anchor.row, focus.row), rowEnd = Math.max(anchor.row, focus.row), columnStart = Math.min(anchor.column, focus.column), columnEnd = Math.max(anchor.column, focus.column);
+        if (rowEnd > rowStart || columnEnd > columnStart) {
+          const matrix = this.options.copyRange?.({ table: anchor.table, tableId: anchor.table.dataset?.editTable, rowStart, rowEnd, columnStart, columnEnd });
+          if (Array.isArray(matrix) && matrix.length) {
+            const text = matrix.map(row => row.map(value => value ?? "").join("\t")).join("\n");
+            event.preventDefault();
+            event.clipboardData.setData("text/plain", text);
+            return;
+          }
+        }
+      }
+      if (!this.selectedCells || this.selectedCells.length < 2) return;
+      const rows = new Map();
+      for (const cell of this.selectedCells) {
+        const position = this.cellPosition(cell);
+        if (!position) continue;
+        const control = cell.matches?.("[data-table-cell]") ? cell : cell.querySelector?.("[data-table-cell], output, input, select, textarea");
+        if (!rows.has(position.row)) rows.set(position.row, []);
+        rows.get(position.row).push([position.column, control?.type === "checkbox" ? (control.checked ? "TRUE" : "FALSE") : control?.value ?? control?.textContent?.trim?.() ?? cell.textContent?.trim?.() ?? ""]);
+      }
+      const text = [...rows.entries()].sort((a, b) => a[0] - b[0]).map(([, values]) => values.sort((a, b) => a[0] - b[0]).map(item => item[1]).join("\t")).join("\n");
+      if (!text) return;
+      event.preventDefault();
+      event.clipboardData.setData("text/plain", text);
     }
   }
 
@@ -1169,6 +1401,9 @@
     arrowNavigationIntent,
     horizontalVisibilityDelta,
     clampedHorizontalScroll,
+    edgeAutoScrollDelta,
+    virtualWindowStart,
+    virtualWindowSize,
     SORT_TOOLTIP,
     cycleSort,
     naturalCompare,

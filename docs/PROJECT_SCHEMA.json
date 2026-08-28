@@ -1,13 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://murphywindow.local/schemas/project-1.3.0.json",
+  "$id": "https://murphywindow.local/schemas/project-1.5.0.json",
   "title": "Murphy Window Bid Project",
   "description": "Versioned normalized local project document controlled by INF-4320.",
   "type": "object",
   "required": ["schema_version", "interchange_version", "project", "contacts", "cost_codes", "quotes", "takeoff_sections", "labor_estimates", "estimate_revisions", "audit_events"],
   "properties": {
-    "schema_version": {"const": "1.3.0"},
-    "interchange_version": {"const": "1.3.0"},
+    "schema_version": {"const": "1.5.0"},
+    "interchange_version": {"const": "1.5.0"},
     "project": {"$ref": "#/$defs/project"},
     "contacts": {"type": "array", "items": {"$ref": "#/$defs/entity"}},
     "cost_codes": {"type": "array", "items": {"$ref": "#/$defs/entity"}},
@@ -52,7 +52,7 @@
       "type": "object",
       "required": ["id", "revision", "name", "configuration_id", "bid_version", "lifecycle_state", "created_at", "updated_at"],
       "properties": {
-        "id": {"type": "string", "pattern": "^prj_[a-f0-9]+$"}, "revision": {"type": "integer", "minimum": 0}, "name": {"type": "string"},
+        "id": {"type": "string", "format": "uuid", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"}, "revision": {"type": "integer", "minimum": 0}, "name": {"type": "string"},
         "configuration_id": {"type": "string"},
         "project_type": {
           "type": "string",
@@ -70,6 +70,13 @@
           "type": ["string", "null"],
           "description": "Local wall-clock date and time. It is not shifted to UTC."
         },
+        "walkthrough": {"type": ["string", "null"], "description": "Local wall-clock walkthrough date and time."},
+        "completion_date": {"type": ["string", "null"], "description": "Substantial completion date."},
+        "final_completion_date": {"type": ["string", "null"], "description": "Final completion date."},
+        "architect_address": {"type": "string"},
+        "engineer_address": {"type": "string"},
+        "general_contractor_address": {"type": "string"},
+        "construction_manager_address": {"type": "string"},
         "address_street": {"type": "string"},
         "address_city": {"type": "string"},
         "address_state": {"type": "string"},
@@ -81,9 +88,9 @@
         "created_at": {"type": "string", "format": "date-time"}, "updated_at": {"type": "string", "format": "date-time"}
       }, "additionalProperties": true
     },
-    "section_material": {"allOf": [{"$ref": "#/$defs/entity"}, {"type": "object", "required": ["name", "source", "factor", "unit", "cost_code"], "properties": {"name": {"type": "string", "minLength": 1}, "source": {"enum": ["square_feet", "perimeter_lf", "head_sill_qty", "caulking_lf", "quantity", "tie_back_qty", "backpan_lf", "manual_quantity"]}, "manual_quantity": {"type": ["number", "string", "null"]}, "factor": {"type": ["number", "string"]}, "operator": {"enum": ["multiply", "divide", "add", "subtract"]}, "operand": {"type": ["number", "string"]}, "unit": {"type": "string"}, "controlled_rate_id": {"type": ["string", "null"]}, "cost_code": {"type": "string", "description": "Actual Cost Code classification from the full controlled reference. The containing takeoff section code remains the Grouping / Spec Code."}, "project_specific": {"type": "boolean"}, "notes": {"type": "string"}}, "additionalProperties": true}]},
+    "section_material": {"allOf": [{"$ref": "#/$defs/entity"}, {"type": "object", "required": ["name", "source", "factor", "unit", "cost_code"], "properties": {"name": {"type": "string", "minLength": 1}, "source": {"enum": ["square_feet", "perimeter_lf", "head_sill_qty", "caulking_lf", "quantity", "tie_back_qty", "backpan_lf", "manual_quantity", "custom"]}, "manual_quantity": {"type": ["number", "string", "null"]}, "factor": {"type": ["number", "string"]}, "operator": {"enum": ["multiply", "divide", "add", "subtract"]}, "operand": {"type": ["number", "string"]}, "unit": {"type": "string"}, "controlled_rate_id": {"type": ["string", "null"]}, "cost_code": {"type": "string", "description": "Actual Cost Code classification from the full controlled reference. The containing takeoff section code remains the Grouping / Spec Code."}, "project_specific": {"type": "boolean"}, "notes": {"type": "string"}}, "additionalProperties": true}]},
     "component_markup_override": {"type": "object", "properties": {"mode": {"enum": ["percentage", "amount"]}, "value": {"type": ["number", "string"]}, "rate": {"type": ["number", "string"], "description": "Accepted legacy percentage authority; migration normalizes this to mode/value."}, "reason": {"type": "string"}, "actor": {"type": "string"}, "set_at": {"type": "string"}}, "anyOf": [{"required": ["mode", "value"]}, {"required": ["rate"]}], "additionalProperties": true},
-    "takeoff_section": {"allOf": [{"$ref": "#/$defs/entity"}, {"type": "object", "required": ["definition_id", "lines"], "properties": {"definition_id": {"type": "string"}, "lines": {"type": "array", "items": {"$ref": "#/$defs/entity"}}, "additional_materials": {"type": "array", "items": {"$ref": "#/$defs/section_material"}}, "excluded_material_rule_ids": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}, "material_overrides": {"type": "object"}}}]},
+    "takeoff_section": {"allOf": [{"$ref": "#/$defs/entity"}, {"type": "object", "required": ["definition_id", "lines"], "properties": {"definition_id": {"type": "string"}, "tab_order": {"type": "integer", "minimum": 0}, "lines": {"type": "array", "items": {"$ref": "#/$defs/entity"}}, "additional_materials": {"type": "array", "items": {"$ref": "#/$defs/section_material"}}, "excluded_material_rule_ids": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}, "material_overrides": {"type": "object"}}}]},
     "estimate_revision": {"allOf": [{"$ref": "#/$defs/entity"}, {"type": "object", "required": ["revision_number", "bid_version", "configuration_id", "status", "estimate", "immutable"], "properties": {"revision_number": {"type": "integer", "minimum": 1}, "bid_version": {"type": "object"}, "configuration_id": {"type": "string"}, "status": {"type": "string"}, "estimate": {"type": "object"}, "immutable": {"type": "boolean"}}}]},
     "proposal_metadata": {"allOf": [{"$ref": "#/$defs/entity"}, {"type": "object", "required": ["sequence", "number", "name", "generated_at", "generated_by", "fingerprint", "artifact_id", "status", "summary", "snapshot_schema_version"], "properties": {"sequence": {"type": "integer", "minimum": 1}, "number": {"type": "string", "pattern": "^P[1-9][0-9]*$"}, "name": {"type": "string", "minLength": 1}, "parent_proposal_id": {"type": ["string", "null"]}, "ancestor_ids": {"type": "array", "items": {"type": "string"}}, "fingerprint": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "artifact_id": {"type": "string"}, "status": {"enum": ["generated", "voided", "superseded"]}, "void": {"type": ["object", "null"]}, "summary": {"type": "object"}, "snapshot_schema_version": {"const": "1.0.0"}}}]},
     "working_branch": {"type": "object", "required": ["id", "source_proposal_id", "source_proposal_number", "source_proposal_name", "inherited_configuration_id", "configuration_refresh_status"], "properties": {"id": {"type": "string"}, "source_proposal_id": {"type": "string"}, "source_proposal_number": {"type": "string"}, "source_proposal_name": {"type": "string"}, "inherited_configuration_id": {"type": "string"}, "configuration_refresh_status": {"const": "not_refreshed"}}, "additionalProperties": true},

@@ -14,7 +14,7 @@ from threading import Lock
 from typing import Any
 
 from fastapi import Body, FastAPI, Header, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import LETTER
@@ -28,7 +28,7 @@ from .api_models import (
     MasterRecordCommand, RemoveCostCodeCommand, RemoveSectionMaterialCommand,
 )
 from .alternates import add_record as add_alternate_record, alternate_label, new_alternate, remove_record as remove_alternate_record, reset_override as reset_alternate_override, set_override as set_alternate_override
-from .calculations import dollars_in_words, normalize_code, split_variant
+from .calculations import dollars_in_words, normalize_code, split_variant, validate_frame_square_footage_method
 from .custom_code_auth import verify_custom_code_credentials
 from .master_data import (
     MasterDataRepository, build_search_index, search_master_data, seed_master_data,
@@ -36,6 +36,7 @@ from .master_data import (
 )
 from .migrations import MigrationError, migrate_project_document
 from .persistence import ConflictError, JsonStore, PersistenceError
+from .project_ids import SEED_TEST_PROJECT_ID
 from .generator import generate_test_project
 from .historical import HistoricalMetricIndex
 from .mileage import MileageError, calculate_driving_mileage, search_addresses
@@ -68,10 +69,6 @@ _override_lock = Lock()
 _OVERRIDE_TTL_SECONDS = 8 * 60 * 60
 
 
-def custom_code_secret_path() -> Path:
-    return store.root / "secrets" / "custom-code.json"
-
-
 def _valid_override_token(token: str | None, *, actor: str, project_id: str, page: str) -> bool:
     if not token:
         return False
@@ -87,11 +84,11 @@ def _valid_override_token(token: str | None, *, actor: str, project_id: str, pag
 
 
 def ensure_seed() -> None:
-    path = store.configurations / f"{CONFIG_VERSION}.json"
-    if not path.exists():
-        store.save_configuration(default_configuration())
-    test_id = "prj_00000000000000000000000000004320"
-    if not store.project_path(test_id).exists():
+    if not store.configuration_exists(CONFIG_VERSION):
+        reference = store.ensure_packaged_cost_code_reference()
+        store.save_configuration(default_configuration(reference))
+    test_id = SEED_TEST_PROJECT_ID
+    if not store.project_exists(test_id):
         doc = test_project()
         calculate_project(doc, store.load_configuration(CONFIG_VERSION))
         store.save_project(doc, -1)
@@ -139,8 +136,8 @@ def _reusable_projection(document: dict | None) -> dict:
             key: project.get(key)
             for key in (
                 "estimator", "plan_source", "owner_name", "owner_legal_name", "owner_address",
-                "owner_website", "owner_phone", "owner_email", "architect", "engineer",
-                "general_contractor", "construction_manager",
+                "owner_website", "owner_phone", "owner_email", "architect", "architect_address", "engineer", "engineer_address",
+                "general_contractor", "general_contractor_address", "construction_manager", "construction_manager_address",
             )
         },
         "contacts": document.get("contacts", []),
@@ -294,13 +291,7 @@ def rate_override_audit_context(document: dict, config: dict, path: str) -> dict
 
 
 def ensure_master_history() -> None:
-    documents = []
-    for path in sorted(store.projects.glob("*.json")):
-        try:
-            document, _ = store.load_project(path.stem)
-            documents.append(document)
-        except PersistenceError:
-            continue
+    documents = [document for _, document in store.iter_project_documents()]
     if documents:
         master_repository().seed_projects(documents)
 
@@ -421,6 +412,7 @@ def _configuration_candidate(source: dict, supplied: Any) -> dict:
     candidate = deepcopy(supplied if isinstance(supplied, dict) else source)
     settings = candidate.setdefault("application_settings", {})
     settings["decimal_precision"] = validate_decimal_precision(settings.get("decimal_precision"))
+    settings["frame_square_footage_method"] = validate_frame_square_footage_method(settings.get("frame_square_footage_method"))
     if "csi_references" not in candidate:
         candidate["csi_references"] = deepcopy(source.get("csi_references", []))
         candidate["cost_code_reference"] = deepcopy(source.get("cost_code_reference"))
@@ -541,7 +533,7 @@ def save_master_record(kind: str, command: MasterRecordCommand,
                 record["roles"] = list(dict.fromkeys([*record.get("roles", []), record["role"]]))
             target = next((item for item in directory.get("person_organization_contacts", []) if item.get("id") == record.get("id")), None)
             if target is not None:
-                for field in ("name", "organization_id", "aliases", "roles", "position", "email", "office_phone", "mobile_phone", "notes"):
+                for field in ("name", "organization_id", "aliases", "roles", "address", "position", "email", "office_phone", "mobile_phone", "notes"):
                     if field in record:
                         target[field] = deepcopy(record[field])
             saved_record = upsert_person_organization_contact(directory, record)
@@ -589,7 +581,7 @@ def create_project(payload: dict = Body(...), actor_role: tuple[str, str] = __im
     actor, role = actor_role
     try:
         require(role, "edit_estimate")
-        doc = new_project(payload.get("name", "Untitled Project"), actor, role)
+        doc = new_project(payload.get("name", "Untitled Project"), actor, role, project_id=store.allocate_project_id())
         config = store.load_configuration(CONFIG_VERSION)
         calculate_project(doc, config)
         saved = store.save_project(doc, -1)
@@ -607,7 +599,7 @@ def generate_project_for_testing(payload: dict = Body(default={}), actor_role: t
     try:
         require(role, "edit_estimate")
         config = store.load_configuration(CONFIG_VERSION)
-        doc = generate_test_project(config, actor, role, payload.get("seed"))
+        doc = generate_test_project(config, actor, role, payload.get("seed"), project_id=store.allocate_project_id())
         calculate_project(doc, config)
         saved = store.save_project(doc, -1)
         index_reusable_history(saved)
@@ -835,11 +827,11 @@ def create_session_override(payload: dict = Body(...), actor_role: tuple[str, st
     try:
         require(role, "configuration")
         project_id, page = str(payload.get("project_id") or ""), str(payload.get("page") or "")
-        if page != "project" or not store.project_path(project_id).exists():
+        if page != "project" or not store.project_exists(project_id):
             raise DomainError("This page does not support a session override.", "invalid_override_scope")
         if not verify_custom_code_credentials(
             str(payload.get("username") or ""), str(payload.get("password") or ""),
-            secret_file=custom_code_secret_path(),
+            stored_credentials=store.load_application_credential("custom-code"),
         ):
             raise DomainError("The Administrator override credential was not accepted.", "invalid_override_credentials")
         token = secrets.token_urlsafe(32)
@@ -947,7 +939,7 @@ def create_custom_cost_code(project_id: str, command: CustomCostCodeCommand,
         if not verify_custom_code_credentials(
             command.username,
             command.password.get_secret_value(),
-            secret_file=custom_code_secret_path(),
+            stored_credentials=store.load_application_credential("custom-code"),
         ):
             raise DomainError(
                 "The dedicated Add Custom Code credential was not accepted.",
@@ -1096,7 +1088,7 @@ def duplicate(project_id: str, payload: dict = Body(...), actor_role: tuple[str,
     try:
         require(role, "edit_estimate")
         source, config = load(project_id)
-        doc = duplicate_project(source, payload.get("name") or f"{source['project']['name']} Copy", actor, role)
+        doc = duplicate_project(source, payload.get("name") or f"{source['project']['name']} Copy", actor, role, project_id=store.allocate_project_id())
         calculate_project(doc, config)
         saved = store.save_project(doc, -1)
         index_reusable_history(saved)
@@ -1136,7 +1128,7 @@ def import_project(payload: dict = Body(...), actor_role: tuple[str, str] = __im
             raise DomainError(str(exc), "unsupported_schema_version") from exc
         doc = strip_ui_working_rows(doc)
         if payload.get("as_duplicate", True):
-            doc = duplicate_project(doc, payload.get("name") or f"{doc['project'].get('name', 'Imported')} Import", actor, role)
+            doc = duplicate_project(doc, payload.get("name") or f"{doc['project'].get('name', 'Imported')} Import", actor, role, project_id=store.allocate_project_id())
         config = store.load_configuration(doc["project"].get("configuration_id", CONFIG_VERSION))
         calculate_project(doc, config)
         audit(doc, actor, role, "project", doc["project"]["id"], "import", None, {"source": payload.get("source", "JSON upload")}, "Project JSON import")
@@ -1175,13 +1167,13 @@ def export_job_data(project_id: str, actor_role: tuple[str, str] = __import__("f
 def backup(project_id: str, actor_role: tuple[str, str] = __import__("fastapi").Depends(identity)) -> dict:
     actor, role = actor_role
     try:
-        path = store.manual_backup(project_id)
+        backup_name = store.manual_backup(project_id)
         doc, _ = load(project_id)
         expected = doc["project"]["revision"]
         bump_bid_version(doc, "manual_backup")
-        audit(doc, actor, role, "project", project_id, "backup", None, {"backup": path.name}, "Manual backup")
+        audit(doc, actor, role, "project", project_id, "backup", None, {"backup": backup_name}, "Manual backup")
         store.save_project(doc, expected)
-        return {"backup": path.name}
+        return {"backup": backup_name}
     except Exception as exc:
         fail(exc)
 
@@ -1835,9 +1827,8 @@ def proposal_pdf(project_id: str, artifact_id: str, download: bool = False, acto
         artifact = next((a for a in doc["proposal_artifacts"] if a["id"] == artifact_id), None)
         if not artifact:
             raise DomainError("Proposal artifact not found.")
-        committed_path = store.proposal_artifact_path(project_id, artifact_id)
-        if committed_path.exists():
-            content = committed_path.read_bytes()
+        if store.proposal_artifact_exists(project_id, artifact_id):
+            content = store.load_proposal_artifact(project_id, artifact_id)
             if artifact.get("sha256") and hashlib.sha256(content).hexdigest() != artifact["sha256"]:
                 raise PersistenceError("Stored proposal artifact failed its immutable SHA-256 verification.")
             disposition = "attachment" if download else "inline"
@@ -1991,6 +1982,13 @@ def create_configuration(payload: dict = Body(...), actor_role: tuple[str, str] 
 
 
 app.mount("/assets", StaticFiles(directory=STATIC_DIR), name="assets")
+
+
+@app.get("/projects/{project_id}/project", include_in_schema=False)
+def legacy_project_information_route(project_id: str, request: Request) -> RedirectResponse:
+    """Keep old bookmarks working while making /info the canonical module URL."""
+    query = f"?{request.url.query}" if request.url.query else ""
+    return RedirectResponse(f"/projects/{project_id}/info{query}", status_code=307)
 
 
 @app.get("/{path:path}", include_in_schema=False)

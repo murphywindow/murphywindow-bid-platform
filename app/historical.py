@@ -16,6 +16,7 @@ from typing import Any, Iterable
 
 from .calculations import normalize_code, split_variant
 from .persistence import ConflictError, JsonStore, PersistenceError
+from .project_ids import SEED_TEST_PROJECT_ID
 
 
 INDEX_SCHEMA = "murphywindow.historical-metric-index"
@@ -30,7 +31,7 @@ METRIC_DEFINITION = {
     "denominator": "Matching Frame Takeoff plus Borrowed Lite square footage, counted once",
     "direction": "lower_is_more_aggressive",
 }
-KNOWN_SEED_TEST_PROJECT_ID = "prj_00000000000000000000000000004320"
+KNOWN_SEED_TEST_PROJECT_ID = SEED_TEST_PROJECT_ID
 
 
 def _now() -> str:
@@ -704,26 +705,21 @@ class HistoricalMetricIndex:
                 expected_revision = 0
         documents: list[dict[str, Any]] = []
         malformed: list[tuple[str, str]] = []
-        sources = [
-            *(('project', path) for path in sorted(self.store.projects.glob("*.json"))),
-            *(('historical_reference', path) for path in sorted(self.store.historical_reference.glob("*.json"))),
-        ]
+        sources = self.store.iter_project_documents(include_historical_reference=True)
         seen_project_ids: set[str] = set()
-        for source_kind, path in sources:
+        for source_kind, source_document in sources:
+            project_id = str(source_document.get("project", {}).get("id") or "unknown")
             try:
-                if source_kind == "historical_reference":
-                    document = self.store._migrate_project(self.store._read(path))
-                else:
-                    document, _ = self.store.load_project(path.stem)
+                document = source_document
                 project = document.get("project") if isinstance(document, dict) else None
-                if not isinstance(project, dict) or project.get("id") != path.stem:
-                    raise PersistenceError("Project identifier does not match its file name.")
-                if path.stem in seen_project_ids:
+                if not isinstance(project, dict) or project.get("id") != project_id:
+                    raise PersistenceError("Project identifier does not match its SQL identity.")
+                if project_id in seen_project_ids:
                     raise PersistenceError("Project identifier is duplicated across live and historical-reference evidence.")
-                seen_project_ids.add(path.stem)
+                seen_project_ids.add(project_id)
                 documents.append(document)
             except (PersistenceError, AttributeError, KeyError, TypeError, ValueError) as exc:
-                malformed.append((path.stem, str(exc)))
+                malformed.append((project_id, str(exc)))
 
         known = {KNOWN_SEED_TEST_PROJECT_ID}
         changed = True

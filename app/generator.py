@@ -127,14 +127,14 @@ def _frame_line(rng: random.Random, section_index: int, line_index: int, frame_t
     }
 
 
-def generate_test_project(config: dict, actor: str, role: str, seed: int | str | None = None) -> dict:
+def generate_test_project(config: dict, actor: str, role: str, seed: int | str | None = None, *, project_id: str | None = None) -> dict:
     """Return a rich draft generated from curated pools, suitable only for testing."""
     seed_value = _seed_value(seed)
     rng = random.Random(seed_value)
     profile = rng.choice(PROJECT_PROFILES)
     city, state, zip_code, miles, county = rng.choice(LOCATIONS)
     project_name = f"{rng.choice(profile['names'])} — TEST {seed_value % 10000:04d}"
-    doc = new_project(project_name, actor, role, config.get("id", CONFIG_VERSION))
+    doc = new_project(project_name, actor, role, config.get("id", CONFIG_VERSION), project_id=project_id)
     project_number = f"TEST-{seed_value % 100000:05d}"
     bid_due = date(2026, 9, 1) + timedelta(days=rng.randint(0, 150))
     start = bid_due + timedelta(days=rng.randint(45, 120))
@@ -162,13 +162,13 @@ def generate_test_project(config: dict, actor: str, role: str, seed: int | str |
         "architect": architect, "engineer": engineer, "general_contractor": gc,
         "construction_manager": gc if "manager" in profile["contract_type"].lower() else "",
         "plan_source": "Synthetic issued-for-bid drawing set", "addenda_count": rng.randint(0, 4),
-        "walkthrough": "Synthetic pre-bid walkthrough completed", "frame_sealant_colors": rng.choice(["Black", "Bronze", "Aluminum gray"]),
+        "walkthrough": f"{(bid_due - timedelta(days=7)).isoformat()}T10:00", "frame_sealant_colors": rng.choice(["Black", "Bronze", "Aluminum gray"]),
         "additional_information": "Synthetic testing project generated from curated estimating profiles. Validate all values before any real-world use.",
         "notes": "TRAINING / TEST DATA ONLY. Not a customer quotation and not suitable for commercial reliance.",
         "proposal_scope": profile["scope"],
         "proposal_inclusions": "Standard manufacturer warranties; shop drawings; normal delivery; installation materials; final perimeter sealants; one mobilization per phase.",
         "proposal_exclusions": "Testing artifact only. Excludes permits, engineering delegated by others, temporary heat, hazardous-material remediation, after-hours premiums, and unresolved travel policy.",
-        "bid_due_date": f"{bid_due.isoformat()}T14:00", "start_date": start.isoformat(), "completion_date": finish.isoformat(),
+        "bid_due_date": f"{bid_due.isoformat()}T14:00", "start_date": start.isoformat(), "completion_date": finish.isoformat(), "final_completion_date": (finish + timedelta(days=30)).isoformat(),
         "fabrication_due_date": (start - timedelta(days=35)).isoformat(), "fabrication_start_date": (start - timedelta(days=70)).isoformat(),
         "prevailing_wage_required": use_prevailing,
         "wage_type": "PW" if use_prevailing else "Non-PW",

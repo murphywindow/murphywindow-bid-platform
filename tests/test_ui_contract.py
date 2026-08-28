@@ -135,6 +135,36 @@ def test_workspace_pages_have_project_urls_and_browser_history_support():
     assert 'window.addEventListener("popstate"' in source
     assert "history.pushState" in source and "history.replaceState" in source
     assert 'href="${state.doc?projectPageUrl' in source
+    assert 'PAGE_SLUGS=Object.freeze({project:"info"})' in source
+    assert 'match[2]==="info"||match[2]==="project"?"project"' in source
+    for contract in (
+        "function updateRouteSearch", "function setScenarioTabRoute", "function applyScenarioRoute",
+        "function rememberRouteTrigger", "function restoreRoutedOverlay", "function setPopupRoute",
+        "function clearPopupRoute", 'params.get("tab")', 'params.get("section")',
+        'params.get("popup")', 'params.get("parentPopup")', 'params.get("parentTrigger")', 'params.get("drawer")',
+    ):
+        assert contract in source
+    assert 'setScenarioTabRoute(tab.dataset.scenarioTabKind,tab.dataset.scenarioTabId)' in source
+    assert 'document.addEventListener("click",event=>rememberRouteTrigger(event.target,"click"),true)' in source
+    assert 'document.addEventListener("change",event=>rememberRouteTrigger(event.target,"change"),true)' in source
+    assert 'if(routeTrigger)setPopupRoute(title,routeTrigger)' in source
+    assert 'if(route.popup===popupSlug||route.parentPopup===popupSlug)clearPopupRoute({all:true})' in source
+    assert 'if(!refresh&&currentRoute().drawer!==String(code))updateRouteSearch' in source
+    assert "applyScenarioRoute(route);render();buildNav();restoreRoutedOverlay(route)" in source
+
+
+def test_application_chrome_is_fixed_and_workspace_owns_vertical_scrolling():
+    css = Path("app/static/styles.css").read_text(encoding="utf-8")
+    source = Path("app/static/app.js").read_text(encoding="utf-8")
+    contract = css[css.index("/* Fixed application chrome") :]
+    assert "height: 100dvh" in contract
+    assert "body {" in contract and "overflow: hidden" in contract
+    assert "height: calc(100dvh - var(--topbar-height))" in contract
+    assert "main {" in contract and "overflow-y: auto" in contract
+    assert ".sidebar {" in contract and "height: 100%" in contract
+    assert ".actionbar {" in contract and "position: static" in contract
+    assert 'workspaceScroll=document.querySelector("main")' in source
+    assert 'document.querySelector("main")?.scrollTo' in source
 
 
 def test_frontend_assets_use_a_cache_busting_version():
@@ -242,8 +272,10 @@ def test_installation_material_formula_builder_supports_base_alternates_and_reve
         'class="material-formula-result"', "data-material-rate-input", 'class="material-totals-rail"',
     ):
         assert contract in runtime
-    assert 'control.dataset.numericCategory="multiplier"' in runtime
-    assert 'control.value=formatNumeric(value,"multiplier")' in runtime
+    assert 'control.matches("[data-material-custom-quantity]")?"quantity":"multiplier"' in runtime
+    assert '["custom","Custom"]' in runtime
+    assert "custom_quantity_override" in runtime
+    assert "control.value=formatNumeric(value,category)" in runtime
     assert 'number(operand,"multiplier")' in runtime
     assert "source_override" in services and "operator_override" in services and "operand_override" in services
     assert '"calculated_quantity"' in services and '"invalid_installation_material_formula"' in services
@@ -254,16 +286,79 @@ def test_installation_material_formula_builder_supports_base_alternates_and_reve
     assert 'data-alt-material-total="${esc(section.id)}"' in runtime
     assert "function materialFormulaControlValue" in runtime
     assert "function commitMaterialFormulaControl" in runtime
+    assert "function commitCustomMaterialQuantityBeforeRate" in runtime
+    assert "function clearBaseMaterialRateOverride" in runtime
+    assert 'button.onclick=()=>clearBaseMaterialRateOverride(button)' in runtime
+    rate_revert = runtime[runtime.index("function clearBaseMaterialRateOverride") : runtime.index("function positionMaterialFormulaPopover")]
+    assert 'dialog.close' not in rate_revert and "render()" not in rate_revert
+    assert 'dataset.materialFormulaSource==="custom"' in source
+    assert "commitCustomMaterialQuantityBeforeRate(input)" in runtime
     assert 'control.addEventListener("input"' in source
     assert "commitMaterialFormulaControl(control,{restoreInvalid})" in source
-    assert "displayedQuantity=quantity??calculateMaterialFormulaTotal" in runtime
+    source_options = runtime[runtime.index("const MATERIAL_FORMULA_SOURCES") : runtime.index("const MATERIAL_FORMULA_OPERATORS")]
+    for removed_source in ("tie_back_qty", "backpan_lf", "manual_quantity"):
+        assert removed_source not in source_options
+    assert 'source=MATERIAL_FORMULA_SOURCES.some(([value])=>value===storedSource)?storedSource:"custom"' in runtime
+    assert 'if(sourceControl?.value==="custom")commitMaterialFormulaControl(sourceControl,{restoreInvalid})' in source
+    assert 'displayedQuantity=source==="custom"?customQuantity:quantity??calculateMaterialFormulaTotal' in runtime
+    assert 'data-material-formula-operand' in runtime
+    assert 'data-material-formula-operator' in runtime
+    assert 'data-material-formula-toggle' in runtime
+    assert 'data-material-formula-popup' in runtime
+    assert '>Formula</button>' in runtime
+    assert 'data-material-formula-unit-label' in runtime
+    assert 'materialFormulaUnitLabel(quantity,unitControl.value)' in runtime
+    assert "unitLabel.title=materialFormulaUnitTitle(quantity,unitControl.value)" in runtime
+    assert '"linear foot","Linear feet (LF)"' in source
+    assert '"ft²","Square feet (SF)"' in source
+    assert '"each","Each (EA)"' in source
+    assert 'function bindMaterialFormulaPopovers' in runtime
+    assert 'function positionMaterialFormulaPopover' in runtime
+    assert 'popover data-material-formula-popup' in runtime
+    assert "operandControl.hidden=custom" not in runtime
+    assert "operatorControl.tabIndex=-1" in runtime
+    assert "operandControl.tabIndex=-1" in runtime
+    assert 'quantityReadonly=source==="custom"?"":"readonly aria-readonly=\\"true\\" tabindex=\\"-1\\""' in runtime
+    assert 'customControl.removeAttribute("tabindex")' in runtime
+    assert "customControl.tabIndex=-1" in runtime
+    assert 'editor.classList.toggle("is-custom",custom)' in runtime
+    assert 'formulaHidden=source==="custom"?\'aria-hidden="true" tabindex="-1"\':""' in runtime
+    assert ".material-formula-editor.is-custom" in css
+    assert "[data-material-formula-operator]" in css
+    assert "[data-material-formula-operator-field]" in css
+    assert "[data-material-formula-operand-field]" in css
+    assert "[data-material-formula-unit-field]" in css
+    assert "border-left: 1px solid var(--ui-divider)" in css
+    assert "margin-left: 5px" in css and "padding-left: 9px" in css
+    assert "display: none" in css
+    assert "grid-template-columns: 56px minmax(112px, 1fr)" in css
+    assert ".material-formula-popover" in css
+    assert "width: max-content" in css
+    assert ".material-formula-config-grid" in css and "display: flex" in css
+    assert ".material-formula-output [data-material-formula-unit-label]" in css
+    assert "grid-template-columns: 88px 72px" in css
+    assert "width: 72px" in css
+    assert "text-overflow: ellipsis" in css
+    assert ".material-formula-editor:not(.is-custom) .material-formula-result" in css
+    assert "pointer-events: none" in css and "user-select: none" in css and "caret-color: transparent" in css
+    formula_markup = runtime[runtime.index('class="material-formula-popover"') : runtime.index('class="material-formula-output"')]
+    assert "material-formula-revert" in formula_markup
+    assert "Restore default formula" in formula_markup
+    assert ">↶</button>" in formula_markup
+    assert ".material-formula-revert:disabled { visibility: visible" in css
     assert 'const total=materialCosts.reduce((sum,value)=>sum+value,0),formatted=money(total)' in runtime
     assert 'data-numeric-category="multiplier"' in runtime
-    assert 'data-numeric-category="rate"' in runtime
+    assert 'data-material-rate-input="${esc(group)}"' in runtime
+    assert 'data-numeric-category="currency"' in runtime
+    assert 'formatMaterialDollarRateControl(input' in runtime
+    assert 'input.dataset.rawNumeric??""' in runtime
+    assert 'if(!committed)event.stopImmediatePropagation()' in runtime
+    assert 'data-clear-rate-override="${esc(ratePath)}" ${hasRateOverride?"":"disabled"}' in runtime
+    assert 'revert.disabled=value===null' in runtime
     assert "<small>Total</small>" not in runtime
     assert "_materialFormulaTimer" not in runtime
     assert 'control.isConnected)control.dispatchEvent(new Event("change",{bubbles:true}))' not in runtime
-    assert 'control.addEventListener("input",()=>{if(commitMaterialFormulaControl(control,{restoreInvalid:false}))markEdited()})' in source
+    assert 'control.addEventListener("input",()=>{commitCustomSource(false);if(commitMaterialFormulaControl(control,{restoreInvalid:false}))markEdited()})' in source
     assert 'control.addEventListener("input",()=>{preview()' not in source
     assert "revertBaseMaterialFormula(button.dataset.revertMaterialFormula,button)" in runtime
     assert "revertAlternateMaterialFormula(button.dataset.altRevertMaterialFormula,button)" in runtime
@@ -273,10 +368,32 @@ def test_installation_material_formula_builder_supports_base_alternates_and_reve
     assert 'dialog?.open)dialog.close("cancel");revertAlternateMaterialFormula' not in runtime
     for attribute in ("data-material-path", "data-material-alt-section-field", "data-material-alt-section-added"):
         assert attribute in runtime
-    for heading in ("Installation<br>material", "Quantity<br>formula", "Unit<br>rate", "Extended<br>cost"):
+    for heading in (">Material</span>", ">Quantity</span>", ">Rate</span>", ">Cost</span>"):
         assert heading in runtime
-    for contract in ("max-width: none", "width: 20%", "width: 48%", "width: 13%", "width: 15%", "width: 54px"):
+    assert "Unit<br>price" not in runtime and "Total<br>cost" not in runtime
+    assert runtime.count('class="material-rate-cell"') >= 2
+    assert "rate in dollars per" in runtime
+    assert "data-material-rate-unit" in runtime
+    assert 'class="material-quantity-heading"' in runtime
+    assert ".formula-material-grid .material-rate-cell::before" in css
+    assert 'content: "$"' in css
+    assert ".formula-material-grid .material-quantity-heading" in css
+    assert ".formula-material-grid [data-material-rate-unit]" in css
+    for technical_heading in ("Installation<br>material", "Quantity<br>formula", "Unit<br>rate", "Extended<br>cost"):
+        assert technical_heading not in runtime
+    for contract in ("width: 230px", "width: 260px", "width: 220px", "width: 120px", "width: 54px"):
         assert contract in css
+    assert "width: 884px; min-width: 884px; max-width: 884px" in css
+    assert "grid-template-columns: 230px 260px 220px 120px 54px" in css
+    assert "width: calc(100% - 78px) !important" in css
+    assert ".material-rate-cell > .override-control" in css
+    assert ".material-rate-cell > input" in css
+    assert "border: 0" in css and "background: transparent" in css
+    material_shell_start = css.rindex(".scenario-frame-workspace .frame-material-list {")
+    material_shell = css[material_shell_start : css.index(".scenario-frame-workspace .compact-material-grid {", material_shell_start)]
+    assert "border: 0" in material_shell and "border-radius: 0" in material_shell
+    assert ".formula-material-grid tr > :first-child { border-left: 1px solid" in css
+    assert "grid-template-columns: minmax(72px, 110px) 34px 8px" not in css
     for contract in (
         ".formula-material-grid tr > :first-child",
         ".formula-material-grid thead tr:first-child > th",
@@ -288,6 +405,14 @@ def test_installation_material_formula_builder_supports_base_alternates_and_reve
         assert contract in css
     assert '<button class="secondary compact-add"' not in runtime
     assert 'rerender:!input.closest(".formula-material-grid")' in source
+
+    for function_name, next_function in (
+        ("async function addAlternateSectionMaterialUI", "async function removeAlternateSectionMaterialUI"),
+        ("async function addSectionMaterialUI", "async function removeSectionMaterialUI"),
+    ):
+        dialog_source = source[source.index(function_name) : source.index(next_function, source.index(function_name))]
+        for removed_option in ('value="tie_back_qty"', 'value="backpan_lf"', 'value="manual_quantity"'):
+            assert removed_option not in dialog_source
 
 
 def test_controlled_status_pills_are_globally_suppressed_without_changing_controls():
@@ -405,6 +530,62 @@ def test_frame_base_and_alternate_share_section_workspace_and_full_grid_contract
     assert "--frame-mark-width" in css and "--frame-qty-width" in css
     assert ".scenario-frame-workspace .frame-grid td:nth-child(1)" in css
     assert "position: sticky" in css and "var(--calculated)" in css and "var(--input)" in css
+
+
+def test_frame_square_footage_header_explains_per_frame_rounding_in_plain_language():
+    source = Path("app/static/app.js").read_text(encoding="utf-8")
+    frame = source[source.index("function frameTable") : source.index("function alternateScenarioTable")]
+    assert "tooltip:frameSquareFootageTooltip()" in frame
+    assert "We calculate one frame's square footage, round it up to a whole square foot, then multiply by Qty." in source
+    assert "We calculate the full quantity's square footage, then round the total up to a whole square foot." in source
+    assert "Width × height × quantity ÷ 144" not in frame
+    assert "function mountFrameSquareFootageConfiguration" in source
+    assert 'data-frame-square-footage-method' in source
+    assert 'candidate.application_settings.frame_square_footage_method=frameMethod' in source
+
+
+def test_large_base_frame_tables_use_bounded_windowed_dom_rendering():
+    source = Path("app/static/app.js").read_text(encoding="utf-8")
+    core = Path("app/static/ui-core.js").read_text(encoding="utf-8")
+    css = Path("app/static/styles.css").read_text(encoding="utf-8")
+    table = source[source.index("const VIRTUAL_TABLE_ROW_THRESHOLD") : source.index("function tableColumn")]
+    frame = source[source.index("function frameTable") : source.index("function materialTable")]
+    virtual = source[source.index("function renderVirtualTableWindow") : source.index("function bindFrameColumnResizing")]
+    paste = source[source.index("function applyTablePaste") : source.index("let sharedTableController")]
+    assert "const VIRTUAL_TABLE_ROW_THRESHOLD=120" in table
+    assert "const VIRTUAL_TABLE_CELL_THRESHOLD=720" in table
+    assert "const VIRTUAL_TABLE_CELL_BUDGET=720" in table
+    assert "function virtualTableSettings" in table
+    assert "function virtualTableBodyHtml" in table
+    assert "canonicalIndexByRow:new Map" in table
+    assert 'data-virtualized="true"' in table
+    assert "virtualize:true" in frame
+    assert "MWUI.virtualWindowStart" in virtual
+    assert "requestAnimationFrame(update)" in virtual
+    assert "spec.virtualWindowSize" in virtual
+    assert 'focused=body.contains(document.activeElement)' in virtual
+    assert "replacement?.focus({preventScroll:true})" in virtual
+    assert "spec.virtualized?spec.orderedRows" in paste
+    assert "virtualWindowStart" in core
+    assert "virtualWindowSize" in core
+    assert '[data-edit-table][data-virtualized="true"]' in css
+    assert "max-height: min(68vh, 48rem)" in css
+    assert "contain-intrinsic-size: auto 48rem" in css
+    assert 'event.target.closest("[data-duplicate-frame]")' in source
+    assert 'table.closest?.(\'[data-virtualized="true"]\')' in core
+
+
+def test_all_base_and_alternate_takeoff_tables_share_adaptive_virtualization():
+    source = Path("app/static/app.js").read_text(encoding="utf-8")
+    table = source[source.index("function tableEditor") : source.index("function tableColumn")]
+    alternate = source[source.index("function alternateScenarioTable") : source.index("function doorScenarioTable")]
+    assert "virtualTableSettings(rows.length,columns.length,options.virtualize)" in table
+    assert "requested!==false" in source
+    assert "rows*columns>VIRTUAL_TABLE_CELL_THRESHOLD" in source
+    assert "virtualTableSettings(ordered.length,columns.length)" in alternate
+    assert "virtualTableBodyHtml(spec,virtualStart)" in alternate
+    assert 'data-virtual-window-size="${spec.virtualWindowSize}"' in alternate
+    assert "MWUI.stableSortRows(models,sortStack,columns" in alternate
 
 
 def test_frame_grid_uses_compact_contained_responsive_column_budget():
@@ -587,7 +768,7 @@ def test_shared_table_controller_contract_and_excel_paste_are_loaded():
 
 def test_shared_grid_markup_is_semantic_and_preserves_editable_calculated_distinction():
     source = Path("app/static/app.js").read_text(encoding="utf-8")
-    editor = source[source.index("function tableEditor"):source.index("function addButton")]
+    editor = source[source.index("function persistedTableRowHtml"):source.index("function addButton")]
     calculated = source[source.index("function calculatedTableCell"):source.index("function tableEditor")]
     assert '<table class="data-grid app-data-table"' in editor
     assert '<th scope="col"' in editor
@@ -772,9 +953,9 @@ def test_alternate_route_refresh_totals_band_and_state_rail_contracts():
     source = Path("app/static/app.js").read_text(encoding="utf-8")
     css = Path("app/static/styles.css").read_text(encoding="utf-8")
     html = Path("app/static/index.html").read_text(encoding="utf-8")
-    assert 'new URLSearchParams(window.location.search).get("alternate")' in source
+    assert 'alternateId:params.get("alternate")' in source
     assert '?alternate=${encodeURIComponent(alternateId)}' in source
-    assert 'openProject(route.projectId,false,route.page,"replace",route.alternateId)' in source
+    assert 'openProject(route.projectId,false,route.page,"none",route.alternateId)' in source
     assert 'openProject(state.doc.project.id,false,state.page,"replace",state.ui.activeAlternateId)' in source
     assert '<section id="welcome" class="welcome" hidden>' in html
     assert '$("#welcome").hidden=false' in source
@@ -1182,18 +1363,20 @@ def test_takeoff_tables_share_semantic_column_sizing_and_one_action_rail():
         assert f"{key}:" in layout
     assert "function worksheetColumnStyle" in layout
     assert "function worksheetTableStyle" in layout
+    assert "function worksheetColGroup" in layout
     assert "function worksheetActionStyle" in layout
     assert "data-unified-worksheet-table" in layout
     assert "worksheetColumnStyle(c)" in editor
-    assert "worksheetTableStyle(columns)" in editor
-    assert "worksheetActionStyle(columns)" in editor
+    assert "worksheetTableStyle(columns,actionWidth)" in editor
+    assert "worksheetColGroup(columns,actionWidth)" in editor
+    assert "worksheetActionStyle(columns,actionWidth)" in editor
     assert 'class="row-action-cell" data-draft-actions' in source
     assert "worksheetColumnStyle(column)" in alternate
     assert "worksheetTableStyle(columns)" in alternate
     assert "worksheetActionStyle(columns)" in alternate
     assert source.count('actionLabel:"Actions"') >= 2
     assert "table[data-unified-worksheet-table] :is(.row-actions-heading, .row-action-cell)" in css
-    assert "max-width: 54px !important" in css
+    assert "overflow: hidden" in css
 
 
 def test_equipment_has_one_locked_110000_subtab_while_alternate_scenarios_remain_available():
@@ -1205,7 +1388,9 @@ def test_equipment_has_one_locked_110000_subtab_while_alternate_scenarios_remain
     assert 'equipment:{collection:"equipment"' in config
     assert 'fixedTabCodes:["11 00 00"]' in config
     assert "fixedCodes=config.fixedTabCodes" in tabs
-    assert "if(fixedCodes)for(const code of fixedCodes)" in tabs
+    assert 'model.status==="Removed"' in tabs
+    assert "emptyScenarioSections" in tabs
+    assert 'data-scenario-section-add="${esc(kind)}"' in tabs
     assert 'editAction:(item,label)=>`<button type="button" class="frame-section-tab-edit"' in tabs
     assert '${fixedCodes?"Edit":"Change"}' in tabs
     assert "if(!config)return" in editor
@@ -1255,7 +1440,7 @@ def test_equipment_rate_autofill_uses_shared_base_draft_paste_and_alternate_path
     assert 'preserveUnit:hasDescription&&hasUnit' in source
     assert 'if(collection==="equipment"&&["description","duration_unit","delivery_direction","rate"].includes(field))' in source
     assert 'column.after?.(model.effective,model.projectionIndex)' in source
-    assert 'c.after?.(row,actualIndex)' in source
+    assert 'column.after?.(row,actualIndex)' in source
     assert '.equipment-rate-warning' in css
 
 
@@ -1459,18 +1644,21 @@ def test_shared_table_sorting_quotes_dual_codes_and_markup_authority_contracts()
     assert "tableSortStateKey" in source
     assert "project,state.page,scenario,history,tableId" in source
     assert "MWUI.stableSortRows(canonicalRows" in source
-    assert "canonicalRows.indexOf(row)" in source
+    assert "canonicalIndexByRow:new Map" in source
     assert "function bindStaticTableSorting" in source and "staticRowGroups" in source
-    sort_binding = source[source.index("function bindTableSorting"):source.index("function bindPage")]
+    sort_binding = source[source.index("function bindTableSorting"):source.index("function staticCellValue")]
     assert "bindTableSorting" in source and "markDirty" not in sort_binding
     assert ".table-sort-button" in css and ".app-data-table" in css
 
     quote = source[source.index("function quoteTable"):source.index("function quoteGroupSummary")]
     rendered = source[source.index("function renderQuotes"):source.index("function frameSectionName")]
-    assert 'key:"code",label:"Cost Code",type:"select"' in quote
-    assert 'id:"quotes"' in quote
-    assert "quoteTableForCode" not in rendered
-    assert "One continuous table" in rendered
+    assert 'key:"code",label:"Cost Code"' not in quote
+    assert 'defaults:{...defaultRowFor("quotes"),code:activeCode' in quote
+    assert 'id:`quotes-${historicalKey(activeCode)||"unassigned"}`' in quote
+    assert "rowsProvider:()=>(state.doc.quotes||[]).filter" in quote
+    assert 'kind:"quotes"' in rendered
+    assert 'ariaLabel:"Quote Cost Codes"' in rendered
+    assert "Each Cost Code has its own Quote tab" in rendered
 
     bid = source[source.index("function renderBidWorksheet"):source.index("function renderProposalLegacy")]
     assert '<th scope="col">Cost Code</th><th scope="col">Description</th>' in bid
@@ -1513,6 +1701,49 @@ def test_analogous_estimating_modules_share_compact_surfaces_and_status_language
     assert 'statusBadge("Project override","override"' in source or 'statusBadge("Override","override"' in source
     assert '"acknowledged-exception":"incomplete-row"' in source
     assert "Credit is applied before Surcharge" in source
+
+
+def test_quote_schedule_header_has_an_independent_non_collapsing_grid():
+    css = Path("app/static/styles.css").read_text(encoding="utf-8")
+    assert '.quote-workspace [data-scenario-section-kind="quotes"] > .frame-schedule-summary' in css
+    assert "grid-template-columns: minmax(18rem, 1fr) auto;" in css
+    assert ".quote-workspace .frame-schedule-summary > .frame-section-description" in css
+    assert "grid-column: 2 !important;" in css
+    assert "overflow-wrap: normal;" in css
+    assert "white-space: nowrap;" in css
+
+
+def test_quote_square_feet_can_revert_to_combined_takeoff_default():
+    source = Path("app/static/app.js").read_text(encoding="utf-8")
+    services = Path("app/services.py").read_text(encoding="utf-8")
+    css = Path("app/static/styles.css").read_text(encoding="utf-8")
+    quote = source[source.index("function quoteSquareFeetIsTakeoffDefault") : source.index("function quoteGroupSummary")]
+    assert "function quoteSquareFeetRevertAction" in quote
+    assert 'data-revert-quote-square-feet="${esc(row.id)}"' in quote
+    assert "function setQuoteSquareFeetRevertState" in quote
+    assert 'setQuoteSquareFeetRevertState(rowId,source==="manual")' in source
+    assert "function revertQuoteSquareFeet" in quote
+    assert 'quote.square_feet_source="takeoff_default"' in quote
+    assert "Restore ft² from Frames and Borrowed Lites" in quote
+    assert 'button.onclick=()=>revertQuoteSquareFeet(button.dataset.revertQuoteSquareFeet)' in source
+    assert 'takeoff_default = area_by_code.get(code_key, Decimal(0))' in services
+    assert 'quote_area_source in {"frame_default", "takeoff_default"}' in services
+    assert ".quote-square-feet-revert" in css
+    assert ".quote-square-feet-revert:disabled" in css
+
+
+def test_input_tables_do_not_add_leading_cell_status_flair():
+    css = Path("app/static/styles.css").read_text(encoding="utf-8")
+    rule = css[css.index("/* Row status is communicated by the row surface") :]
+    assert ":is(table.data-grid, table.app-data-table) tbody tr:is(" in rule
+    for state_class in (
+        ".trailing-row", ".incomplete-row", ".acknowledged-exception",
+        ".has-rate-override", ".has-override", ".manually-selected",
+        ".automatically-selected", ".alt-added", ".alt-modified", ".alt-removed",
+    ):
+        assert state_class in rule
+    assert "> td:first-child" in rule
+    assert "box-shadow: none !important;" in rule
 
 
 def test_bid_uses_compact_historical_instrument_and_lazy_evidence_drawer():
@@ -1589,7 +1820,13 @@ def test_new_controlled_project_fields_and_local_deadline_are_rendered():
     source = Path("app/static/app.js").read_text(encoding="utf-8")
     assert "New Construction - Curtainwall" in source
     assert 'CONTRACT_TYPES=["Bid to CM/GC","Bid as GC"]' in source
-    assert 'WAGE_TYPES=[["Non-PW","Non-PW"],["PW","Prevailing Wage (PW)"]]' in source
+    project = source[source.index("function renderProject") : source.index("function renderScope")]
+    assert 'data-wage-selection' in source
+    assert '<option value="non_pw"' in source
+    assert 'PW — ${county}' in source
+    assert 'input("project.wage_data_id"' not in project
+    assert 'input("project.wage_type"' not in project
+    assert 'normalizedCountyName(left.county)===projectCounty' in source
     assert '"Bid due date and time","datetime-local"' in source
 
 
@@ -1632,7 +1869,7 @@ def test_validation_tooltips_mobile_navigation_and_popovers_keep_accessible_stat
     assert 'aria-label="Active role"' in html and 'aria-label="Actor identity"' in html
     assert "sidebar.inert=mobile&&!isOpen" in source
     assert "function positionMaterialPicker" in source
-    assert 'event.key!=="Escape"||!details.open' in source
+    assert 'event.key!=="Escape"||!details?.open' in source
 
 
 def test_authoritative_reconciliation_updates_new_summary_surfaces_without_active_grid_rebuild():
@@ -1680,13 +1917,208 @@ def test_project_address_has_dynamic_route_mileage_and_manual_override():
 def test_owner_lookup_is_owner_specific_and_fills_reusable_organization_details():
     source = Path("app/static/app.js").read_text(encoding="utf-8")
     project = source[source.index("function renderProject") : source.index("function renderScope")]
-    assert 'historicalInput("project.owner_name","Owner","owners")' in project
+    assert 'historicalInput("project.owner_name","Organization","owners")' in project
     fill = source[source.index("function fillProjectOwnerFromMaster") : source.index("function selectScopeTableReference")]
     for field in ("owner_name", "owner_organization_id", "owner_legal_name", "owner_address", "owner_website", "owner_phone", "owner_email"):
         assert field in fill
     autocomplete = source[source.index("function bindAutocompletes") : source.index("function completePromotedTableRow")]
     assert 'kind==="owners"&&target.dataset.path==="project.owner_name"' in autocomplete
     assert "fillProjectOwnerFromMaster(item)" in autocomplete
+
+
+def test_project_record_information_architecture_parties_dates_and_phones():
+    source = Path("app/static/app.js").read_text(encoding="utf-8")
+    project = source[source.index("function renderProject") : source.index("function renderScope")]
+    for field in (
+        "name", "project_number", "abbreviation", "estimator", "project_manager",
+        "project_type", "building_type", "contract_type", "tax_exempt", "tax_rate_id",
+        "frame_sealant_colors", "owner_name", "owner_legal_name", "owner_address",
+        "owner_website", "owner_phone", "owner_email", "general_contractor",
+        "general_contractor_address", "construction_manager", "construction_manager_address",
+        "architect", "architect_address", "engineer", "engineer_address", "walkthrough",
+        "bid_due_date", "start_date", "completion_date", "final_completion_date",
+        "plan_source", "addenda_count", "notes",
+    ):
+        assert f'project.{field}' in project
+    assert 'input("project.completion_date","Substantial completion date","date")' in project
+    assert 'input("project.final_completion_date","Final completion date","date")' in project
+    assert 'input("project.walkthrough","Walkthrough date and time","datetime-local")' in project
+    for field in ("architect_address", "engineer_address", "general_contractor_address", "construction_manager_address"):
+        assert f'input("project.{field}"' in project
+    assert 'key:"address",label:"Address"' in project
+    assert 'key:"custom_role"' not in project
+    assert '["Owner","Architect","Vendor","Engineer","GC","CM","Custom"]' not in source
+    assert 'key:"office_phone",label:"Office phone",type:"tel"' in project
+    assert 'key:"mobile_phone",label:"Mobile phone",type:"tel"' in project
+    assert "function formatPhoneNumber" in source
+    assert "function parsePhoneNumber" in source
+    assert 'inputmode="numeric" autocomplete="tel" maxlength="14"' in source
+    assert 'numericType=type==="currency"||type==="number"||column.dimension' in source
+    assert 'display=type==="tel"?formatPhoneNumber(shown)' in source
+    for removed_setup_field in ("proposal_scope", "proposal_inclusions", "proposal_exclusions", "fabrication_due_date", "fabrication_start_date"):
+        assert f'input("project.{removed_setup_field}"' not in project
+    assert "Participants and proposal language" not in project
+    for heading in (
+        "Project Identity", "Project Details", "Project Team", "Dates &amp; Milestones",
+        "Solicitation / Bid Information", "Project Notes",
+    ):
+        assert heading in project
+    assert (
+        project.index("Project Identity")
+        < project.index("Project Details")
+        < project.index("Project Team")
+        < project.index("Dates &amp; Milestones")
+        < project.index("Solicitation / Bid Information")
+        < project.index("Project Notes")
+    )
+    assert 'projectRecordValue("Project status",humanStatus(projectStatus)' in project
+    assert 'projectRecordValue("Job address county",state.doc.project.county' in project
+    assert project.index('input("project.name","Project name")') < project.index('input("project.project_manager","Murphy project manager")')
+    assert 'class="project-internal-responsibility" aria-label="Murphy internal project responsibility"' in project
+    assert 'historicalInput("project.estimator","Murphy estimator","estimators")' in project
+    assert 'input("project.project_manager","Murphy project manager")' in project
+    assert "project-internal-heading" not in project
+    assert project.index("${addressSearchInput()}") < project.index('historicalInput("project.estimator","Murphy estimator","estimators")') < project.index("Project Details")
+    assert project.index('projectParty("Owner"') < project.index('class="project-contacts"') < project.index("Dates &amp; Milestones")
+    for party in ("Owner", "General Contractor", "Construction Manager", "Architect / Designer", "Engineer"):
+        assert f'projectParty("{party}"' in project
+    assert '"No project contacts recorded.",{addLabel:"Add contact"}' in project
+    for layout_class in (
+        "project-detail-type", "project-detail-building", "project-detail-contract",
+        "project-detail-tax-rate", "project-detail-mileage", "project-detail-colors",
+        "project-milestone-datetime", "project-milestone-date",
+        "project-solicitation-source", "project-solicitation-addenda",
+    ):
+        assert f'class="{layout_class}' in project or f' {layout_class}"' in project
+    for first, second in (
+        ('key:"organization",label:"Organization"', 'key:"address",label:"Address"'),
+        ('key:"address",label:"Address"', 'key:"name",label:"Contact"'),
+        ('key:"name",label:"Contact"', 'key:"position",label:"Title"'),
+        ('key:"position",label:"Title"', 'key:"office_phone",label:"Office phone",type:"tel"'),
+    ):
+        assert project.index(first) < project.index(second)
+    assert "function fillProjectParticipantFromMaster" in source
+    assert 'kind==="organizations"&&target.dataset.path?.startsWith("project.")' in source
+
+
+def test_project_record_layout_is_dense_readable_and_responsive():
+    css = Path("app/static/styles.css").read_text(encoding="utf-8")
+    shared_controls = css[css.index("/* Shared non-worksheet fields") : css.index("/* Project Information is a durable record")]
+    project_css = css[css.index("/* Project Information is a durable record") :]
+    for selector in (
+        ".project-record", ".project-identity-grid", ".project-details-grid",
+        ".project-party-grid", ".project-party-fields", ".project-milestone-grid",
+        ".project-solicitation-grid",
+    ):
+        assert selector in project_css
+    for variable in (
+        "--project-grid-columns: repeat(12, minmax(0, 1fr));",
+        "--project-column-gap: 8px;", "--project-row-gap: 4px;",
+        "--project-field-height: 28px;", "--project-label-height: 12px;",
+        "--project-label-gap: 2px;", "--project-section-padding: 8px 10px 9px;",
+    ):
+        assert variable in project_css
+    assert "grid-template-columns: var(--project-grid-columns);" in project_css
+    assert ".project-party-column {\n  grid-column: span 4;" in project_css
+    assert ".project-milestone-datetime { grid-column: span 3; }" in project_css
+    assert ".project-milestone-date { grid-column: span 2; }" in project_css
+    assert ".project-party-fields > .field:first-child" in project_css
+    assert ".project-party:not(.project-party-owner) .project-party-fields > .field:nth-child(2)" in project_css
+    assert "max-width: 67rem" not in project_css
+    assert "max-width: 44rem" not in project_css
+    assert '@media (max-width: 80rem)' in project_css
+    assert '@media (max-width: 55rem)' in project_css
+    assert '@media (max-width: 47.5rem)' in project_css
+    assert ".project-identity-name input" in project_css
+    assert ".project-internal-responsibility" in project_css
+    assert "align-self: end;" in project_css
+    assert ".project-internal-heading" not in project_css
+    assert ".project-contacts .table-add-row" in project_css
+    assert "background: transparent;" in project_css
+    assert ".project-detail-mileage { grid-column: span 2; }" in project_css
+    assert ".project-detail-colors { grid-column: span 4; }" in project_css
+    assert "background-color: var(--ui-surface-muted" in project_css
+    assert "background-color: var(--ui-surface-strong" in project_css
+    assert ".project-record .field" in project_css
+    assert ".project-record .editable-table-shell" in project_css
+    assert ".field :is(input:not([type=\"checkbox\"], [type=\"radio\"]), select, textarea)" in shared_controls
+    assert "background-color: var(--ui-surface-muted);" in shared_controls
+    assert "background-color: var(--ui-surface-strong);" in shared_controls
+
+
+def test_borrowed_lites_keep_location_before_mark_and_shared_grid_behavior():
+    source = Path("app/static/app.js").read_text(encoding="utf-8")
+    core = Path("app/static/ui-core.js").read_text(encoding="utf-8")
+    borrowed = source[source.index("function borrowedTableColumns") : source.index("function laborShiftDisplay")]
+    assert 'key:"location",label:"Location"' in borrowed
+    assert 'key:"mark",label:"Mark"' in borrowed
+    assert borrowed.index('key:"location"') < borrowed.index('key:"mark"')
+    assert 'function renderBorrowed(){return renderCostCodeScenarioWorkspace("borrowed")}' in source
+    assert "applyPaste:applyTablePaste" in source
+    assert 'rootElement.addEventListener("paste", this.onPaste)' in core
+
+
+def test_shared_tables_support_contiguous_selection_normalized_single_cell_paste_and_colgroups():
+    source = Path("app/static/app.js").read_text(encoding="utf-8")
+    core = Path("app/static/ui-core.js").read_text(encoding="utf-8")
+    css = Path("app/static/styles.css").read_text(encoding="utf-8")
+    controller = core[core.index("class TableController") : core.index("class AutocompleteController")]
+    for contract in (
+        "onPointerDown", "onPointerOver", "selectCell(cell, extend", "selectionAnchor",
+        "table-cell-selected", "table-row-selected", "onCopy(event)", "onSelectStart",
+        "suppressNativeSelection", "table-range-selecting", "selectionCellFrom", "selectionCellAtPoint",
+        "onPointerMove", "scheduleSelectionAutoScroll", "edgeAutoScrollDelta",
+    ):
+        assert contract in controller
+    assert 'td[data-column-key]' in controller
+    assert "this.rangeSelecting = true" in controller
+    assert "this.selectionCellAtPoint(table, this.pointerClientX, this.pointerClientY) || this.selectionCellFrom(event)" in controller
+    assert 'if (text === undefined) return' in controller
+    assert "worksheetColGroup(columns,actionWidth)" in source
+    assert 'col[data-column-key="${CSS.escape(key)}"]' in source
+    assert "function bindGlobalGridSelection" in source
+    assert "bindGlobalGridSelection();" in source
+    assert "const selectableCell=target=>" in source
+    assert "const nearestCell=(table,x,y)=>" in source
+    assert "MWUI.edgeAutoScrollDelta" in source
+    assert "function tableSelectionCopyMatrix" in source
+    assert "copyRange:tableSelectionCopyMatrix" in source
+    assert "spec.orderedRows||spec.rows?.()||[]" in source
+    assert "this.options.copyRange?." in core
+    assert "bindFrameTextExpansion();" not in source
+    assert ".table-cell-selected" in css
+    assert ".table-range-selecting" in css and "user-select: none !important" in css
+    assert ".scenario-frame-workspace .frame-grid tbody td" in css
+    assert "position: static !important" in css
+    assert "left: auto !important" in css and "right: auto !important" in css
+    assert "max-width: 100%" in css and "box-sizing: border-box" in css
+
+
+def test_quotes_use_cost_code_header_tabs_and_takeoff_sections_are_not_forced():
+    source = Path("app/static/app.js").read_text(encoding="utf-8")
+    quotes = source[source.index("function renderQuotes") : source.index("function frameSectionName")]
+    scenario_tabs = source[source.index("function scenarioCostCodeTabs") : source.index("function quoteSelection")]
+    scenario_render = source[source.index("function renderCostCodeScenarioWorkspace") : source.index("function renderEquipment")]
+    assert 'scenarioSubtabs({kind:"quotes"' in quotes
+    assert 'quoteTable(activeCode)' in quotes
+    assert 'data-table-add-row="${esc(`quotes-' in quotes
+    assert 'for(const row of state.doc.cost_codes||[])if(row.status!=="inactive")' not in scenario_tabs
+    assert "state.ui.emptyScenarioSections" in scenario_tabs
+    assert 'data-scenario-section-add="${esc(kind)}"' in scenario_tabs
+    assert "tabs.activeCode?costCodeScenarioSection" in scenario_render
+    assert "async function addScenarioSpecSectionUI" in source
+    assert "Spec Section deleted" in source
+
+
+def test_frame_section_tab_order_is_explicit_and_independent_of_cost_code_edits():
+    source = Path("app/static/app.js").read_text(encoding="utf-8")
+    assert "function nextFrameTabOrder" in source
+    assert "function orderedFrameSectionModels" in source
+    assert "tab_order:nextFrameTabOrder()" in source
+    tabbed = source[source.index("function renderTabbedFrames") : source.index("function insertAlternateTabsAfterHeader")]
+    assert "orderedFrameSectionModels(" in tabbed
+    editor = source[source.index("async function editFrameSectionCostCodeUI") : source.index("function addRow")]
+    assert ".tab_order" not in editor
 
 
 def test_async_saves_and_workspace_transitions_are_project_identity_safe():
@@ -1768,8 +2200,9 @@ def test_frame_numeric_columns_are_clamped_to_their_rendered_values_only():
     source = Path("app/static/app.js").read_text(encoding="utf-8")
     assert 'const FRAME_NUMERIC_COLUMN_KEYS=new Set(["quantity","leaf_quantity","width_inches","height_inches","square_feet","perimeter_lf","caulking_passes","caulking_lf","head_sill_qty"])' in source
     assert "function frameNumericColumnMinimum" in source
-    assert "context.measureText(text).width" in source
-    assert "rail.children[header.cellIndex]" in source
+    assert "const minimums={quantity:62" in source
+    assert "context.measureText(text).width" not in source[source.index("function frameNumericColumnMinimum"):source.index("function setFrameColumnWidth")]
+    assert "function syncFrameTotalAlignment" in source
     assert "Math.max(frameNumericColumnMinimum(workspace||root,key),Math.round(width))" in source
     assert "function enforceFrameNumericColumnMinimums" in source
     assert "FRAME_NUMERIC_COLUMN_KEYS.has(key)" in source

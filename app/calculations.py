@@ -6,11 +6,20 @@ All currency calculations use Decimal.  Functions intentionally distinguish None
 from __future__ import annotations
 
 import re
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, ROUND_CEILING, ROUND_HALF_UP
 from typing import Any, Iterable
 
 D = Decimal
 WHOLE = D("1")
+FRAME_SQUARE_FOOTAGE_METHODS = {"per_frame_then_quantity", "quantity_then_round_up"}
+DEFAULT_FRAME_SQUARE_FOOTAGE_METHOD = "per_frame_then_quantity"
+
+
+def validate_frame_square_footage_method(value: Any = None) -> str:
+    method = str(value or DEFAULT_FRAME_SQUARE_FOOTAGE_METHOD).strip().lower()
+    if method not in FRAME_SQUARE_FOOTAGE_METHODS:
+        raise ValueError("Frame square-footage method must round each frame first or round the quantity total.")
+    return method
 
 
 def dec(value: Any, default: Decimal | None = None) -> Decimal | None:
@@ -162,7 +171,7 @@ def taxed_cost(cost: Any, tax_rate: Any, *, taxable: bool, tax_included: bool = 
     return money(c if not taxable or tax_included else c * (D(1) + (dec(tax_rate, D(0)) or D(0))))
 
 
-def frame_quantities(quantity: Any, width_inches: Any, height_inches: Any, caulking_passes: Any = None) -> dict[str, Decimal | None]:
+def frame_quantities(quantity: Any, width_inches: Any, height_inches: Any, caulking_passes: Any = None, *, square_footage_method: str = DEFAULT_FRAME_SQUARE_FOOTAGE_METHOD) -> dict[str, Decimal | None]:
     q, w, h = dec(quantity), dec(width_inches), dec(height_inches)
     if q is None or q == 0:
         return {"square_feet": None, "perimeter_lf": None, "caulking_passes": None if caulking_passes in (None, "") else dec(caulking_passes), "caulking_lf": None, "head_sill_qty": None}
@@ -171,7 +180,11 @@ def frame_quantities(quantity: Any, width_inches: Any, height_inches: Any, caulk
     passes = dec(caulking_passes, D(3))
     if passes is None or passes < 0:
         raise ValueError("Caulking passes must be nonnegative.")
-    raw_area = w * h * q / D(144)
+    method = validate_frame_square_footage_method(square_footage_method)
+    exact_per_frame_area = w * h / D(144)
+    raw_area = ((exact_per_frame_area.to_integral_value(rounding=ROUND_CEILING) * q)
+                if method == "per_frame_then_quantity"
+                else (exact_per_frame_area * q).to_integral_value(rounding=ROUND_CEILING))
     raw_perimeter = D(2) * (w / D(12) + h / D(12)) * q
     return {
         "square_feet": raw_area,

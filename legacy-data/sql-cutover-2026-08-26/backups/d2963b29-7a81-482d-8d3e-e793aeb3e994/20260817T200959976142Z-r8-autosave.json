@@ -1,0 +1,2109 @@
+{
+  "schema_version": "1.0.0",
+  "interchange_version": "1.0.0",
+  "project": {
+    "id": "d2963b29-7a81-482d-8d3e-e793aeb3e994",
+    "revision": 8,
+    "name": "Representative Verification Project",
+    "abbreviation": "RVPE",
+    "project_number": "VERIFY-001",
+    "mwd_po": "",
+    "address": "Rogers, MN",
+    "zip": "",
+    "miles_from_rogers": null,
+    "project_type": "",
+    "building_type": "",
+    "estimator": "Verification Estimator",
+    "project_manager": "",
+    "owner_name": "",
+    "owner_address": "",
+    "architect": "",
+    "engineer": "",
+    "general_contractor": "",
+    "construction_manager": "",
+    "plan_source": "",
+    "contract_type": "",
+    "addenda_count": 0,
+    "walkthrough": "",
+    "frame_sealant_colors": "",
+    "additional_information": "",
+    "notes": "",
+    "proposal_scope": "Provide and install framed openings.",
+    "proposal_inclusions": "",
+    "proposal_exclusions": "Verification data only — not a commercial offer.",
+    "wage_data_id": null,
+    "wage_selection_source": null,
+    "wage_selected_at": null,
+    "tax_exempt": false,
+    "tax_rate_id": "tax_default",
+    "tax_selection_source": null,
+    "tax_selected_at": null,
+    "bid_due_date": null,
+    "start_date": null,
+    "completion_date": null,
+    "fabrication_due_date": null,
+    "fabrication_start_date": null,
+    "lifecycle_state": "awarded_activated",
+    "archived": false,
+    "configuration_id": "cfg-2026-08-17-v1",
+    "created_at": "2026-08-17T20:09:59.767595+00:00",
+    "updated_at": "2026-08-17T20:09:59.950456+00:00"
+  },
+  "contacts": [],
+  "cost_codes": [
+    {
+      "id": "ccd_verify_frames",
+      "code": "08 40 00",
+      "description": "Entrances, Storefronts, and Curtain Walls",
+      "mwd_code": "0840",
+      "mwd_description": "Aluminum Entrances",
+      "deduct": false,
+      "status": "active"
+    }
+  ],
+  "quotes": [
+    {
+      "id": "quo_verify_base",
+      "group_id": "frames",
+      "code": "08 40 00",
+      "date": "2026-08-17",
+      "vendor": "Verification Vendor",
+      "price": "10000",
+      "surcharge_percent": "0.05",
+      "tax_included": true,
+      "used": true,
+      "notes": "Deterministic verification quote",
+      "calculated_cost": "10500.00",
+      "calculated_square_feet": "69",
+      "calculated_unit_cost": "152.17"
+    },
+    {
+      "id": "quo_verify_alt",
+      "group_id": "frames-alt",
+      "code": "ALT1-08 40 00",
+      "date": "2026-08-17",
+      "vendor": "Verification Vendor",
+      "price": "9000",
+      "surcharge_percent": "0",
+      "tax_included": true,
+      "used": true,
+      "notes": "Disabled alternate preview",
+      "calculated_cost": "9000.00",
+      "calculated_square_feet": null,
+      "calculated_unit_cost": null
+    }
+  ],
+  "takeoff_sections": [
+    {
+      "id": "sec_verify",
+      "definition_id": "frame-v1",
+      "name": "Main Frames",
+      "code": "08 40 00",
+      "material_overrides": {},
+      "tie_back_qty": 2,
+      "backpan_lf": 12,
+      "lines": [
+        {
+          "id": "frm_verify",
+          "mark": "F1",
+          "quantity": 2,
+          "width_inches": 48,
+          "height_inches": 96,
+          "caulking_passes": 3,
+          "head": "Standard",
+          "jamb": "Standard",
+          "sill": "Standard",
+          "type": "Storefront",
+          "material": "Aluminum",
+          "finish": "Clear anodized",
+          "notes": "Verification row",
+          "calculated": {
+            "square_feet": "64",
+            "perimeter_lf": "48",
+            "caulking_passes": "3",
+            "caulking_lf": "144",
+            "head_sill_qty": "16"
+          }
+        }
+      ],
+      "totals": {
+        "quantity": "2",
+        "square_feet": "64",
+        "perimeter_lf": "48",
+        "caulking_lf": "144",
+        "head_sill_qty": "16"
+      }
+    }
+  ],
+  "doors": [],
+  "hardware_assignments": [],
+  "equipment": [
+    {
+      "id": "eqp_verify",
+      "code": "11 00 00",
+      "description": "Lift",
+      "quantity": 1,
+      "duration": 3,
+      "duration_unit": "day",
+      "rate": "200",
+      "delivery": "100",
+      "taxable": true,
+      "notes": "Verification equipment",
+      "calculated_cost": "700.00"
+    }
+  ],
+  "borrowed_lites": [
+    {
+      "id": "brl_verify",
+      "code": "08 40 00",
+      "mark": "BL1",
+      "quantity": 1,
+      "width_inches": 12,
+      "height_inches": 12,
+      "rate": "20",
+      "notes": "Minimum boundary",
+      "calculated_square_feet": "5"
+    }
+  ],
+  "labor_estimates": [
+    {
+      "id": "lbr_verify",
+      "category": "field",
+      "code": "08 40 00",
+      "description": "Field installation",
+      "quantity": 100,
+      "quantity_unit": "SF",
+      "crew": 2,
+      "productivity": 5,
+      "rate": "75",
+      "notes": "10 calculated hours",
+      "calculated_hours": "10",
+      "calculated_cost": "750.00"
+    }
+  ],
+  "travel_estimates": [],
+  "working_estimate": {
+    "id": "wrk_aa8b90993a0f4f1b80b0f215b6b1467c",
+    "alternate_inclusion": {
+      "ALT1": false,
+      "ALT2": false,
+      "ALT3": false,
+      "ALT4": false
+    },
+    "markup_overrides": {
+      "base_product": "0.10",
+      "LAF": "0.15",
+      "LAS": "0.20"
+    },
+    "contingency_enabled": true,
+    "contingency_override": null,
+    "contingency_override_reason": "",
+    "bond_enabled": false,
+    "bond_override": null,
+    "bond_override_reason": "",
+    "borrowed_lite_source_by_code": {},
+    "lines": [
+      {
+        "id": "est_9ecd7d8922f86318a0bc4c13",
+        "code": "08 40 00",
+        "category": "installation_material",
+        "description": "Entrances, Storefronts, and Curtain Walls — Bracing and Anchoring",
+        "cost": null,
+        "area": "64",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_verify",
+            "material_rule_id": "mat_bracing",
+            "source_quantity": "48",
+            "factor": "1",
+            "rate": "1.50",
+            "pre_tax_cost": "72.00",
+            "configuration_id": "cfg-2026-08-17-v1"
+          }
+        ],
+        "direct_cost": "72.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.10",
+        "markup_value": "7.20",
+        "selling_value": "79.20",
+        "configuration_id": "cfg-2026-08-17-v1"
+      },
+      {
+        "id": "est_7f5d324dd97c60052eabcd1d",
+        "code": "08 40 00",
+        "category": "installation_material",
+        "description": "Entrances, Storefronts, and Curtain Walls — Sheet Metal Membrane Air Barriers",
+        "cost": null,
+        "area": "64",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_verify",
+            "material_rule_id": "mat_membrane",
+            "source_quantity": "48",
+            "factor": "1.00",
+            "rate": "1.00",
+            "pre_tax_cost": "48.00",
+            "configuration_id": "cfg-2026-08-17-v1"
+          }
+        ],
+        "direct_cost": "48.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.10",
+        "markup_value": "4.80",
+        "selling_value": "52.80",
+        "configuration_id": "cfg-2026-08-17-v1"
+      },
+      {
+        "id": "est_8eb8bb6bf8a62dbe6e3c108e",
+        "code": "08 40 00",
+        "category": "installation_material",
+        "description": "Entrances, Storefronts, and Curtain Walls — Flashing and Sheet Metal",
+        "cost": null,
+        "area": "64",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_verify",
+            "material_rule_id": "mat_flashing",
+            "source_quantity": "16",
+            "factor": "1.00",
+            "rate": "8.00",
+            "pre_tax_cost": "128.00",
+            "configuration_id": "cfg-2026-08-17-v1"
+          }
+        ],
+        "direct_cost": "128.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.10",
+        "markup_value": "12.80",
+        "selling_value": "140.80",
+        "configuration_id": "cfg-2026-08-17-v1"
+      },
+      {
+        "id": "est_fd4c0d54c4871ce90482a081",
+        "code": "08 40 00",
+        "category": "installation_material",
+        "description": "Entrances, Storefronts, and Curtain Walls — Backer Rods",
+        "cost": null,
+        "area": "64",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_verify",
+            "material_rule_id": "mat_backer",
+            "source_quantity": "144",
+            "factor": "1.00",
+            "rate": "0.50",
+            "pre_tax_cost": "72.00",
+            "configuration_id": "cfg-2026-08-17-v1"
+          }
+        ],
+        "direct_cost": "72.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.10",
+        "markup_value": "7.20",
+        "selling_value": "79.20",
+        "configuration_id": "cfg-2026-08-17-v1"
+      },
+      {
+        "id": "est_d44b28f36b2f862411030d04",
+        "code": "08 40 00",
+        "category": "installation_material",
+        "description": "Entrances, Storefronts, and Curtain Walls — Joint Sealants",
+        "cost": null,
+        "area": "64",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_verify",
+            "material_rule_id": "mat_sealant",
+            "source_quantity": "144",
+            "factor": "0.08",
+            "rate": "12.00",
+            "pre_tax_cost": "138.24",
+            "configuration_id": "cfg-2026-08-17-v1"
+          }
+        ],
+        "direct_cost": "138.24",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.10",
+        "markup_value": "13.82",
+        "selling_value": "152.06",
+        "configuration_id": "cfg-2026-08-17-v1"
+      },
+      {
+        "id": "est_0208dde52b400bf93b9b5cc6",
+        "code": "08 40 00",
+        "category": "installation_material",
+        "description": "Entrances, Storefronts, and Curtain Walls — Tie Back",
+        "cost": null,
+        "area": "64",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_verify",
+            "material_rule_id": "mat_tieback",
+            "source_quantity": "2",
+            "factor": "1",
+            "rate": "45.00",
+            "pre_tax_cost": "90.00",
+            "configuration_id": "cfg-2026-08-17-v1"
+          }
+        ],
+        "direct_cost": "90.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.10",
+        "markup_value": "9.00",
+        "selling_value": "99.00",
+        "configuration_id": "cfg-2026-08-17-v1"
+      },
+      {
+        "id": "est_3b0b4236c77e41923e22e515",
+        "code": "08 40 00",
+        "category": "installation_material",
+        "description": "Entrances, Storefronts, and Curtain Walls — Backpans / Insulation",
+        "cost": null,
+        "area": "64",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "frame_material",
+            "source_id": "sec_verify",
+            "material_rule_id": "mat_backpan",
+            "source_quantity": "12",
+            "factor": "1",
+            "rate": "48.32",
+            "pre_tax_cost": "579.84",
+            "configuration_id": "cfg-2026-08-17-v1"
+          }
+        ],
+        "direct_cost": "579.84",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.10",
+        "markup_value": "57.98",
+        "selling_value": "637.82",
+        "configuration_id": "cfg-2026-08-17-v1"
+      },
+      {
+        "id": "est_632e1ecb9f0952c34535b7f1",
+        "code": "08 40 00",
+        "category": "base_product",
+        "description": "Entrances, Storefronts, and Curtain Walls",
+        "cost": null,
+        "area": "69",
+        "tax_treatment": "included",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "quote",
+            "source_id": "quo_verify_base",
+            "entered_price": "10000",
+            "surcharge_percent": "0.05",
+            "tax_included": true,
+            "configuration_id": "cfg-2026-08-17-v1"
+          }
+        ],
+        "direct_cost": "10500.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.10",
+        "markup_value": "1050.00",
+        "selling_value": "11550.00",
+        "configuration_id": "cfg-2026-08-17-v1"
+      },
+      {
+        "id": "est_941e63f2906500c83ce7eb0a",
+        "code": "ALT1-08 40 00",
+        "category": "base_product",
+        "description": "Entrances, Storefronts, and Curtain Walls",
+        "cost": null,
+        "area": "0",
+        "tax_treatment": "included",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "quote",
+            "source_id": "quo_verify_alt",
+            "entered_price": "9000",
+            "surcharge_percent": "0",
+            "tax_included": true,
+            "configuration_id": "cfg-2026-08-17-v1"
+          }
+        ],
+        "direct_cost": "9000.00",
+        "included": false,
+        "deduct_sign": 1,
+        "markup_rate": "0.10",
+        "markup_value": "900.00",
+        "selling_value": "9900.00",
+        "configuration_id": "cfg-2026-08-17-v1"
+      },
+      {
+        "id": "est_842c2d795fe8a965cd4b9b77",
+        "code": "11 00 00",
+        "category": "equipment",
+        "description": "Lift",
+        "cost": null,
+        "area": "0",
+        "tax_treatment": "taxed",
+        "markup_type": "base_product",
+        "lineage": [
+          {
+            "source_type": "equipment",
+            "source_id": "eqp_verify",
+            "rate_version": "cfg-2026-08-17-v1",
+            "configuration_id": "cfg-2026-08-17-v1"
+          }
+        ],
+        "direct_cost": "700.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.10",
+        "markup_value": "70.00",
+        "selling_value": "770.00",
+        "configuration_id": "cfg-2026-08-17-v1"
+      },
+      {
+        "id": "est_889046b46caeed8483252186",
+        "code": "08 40 00",
+        "category": "field_labor",
+        "description": "Field installation",
+        "cost": null,
+        "area": "0",
+        "tax_treatment": "not_applicable",
+        "markup_type": "LAF",
+        "lineage": [
+          {
+            "source_type": "labor",
+            "source_id": "lbr_verify",
+            "quantity": 100,
+            "crew": 2,
+            "productivity": 5,
+            "calculated_hours": "10",
+            "override": null,
+            "override_reason": null,
+            "rate": "75",
+            "rate_version": "cfg-2026-08-17-v1",
+            "configuration_id": "cfg-2026-08-17-v1"
+          }
+        ],
+        "direct_cost": "750.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_rate": "0.15",
+        "markup_value": "112.50",
+        "selling_value": "862.50",
+        "configuration_id": "cfg-2026-08-17-v1"
+      },
+      {
+        "id": "est_1f7078710baa232847f31b5e",
+        "code": "01 21 16",
+        "category": "contingency",
+        "description": "Contingency",
+        "direct_cost": "3000.00",
+        "included": true,
+        "deduct_sign": 1,
+        "markup_type": "special",
+        "markup_rate": "0",
+        "markup_value": "0.00",
+        "selling_value": "3000.00",
+        "area": "0",
+        "tax_treatment": "not_applicable",
+        "configuration_id": "cfg-2026-08-17-v1",
+        "lineage": [
+          {
+            "source_type": "contingency",
+            "configuration_id": "cfg-2026-08-17-v1"
+          }
+        ]
+      }
+    ],
+    "totals": {
+      "direct_cost": "16078.08",
+      "markup_profit": "1345.30",
+      "selling_value": "17423.38",
+      "margin_percentage": "0.07721234341442360781891917642",
+      "square_feet": "69",
+      "price_per_square_foot": "252.51",
+      "reconciliation": "ok",
+      "contingency": "3000.00",
+      "bond": "0.00"
+    },
+    "validation": []
+  },
+  "estimate_revisions": [
+    {
+      "id": "rev_f93df1291cb243d6afd609d1a8b44dd2",
+      "revision_number": 1,
+      "configuration_id": "cfg-2026-08-17-v1",
+      "status": "submitted",
+      "created_by": "Verification Estimator",
+      "creator_role": "Estimator",
+      "created_at": "2026-08-17T20:09:59.847042+00:00",
+      "reason": "Representative workflow submission",
+      "project_snapshot": {
+        "id": "d2963b29-7a81-482d-8d3e-e793aeb3e994",
+        "revision": 3,
+        "name": "Representative Verification Project",
+        "abbreviation": "RVPE",
+        "project_number": "VERIFY-001",
+        "mwd_po": "",
+        "address": "Rogers, MN",
+        "zip": "",
+        "miles_from_rogers": null,
+        "project_type": "",
+        "building_type": "",
+        "estimator": "Verification Estimator",
+        "project_manager": "",
+        "owner_name": "",
+        "owner_address": "",
+        "architect": "",
+        "engineer": "",
+        "general_contractor": "",
+        "construction_manager": "",
+        "plan_source": "",
+        "contract_type": "",
+        "addenda_count": 0,
+        "walkthrough": "",
+        "frame_sealant_colors": "",
+        "additional_information": "",
+        "notes": "",
+        "proposal_scope": "Provide and install framed openings.",
+        "proposal_inclusions": "",
+        "proposal_exclusions": "Verification data only — not a commercial offer.",
+        "wage_data_id": null,
+        "wage_selection_source": null,
+        "wage_selected_at": null,
+        "tax_exempt": false,
+        "tax_rate_id": "tax_default",
+        "tax_selection_source": null,
+        "tax_selected_at": null,
+        "bid_due_date": null,
+        "start_date": null,
+        "completion_date": null,
+        "fabrication_due_date": null,
+        "fabrication_start_date": null,
+        "lifecycle_state": "estimate_created",
+        "archived": false,
+        "configuration_id": "cfg-2026-08-17-v1",
+        "created_at": "2026-08-17T20:09:59.767595+00:00",
+        "updated_at": "2026-08-17T20:09:59.818628+00:00"
+      },
+      "cost_codes": [
+        {
+          "id": "ccd_verify_frames",
+          "code": "08 40 00",
+          "description": "Entrances, Storefronts, and Curtain Walls",
+          "mwd_code": "0840",
+          "mwd_description": "Aluminum Entrances",
+          "deduct": false,
+          "status": "active"
+        }
+      ],
+      "source_snapshot": {
+        "quotes": [
+          {
+            "id": "quo_verify_base",
+            "group_id": "frames",
+            "code": "08 40 00",
+            "date": "2026-08-17",
+            "vendor": "Verification Vendor",
+            "price": "10000",
+            "surcharge_percent": "0.05",
+            "tax_included": true,
+            "used": true,
+            "notes": "Deterministic verification quote",
+            "calculated_cost": "10500.00",
+            "calculated_square_feet": "69",
+            "calculated_unit_cost": "152.17"
+          },
+          {
+            "id": "quo_verify_alt",
+            "group_id": "frames-alt",
+            "code": "ALT1-08 40 00",
+            "date": "2026-08-17",
+            "vendor": "Verification Vendor",
+            "price": "9000",
+            "surcharge_percent": "0",
+            "tax_included": true,
+            "used": true,
+            "notes": "Disabled alternate preview",
+            "calculated_cost": "9000.00",
+            "calculated_square_feet": null,
+            "calculated_unit_cost": null
+          }
+        ],
+        "takeoff_sections": [
+          {
+            "id": "sec_verify",
+            "definition_id": "frame-v1",
+            "name": "Main Frames",
+            "code": "08 40 00",
+            "material_overrides": {},
+            "tie_back_qty": 2,
+            "backpan_lf": 12,
+            "lines": [
+              {
+                "id": "frm_verify",
+                "mark": "F1",
+                "quantity": 2,
+                "width_inches": 48,
+                "height_inches": 96,
+                "caulking_passes": 3,
+                "head": "Standard",
+                "jamb": "Standard",
+                "sill": "Standard",
+                "type": "Storefront",
+                "material": "Aluminum",
+                "finish": "Clear anodized",
+                "notes": "Verification row",
+                "calculated": {
+                  "square_feet": "64",
+                  "perimeter_lf": "48",
+                  "caulking_passes": "3",
+                  "caulking_lf": "144",
+                  "head_sill_qty": "16"
+                }
+              }
+            ],
+            "totals": {
+              "quantity": "2",
+              "square_feet": "64",
+              "perimeter_lf": "48",
+              "caulking_lf": "144",
+              "head_sill_qty": "16"
+            }
+          }
+        ],
+        "doors": [],
+        "hardware_assignments": [],
+        "equipment": [
+          {
+            "id": "eqp_verify",
+            "code": "11 00 00",
+            "description": "Lift",
+            "quantity": 1,
+            "duration": 3,
+            "duration_unit": "day",
+            "rate": "200",
+            "delivery": "100",
+            "taxable": true,
+            "notes": "Verification equipment",
+            "calculated_cost": "700.00"
+          }
+        ],
+        "borrowed_lites": [
+          {
+            "id": "brl_verify",
+            "code": "08 40 00",
+            "mark": "BL1",
+            "quantity": 1,
+            "width_inches": 12,
+            "height_inches": 12,
+            "rate": "20",
+            "notes": "Minimum boundary",
+            "calculated_square_feet": "5"
+          }
+        ],
+        "labor_estimates": [
+          {
+            "id": "lbr_verify",
+            "category": "field",
+            "code": "08 40 00",
+            "description": "Field installation",
+            "quantity": 100,
+            "quantity_unit": "SF",
+            "crew": 2,
+            "productivity": 5,
+            "rate": "75",
+            "notes": "10 calculated hours",
+            "calculated_hours": "10",
+            "calculated_cost": "750.00"
+          }
+        ],
+        "travel_estimates": []
+      },
+      "estimate": {
+        "id": "wrk_aa8b90993a0f4f1b80b0f215b6b1467c",
+        "alternate_inclusion": {
+          "ALT1": false,
+          "ALT2": false,
+          "ALT3": false,
+          "ALT4": false
+        },
+        "markup_overrides": {
+          "base_product": "0.10",
+          "LAF": "0.15",
+          "LAS": "0.20"
+        },
+        "contingency_enabled": true,
+        "contingency_override": null,
+        "contingency_override_reason": "",
+        "bond_enabled": false,
+        "bond_override": null,
+        "bond_override_reason": "",
+        "borrowed_lite_source_by_code": {},
+        "lines": [
+          {
+            "id": "est_9ecd7d8922f86318a0bc4c13",
+            "code": "08 40 00",
+            "category": "installation_material",
+            "description": "Entrances, Storefronts, and Curtain Walls — Bracing and Anchoring",
+            "cost": null,
+            "area": "64",
+            "tax_treatment": "taxed",
+            "markup_type": "base_product",
+            "lineage": [
+              {
+                "source_type": "frame_material",
+                "source_id": "sec_verify",
+                "material_rule_id": "mat_bracing",
+                "source_quantity": "48",
+                "factor": "1",
+                "rate": "1.50",
+                "pre_tax_cost": "72.00",
+                "configuration_id": "cfg-2026-08-17-v1"
+              }
+            ],
+            "direct_cost": "72.00",
+            "included": true,
+            "deduct_sign": 1,
+            "markup_rate": "0.10",
+            "markup_value": "7.20",
+            "selling_value": "79.20",
+            "configuration_id": "cfg-2026-08-17-v1"
+          },
+          {
+            "id": "est_7f5d324dd97c60052eabcd1d",
+            "code": "08 40 00",
+            "category": "installation_material",
+            "description": "Entrances, Storefronts, and Curtain Walls — Sheet Metal Membrane Air Barriers",
+            "cost": null,
+            "area": "64",
+            "tax_treatment": "taxed",
+            "markup_type": "base_product",
+            "lineage": [
+              {
+                "source_type": "frame_material",
+                "source_id": "sec_verify",
+                "material_rule_id": "mat_membrane",
+                "source_quantity": "48",
+                "factor": "1.00",
+                "rate": "1.00",
+                "pre_tax_cost": "48.00",
+                "configuration_id": "cfg-2026-08-17-v1"
+              }
+            ],
+            "direct_cost": "48.00",
+            "included": true,
+            "deduct_sign": 1,
+            "markup_rate": "0.10",
+            "markup_value": "4.80",
+            "selling_value": "52.80",
+            "configuration_id": "cfg-2026-08-17-v1"
+          },
+          {
+            "id": "est_8eb8bb6bf8a62dbe6e3c108e",
+            "code": "08 40 00",
+            "category": "installation_material",
+            "description": "Entrances, Storefronts, and Curtain Walls — Flashing and Sheet Metal",
+            "cost": null,
+            "area": "64",
+            "tax_treatment": "taxed",
+            "markup_type": "base_product",
+            "lineage": [
+              {
+                "source_type": "frame_material",
+                "source_id": "sec_verify",
+                "material_rule_id": "mat_flashing",
+                "source_quantity": "16",
+                "factor": "1.00",
+                "rate": "8.00",
+                "pre_tax_cost": "128.00",
+                "configuration_id": "cfg-2026-08-17-v1"
+              }
+            ],
+            "direct_cost": "128.00",
+            "included": true,
+            "deduct_sign": 1,
+            "markup_rate": "0.10",
+            "markup_value": "12.80",
+            "selling_value": "140.80",
+            "configuration_id": "cfg-2026-08-17-v1"
+          },
+          {
+            "id": "est_fd4c0d54c4871ce90482a081",
+            "code": "08 40 00",
+            "category": "installation_material",
+            "description": "Entrances, Storefronts, and Curtain Walls — Backer Rods",
+            "cost": null,
+            "area": "64",
+            "tax_treatment": "taxed",
+            "markup_type": "base_product",
+            "lineage": [
+              {
+                "source_type": "frame_material",
+                "source_id": "sec_verify",
+                "material_rule_id": "mat_backer",
+                "source_quantity": "144",
+                "factor": "1.00",
+                "rate": "0.50",
+                "pre_tax_cost": "72.00",
+                "configuration_id": "cfg-2026-08-17-v1"
+              }
+            ],
+            "direct_cost": "72.00",
+            "included": true,
+            "deduct_sign": 1,
+            "markup_rate": "0.10",
+            "markup_value": "7.20",
+            "selling_value": "79.20",
+            "configuration_id": "cfg-2026-08-17-v1"
+          },
+          {
+            "id": "est_d44b28f36b2f862411030d04",
+            "code": "08 40 00",
+            "category": "installation_material",
+            "description": "Entrances, Storefronts, and Curtain Walls — Joint Sealants",
+            "cost": null,
+            "area": "64",
+            "tax_treatment": "taxed",
+            "markup_type": "base_product",
+            "lineage": [
+              {
+                "source_type": "frame_material",
+                "source_id": "sec_verify",
+                "material_rule_id": "mat_sealant",
+                "source_quantity": "144",
+                "factor": "0.08",
+                "rate": "12.00",
+                "pre_tax_cost": "138.24",
+                "configuration_id": "cfg-2026-08-17-v1"
+              }
+            ],
+            "direct_cost": "138.24",
+            "included": true,
+            "deduct_sign": 1,
+            "markup_rate": "0.10",
+            "markup_value": "13.82",
+            "selling_value": "152.06",
+            "configuration_id": "cfg-2026-08-17-v1"
+          },
+          {
+            "id": "est_0208dde52b400bf93b9b5cc6",
+            "code": "08 40 00",
+            "category": "installation_material",
+            "description": "Entrances, Storefronts, and Curtain Walls — Tie Back",
+            "cost": null,
+            "area": "64",
+            "tax_treatment": "taxed",
+            "markup_type": "base_product",
+            "lineage": [
+              {
+                "source_type": "frame_material",
+                "source_id": "sec_verify",
+                "material_rule_id": "mat_tieback",
+                "source_quantity": "2",
+                "factor": "1",
+                "rate": "45.00",
+                "pre_tax_cost": "90.00",
+                "configuration_id": "cfg-2026-08-17-v1"
+              }
+            ],
+            "direct_cost": "90.00",
+            "included": true,
+            "deduct_sign": 1,
+            "markup_rate": "0.10",
+            "markup_value": "9.00",
+            "selling_value": "99.00",
+            "configuration_id": "cfg-2026-08-17-v1"
+          },
+          {
+            "id": "est_3b0b4236c77e41923e22e515",
+            "code": "08 40 00",
+            "category": "installation_material",
+            "description": "Entrances, Storefronts, and Curtain Walls — Backpans / Insulation",
+            "cost": null,
+            "area": "64",
+            "tax_treatment": "taxed",
+            "markup_type": "base_product",
+            "lineage": [
+              {
+                "source_type": "frame_material",
+                "source_id": "sec_verify",
+                "material_rule_id": "mat_backpan",
+                "source_quantity": "12",
+                "factor": "1",
+                "rate": "48.32",
+                "pre_tax_cost": "579.84",
+                "configuration_id": "cfg-2026-08-17-v1"
+              }
+            ],
+            "direct_cost": "579.84",
+            "included": true,
+            "deduct_sign": 1,
+            "markup_rate": "0.10",
+            "markup_value": "57.98",
+            "selling_value": "637.82",
+            "configuration_id": "cfg-2026-08-17-v1"
+          },
+          {
+            "id": "est_632e1ecb9f0952c34535b7f1",
+            "code": "08 40 00",
+            "category": "base_product",
+            "description": "Entrances, Storefronts, and Curtain Walls",
+            "cost": null,
+            "area": "69",
+            "tax_treatment": "included",
+            "markup_type": "base_product",
+            "lineage": [
+              {
+                "source_type": "quote",
+                "source_id": "quo_verify_base",
+                "entered_price": "10000",
+                "surcharge_percent": "0.05",
+                "tax_included": true,
+                "configuration_id": "cfg-2026-08-17-v1"
+              }
+            ],
+            "direct_cost": "10500.00",
+            "included": true,
+            "deduct_sign": 1,
+            "markup_rate": "0.10",
+            "markup_value": "1050.00",
+            "selling_value": "11550.00",
+            "configuration_id": "cfg-2026-08-17-v1"
+          },
+          {
+            "id": "est_941e63f2906500c83ce7eb0a",
+            "code": "ALT1-08 40 00",
+            "category": "base_product",
+            "description": "Entrances, Storefronts, and Curtain Walls",
+            "cost": null,
+            "area": "0",
+            "tax_treatment": "included",
+            "markup_type": "base_product",
+            "lineage": [
+              {
+                "source_type": "quote",
+                "source_id": "quo_verify_alt",
+                "entered_price": "9000",
+                "surcharge_percent": "0",
+                "tax_included": true,
+                "configuration_id": "cfg-2026-08-17-v1"
+              }
+            ],
+            "direct_cost": "9000.00",
+            "included": false,
+            "deduct_sign": 1,
+            "markup_rate": "0.10",
+            "markup_value": "900.00",
+            "selling_value": "9900.00",
+            "configuration_id": "cfg-2026-08-17-v1"
+          },
+          {
+            "id": "est_842c2d795fe8a965cd4b9b77",
+            "code": "11 00 00",
+            "category": "equipment",
+            "description": "Lift",
+            "cost": null,
+            "area": "0",
+            "tax_treatment": "taxed",
+            "markup_type": "base_product",
+            "lineage": [
+              {
+                "source_type": "equipment",
+                "source_id": "eqp_verify",
+                "rate_version": "cfg-2026-08-17-v1",
+                "configuration_id": "cfg-2026-08-17-v1"
+              }
+            ],
+            "direct_cost": "700.00",
+            "included": true,
+            "deduct_sign": 1,
+            "markup_rate": "0.10",
+            "markup_value": "70.00",
+            "selling_value": "770.00",
+            "configuration_id": "cfg-2026-08-17-v1"
+          },
+          {
+            "id": "est_889046b46caeed8483252186",
+            "code": "08 40 00",
+            "category": "field_labor",
+            "description": "Field installation",
+            "cost": null,
+            "area": "0",
+            "tax_treatment": "not_applicable",
+            "markup_type": "LAF",
+            "lineage": [
+              {
+                "source_type": "labor",
+                "source_id": "lbr_verify",
+                "quantity": 100,
+                "crew": 2,
+                "productivity": 5,
+                "calculated_hours": "10",
+                "override": null,
+                "override_reason": null,
+                "rate": "75",
+                "rate_version": "cfg-2026-08-17-v1",
+                "configuration_id": "cfg-2026-08-17-v1"
+              }
+            ],
+            "direct_cost": "750.00",
+            "included": true,
+            "deduct_sign": 1,
+            "markup_rate": "0.15",
+            "markup_value": "112.50",
+            "selling_value": "862.50",
+            "configuration_id": "cfg-2026-08-17-v1"
+          },
+          {
+            "id": "est_1f7078710baa232847f31b5e",
+            "code": "01 21 16",
+            "category": "contingency",
+            "description": "Contingency",
+            "direct_cost": "3000.00",
+            "included": true,
+            "deduct_sign": 1,
+            "markup_type": "special",
+            "markup_rate": "0",
+            "markup_value": "0.00",
+            "selling_value": "3000.00",
+            "area": "0",
+            "tax_treatment": "not_applicable",
+            "configuration_id": "cfg-2026-08-17-v1",
+            "lineage": [
+              {
+                "source_type": "contingency",
+                "configuration_id": "cfg-2026-08-17-v1"
+              }
+            ]
+          }
+        ],
+        "totals": {
+          "direct_cost": "16078.08",
+          "markup_profit": "1345.30",
+          "selling_value": "17423.38",
+          "margin_percentage": "0.07721234341442360781891917642",
+          "square_feet": "69",
+          "price_per_square_foot": "252.51",
+          "reconciliation": "ok",
+          "contingency": "3000.00",
+          "bond": "0.00"
+        },
+        "validation": []
+      },
+      "immutable": true
+    }
+  ],
+  "alternates": [],
+  "reviews": [
+    {
+      "id": "revw_d679eb46a204404b9648aa94a6281af6",
+      "revision_id": null,
+      "reviewer": "Verification GM",
+      "reviewer_role": "General Manager",
+      "decision": "reviewed",
+      "comment": "Workflow verification; policy evidence pending",
+      "timestamp": "2026-08-17T20:09:59.817053+00:00",
+      "evidence_status": "pending_policy"
+    }
+  ],
+  "submissions": [
+    {
+      "id": "sub_f96a823bc5d24d828fbc8d7303b1b3d3",
+      "revision_id": "rev_f93df1291cb243d6afd609d1a8b44dd2",
+      "artifact_id": "art_11284ec511de49a3baff9e10a083aa31",
+      "recipient": "Verification GC",
+      "method": "email",
+      "submitted_at": "2026-08-17T20:09:59.847284+00:00",
+      "submitted_by": "Verification Estimator",
+      "evidence": "TEST-ONLY",
+      "immutable": true
+    }
+  ],
+  "proposal_artifacts": [
+    {
+      "id": "art_11284ec511de49a3baff9e10a083aa31",
+      "template_version": "proposal-1.0.0",
+      "revision_id": "rev_f93df1291cb243d6afd609d1a8b44dd2",
+      "generated_at": "2026-08-17T20:09:59.847261+00:00",
+      "generated_by": "Verification Estimator",
+      "project_name": "Representative Verification Project",
+      "project_number": "VERIFY-001",
+      "amount": "17423.38",
+      "written_amount": "SEVENTEEN THOUSAND FOUR HUNDRED TWENTY-THREE DOLLARS",
+      "scope": "Provide and install framed openings.",
+      "inclusions": "",
+      "exclusions": "Verification data only — not a commercial offer.",
+      "addenda": 0,
+      "sha256": "7d20c02801d47099b88cb2dcc4a9e95c35c698a6dd89af07d8c9e5ae7acac99c",
+      "immutable": true
+    }
+  ],
+  "bid_tabulations": [],
+  "award": {
+    "id": "awd_6650644a302b4087a86713d9e4331632",
+    "revision_id": "rev_f93df1291cb243d6afd609d1a8b44dd2",
+    "ntp_evidence": "TEST NTP — representative workflow",
+    "ntp_date": "2026-08-17",
+    "activated_at": "2026-08-17T20:09:59.872593+00:00",
+    "activated_by": "Verification PM",
+    "activator_role": "Project Manager",
+    "awarded_bid_snapshot": {
+      "id": "rev_f93df1291cb243d6afd609d1a8b44dd2",
+      "revision_number": 1,
+      "configuration_id": "cfg-2026-08-17-v1",
+      "status": "submitted",
+      "created_by": "Verification Estimator",
+      "creator_role": "Estimator",
+      "created_at": "2026-08-17T20:09:59.847042+00:00",
+      "reason": "Representative workflow submission",
+      "project_snapshot": {
+        "id": "d2963b29-7a81-482d-8d3e-e793aeb3e994",
+        "revision": 3,
+        "name": "Representative Verification Project",
+        "abbreviation": "RVPE",
+        "project_number": "VERIFY-001",
+        "mwd_po": "",
+        "address": "Rogers, MN",
+        "zip": "",
+        "miles_from_rogers": null,
+        "project_type": "",
+        "building_type": "",
+        "estimator": "Verification Estimator",
+        "project_manager": "",
+        "owner_name": "",
+        "owner_address": "",
+        "architect": "",
+        "engineer": "",
+        "general_contractor": "",
+        "construction_manager": "",
+        "plan_source": "",
+        "contract_type": "",
+        "addenda_count": 0,
+        "walkthrough": "",
+        "frame_sealant_colors": "",
+        "additional_information": "",
+        "notes": "",
+        "proposal_scope": "Provide and install framed openings.",
+        "proposal_inclusions": "",
+        "proposal_exclusions": "Verification data only — not a commercial offer.",
+        "wage_data_id": null,
+        "wage_selection_source": null,
+        "wage_selected_at": null,
+        "tax_exempt": false,
+        "tax_rate_id": "tax_default",
+        "tax_selection_source": null,
+        "tax_selected_at": null,
+        "bid_due_date": null,
+        "start_date": null,
+        "completion_date": null,
+        "fabrication_due_date": null,
+        "fabrication_start_date": null,
+        "lifecycle_state": "estimate_created",
+        "archived": false,
+        "configuration_id": "cfg-2026-08-17-v1",
+        "created_at": "2026-08-17T20:09:59.767595+00:00",
+        "updated_at": "2026-08-17T20:09:59.818628+00:00"
+      },
+      "cost_codes": [
+        {
+          "id": "ccd_verify_frames",
+          "code": "08 40 00",
+          "description": "Entrances, Storefronts, and Curtain Walls",
+          "mwd_code": "0840",
+          "mwd_description": "Aluminum Entrances",
+          "deduct": false,
+          "status": "active"
+        }
+      ],
+      "source_snapshot": {
+        "quotes": [
+          {
+            "id": "quo_verify_base",
+            "group_id": "frames",
+            "code": "08 40 00",
+            "date": "2026-08-17",
+            "vendor": "Verification Vendor",
+            "price": "10000",
+            "surcharge_percent": "0.05",
+            "tax_included": true,
+            "used": true,
+            "notes": "Deterministic verification quote",
+            "calculated_cost": "10500.00",
+            "calculated_square_feet": "69",
+            "calculated_unit_cost": "152.17"
+          },
+          {
+            "id": "quo_verify_alt",
+            "group_id": "frames-alt",
+            "code": "ALT1-08 40 00",
+            "date": "2026-08-17",
+            "vendor": "Verification Vendor",
+            "price": "9000",
+            "surcharge_percent": "0",
+            "tax_included": true,
+            "used": true,
+            "notes": "Disabled alternate preview",
+            "calculated_cost": "9000.00",
+            "calculated_square_feet": null,
+            "calculated_unit_cost": null
+          }
+        ],
+        "takeoff_sections": [
+          {
+            "id": "sec_verify",
+            "definition_id": "frame-v1",
+            "name": "Main Frames",
+            "code": "08 40 00",
+            "material_overrides": {},
+            "tie_back_qty": 2,
+            "backpan_lf": 12,
+            "lines": [
+              {
+                "id": "frm_verify",
+                "mark": "F1",
+                "quantity": 2,
+                "width_inches": 48,
+                "height_inches": 96,
+                "caulking_passes": 3,
+                "head": "Standard",
+                "jamb": "Standard",
+                "sill": "Standard",
+                "type": "Storefront",
+                "material": "Aluminum",
+                "finish": "Clear anodized",
+                "notes": "Verification row",
+                "calculated": {
+                  "square_feet": "64",
+                  "perimeter_lf": "48",
+                  "caulking_passes": "3",
+                  "caulking_lf": "144",
+                  "head_sill_qty": "16"
+                }
+              }
+            ],
+            "totals": {
+              "quantity": "2",
+              "square_feet": "64",
+              "perimeter_lf": "48",
+              "caulking_lf": "144",
+              "head_sill_qty": "16"
+            }
+          }
+        ],
+        "doors": [],
+        "hardware_assignments": [],
+        "equipment": [
+          {
+            "id": "eqp_verify",
+            "code": "11 00 00",
+            "description": "Lift",
+            "quantity": 1,
+            "duration": 3,
+            "duration_unit": "day",
+            "rate": "200",
+            "delivery": "100",
+            "taxable": true,
+            "notes": "Verification equipment",
+            "calculated_cost": "700.00"
+          }
+        ],
+        "borrowed_lites": [
+          {
+            "id": "brl_verify",
+            "code": "08 40 00",
+            "mark": "BL1",
+            "quantity": 1,
+            "width_inches": 12,
+            "height_inches": 12,
+            "rate": "20",
+            "notes": "Minimum boundary",
+            "calculated_square_feet": "5"
+          }
+        ],
+        "labor_estimates": [
+          {
+            "id": "lbr_verify",
+            "category": "field",
+            "code": "08 40 00",
+            "description": "Field installation",
+            "quantity": 100,
+            "quantity_unit": "SF",
+            "crew": 2,
+            "productivity": 5,
+            "rate": "75",
+            "notes": "10 calculated hours",
+            "calculated_hours": "10",
+            "calculated_cost": "750.00"
+          }
+        ],
+        "travel_estimates": []
+      },
+      "estimate": {
+        "id": "wrk_aa8b90993a0f4f1b80b0f215b6b1467c",
+        "alternate_inclusion": {
+          "ALT1": false,
+          "ALT2": false,
+          "ALT3": false,
+          "ALT4": false
+        },
+        "markup_overrides": {
+          "base_product": "0.10",
+          "LAF": "0.15",
+          "LAS": "0.20"
+        },
+        "contingency_enabled": true,
+        "contingency_override": null,
+        "contingency_override_reason": "",
+        "bond_enabled": false,
+        "bond_override": null,
+        "bond_override_reason": "",
+        "borrowed_lite_source_by_code": {},
+        "lines": [
+          {
+            "id": "est_9ecd7d8922f86318a0bc4c13",
+            "code": "08 40 00",
+            "category": "installation_material",
+            "description": "Entrances, Storefronts, and Curtain Walls — Bracing and Anchoring",
+            "cost": null,
+            "area": "64",
+            "tax_treatment": "taxed",
+            "markup_type": "base_product",
+            "lineage": [
+              {
+                "source_type": "frame_material",
+                "source_id": "sec_verify",
+                "material_rule_id": "mat_bracing",
+                "source_quantity": "48",
+                "factor": "1",
+                "rate": "1.50",
+                "pre_tax_cost": "72.00",
+                "configuration_id": "cfg-2026-08-17-v1"
+              }
+            ],
+            "direct_cost": "72.00",
+            "included": true,
+            "deduct_sign": 1,
+            "markup_rate": "0.10",
+            "markup_value": "7.20",
+            "selling_value": "79.20",
+            "configuration_id": "cfg-2026-08-17-v1"
+          },
+          {
+            "id": "est_7f5d324dd97c60052eabcd1d",
+            "code": "08 40 00",
+            "category": "installation_material",
+            "description": "Entrances, Storefronts, and Curtain Walls — Sheet Metal Membrane Air Barriers",
+            "cost": null,
+            "area": "64",
+            "tax_treatment": "taxed",
+            "markup_type": "base_product",
+            "lineage": [
+              {
+                "source_type": "frame_material",
+                "source_id": "sec_verify",
+                "material_rule_id": "mat_membrane",
+                "source_quantity": "48",
+                "factor": "1.00",
+                "rate": "1.00",
+                "pre_tax_cost": "48.00",
+                "configuration_id": "cfg-2026-08-17-v1"
+              }
+            ],
+            "direct_cost": "48.00",
+            "included": true,
+            "deduct_sign": 1,
+            "markup_rate": "0.10",
+            "markup_value": "4.80",
+            "selling_value": "52.80",
+            "configuration_id": "cfg-2026-08-17-v1"
+          },
+          {
+            "id": "est_8eb8bb6bf8a62dbe6e3c108e",
+            "code": "08 40 00",
+            "category": "installation_material",
+            "description": "Entrances, Storefronts, and Curtain Walls — Flashing and Sheet Metal",
+            "cost": null,
+            "area": "64",
+            "tax_treatment": "taxed",
+            "markup_type": "base_product",
+            "lineage": [
+              {
+                "source_type": "frame_material",
+                "source_id": "sec_verify",
+                "material_rule_id": "mat_flashing",
+                "source_quantity": "16",
+                "factor": "1.00",
+                "rate": "8.00",
+                "pre_tax_cost": "128.00",
+                "configuration_id": "cfg-2026-08-17-v1"
+              }
+            ],
+            "direct_cost": "128.00",
+            "included": true,
+            "deduct_sign": 1,
+            "markup_rate": "0.10",
+            "markup_value": "12.80",
+            "selling_value": "140.80",
+            "configuration_id": "cfg-2026-08-17-v1"
+          },
+          {
+            "id": "est_fd4c0d54c4871ce90482a081",
+            "code": "08 40 00",
+            "category": "installation_material",
+            "description": "Entrances, Storefronts, and Curtain Walls — Backer Rods",
+            "cost": null,
+            "area": "64",
+            "tax_treatment": "taxed",
+            "markup_type": "base_product",
+            "lineage": [
+              {
+                "source_type": "frame_material",
+                "source_id": "sec_verify",
+                "material_rule_id": "mat_backer",
+                "source_quantity": "144",
+                "factor": "1.00",
+                "rate": "0.50",
+                "pre_tax_cost": "72.00",
+                "configuration_id": "cfg-2026-08-17-v1"
+              }
+            ],
+            "direct_cost": "72.00",
+            "included": true,
+            "deduct_sign": 1,
+            "markup_rate": "0.10",
+            "markup_value": "7.20",
+            "selling_value": "79.20",
+            "configuration_id": "cfg-2026-08-17-v1"
+          },
+          {
+            "id": "est_d44b28f36b2f862411030d04",
+            "code": "08 40 00",
+            "category": "installation_material",
+            "description": "Entrances, Storefronts, and Curtain Walls — Joint Sealants",
+            "cost": null,
+            "area": "64",
+            "tax_treatment": "taxed",
+            "markup_type": "base_product",
+            "lineage": [
+              {
+                "source_type": "frame_material",
+                "source_id": "sec_verify",
+                "material_rule_id": "mat_sealant",
+                "source_quantity": "144",
+                "factor": "0.08",
+                "rate": "12.00",
+                "pre_tax_cost": "138.24",
+                "configuration_id": "cfg-2026-08-17-v1"
+              }
+            ],
+            "direct_cost": "138.24",
+            "included": true,
+            "deduct_sign": 1,
+            "markup_rate": "0.10",
+            "markup_value": "13.82",
+            "selling_value": "152.06",
+            "configuration_id": "cfg-2026-08-17-v1"
+          },
+          {
+            "id": "est_0208dde52b400bf93b9b5cc6",
+            "code": "08 40 00",
+            "category": "installation_material",
+            "description": "Entrances, Storefronts, and Curtain Walls — Tie Back",
+            "cost": null,
+            "area": "64",
+            "tax_treatment": "taxed",
+            "markup_type": "base_product",
+            "lineage": [
+              {
+                "source_type": "frame_material",
+                "source_id": "sec_verify",
+                "material_rule_id": "mat_tieback",
+                "source_quantity": "2",
+                "factor": "1",
+                "rate": "45.00",
+                "pre_tax_cost": "90.00",
+                "configuration_id": "cfg-2026-08-17-v1"
+              }
+            ],
+            "direct_cost": "90.00",
+            "included": true,
+            "deduct_sign": 1,
+            "markup_rate": "0.10",
+            "markup_value": "9.00",
+            "selling_value": "99.00",
+            "configuration_id": "cfg-2026-08-17-v1"
+          },
+          {
+            "id": "est_3b0b4236c77e41923e22e515",
+            "code": "08 40 00",
+            "category": "installation_material",
+            "description": "Entrances, Storefronts, and Curtain Walls — Backpans / Insulation",
+            "cost": null,
+            "area": "64",
+            "tax_treatment": "taxed",
+            "markup_type": "base_product",
+            "lineage": [
+              {
+                "source_type": "frame_material",
+                "source_id": "sec_verify",
+                "material_rule_id": "mat_backpan",
+                "source_quantity": "12",
+                "factor": "1",
+                "rate": "48.32",
+                "pre_tax_cost": "579.84",
+                "configuration_id": "cfg-2026-08-17-v1"
+              }
+            ],
+            "direct_cost": "579.84",
+            "included": true,
+            "deduct_sign": 1,
+            "markup_rate": "0.10",
+            "markup_value": "57.98",
+            "selling_value": "637.82",
+            "configuration_id": "cfg-2026-08-17-v1"
+          },
+          {
+            "id": "est_632e1ecb9f0952c34535b7f1",
+            "code": "08 40 00",
+            "category": "base_product",
+            "description": "Entrances, Storefronts, and Curtain Walls",
+            "cost": null,
+            "area": "69",
+            "tax_treatment": "included",
+            "markup_type": "base_product",
+            "lineage": [
+              {
+                "source_type": "quote",
+                "source_id": "quo_verify_base",
+                "entered_price": "10000",
+                "surcharge_percent": "0.05",
+                "tax_included": true,
+                "configuration_id": "cfg-2026-08-17-v1"
+              }
+            ],
+            "direct_cost": "10500.00",
+            "included": true,
+            "deduct_sign": 1,
+            "markup_rate": "0.10",
+            "markup_value": "1050.00",
+            "selling_value": "11550.00",
+            "configuration_id": "cfg-2026-08-17-v1"
+          },
+          {
+            "id": "est_941e63f2906500c83ce7eb0a",
+            "code": "ALT1-08 40 00",
+            "category": "base_product",
+            "description": "Entrances, Storefronts, and Curtain Walls",
+            "cost": null,
+            "area": "0",
+            "tax_treatment": "included",
+            "markup_type": "base_product",
+            "lineage": [
+              {
+                "source_type": "quote",
+                "source_id": "quo_verify_alt",
+                "entered_price": "9000",
+                "surcharge_percent": "0",
+                "tax_included": true,
+                "configuration_id": "cfg-2026-08-17-v1"
+              }
+            ],
+            "direct_cost": "9000.00",
+            "included": false,
+            "deduct_sign": 1,
+            "markup_rate": "0.10",
+            "markup_value": "900.00",
+            "selling_value": "9900.00",
+            "configuration_id": "cfg-2026-08-17-v1"
+          },
+          {
+            "id": "est_842c2d795fe8a965cd4b9b77",
+            "code": "11 00 00",
+            "category": "equipment",
+            "description": "Lift",
+            "cost": null,
+            "area": "0",
+            "tax_treatment": "taxed",
+            "markup_type": "base_product",
+            "lineage": [
+              {
+                "source_type": "equipment",
+                "source_id": "eqp_verify",
+                "rate_version": "cfg-2026-08-17-v1",
+                "configuration_id": "cfg-2026-08-17-v1"
+              }
+            ],
+            "direct_cost": "700.00",
+            "included": true,
+            "deduct_sign": 1,
+            "markup_rate": "0.10",
+            "markup_value": "70.00",
+            "selling_value": "770.00",
+            "configuration_id": "cfg-2026-08-17-v1"
+          },
+          {
+            "id": "est_889046b46caeed8483252186",
+            "code": "08 40 00",
+            "category": "field_labor",
+            "description": "Field installation",
+            "cost": null,
+            "area": "0",
+            "tax_treatment": "not_applicable",
+            "markup_type": "LAF",
+            "lineage": [
+              {
+                "source_type": "labor",
+                "source_id": "lbr_verify",
+                "quantity": 100,
+                "crew": 2,
+                "productivity": 5,
+                "calculated_hours": "10",
+                "override": null,
+                "override_reason": null,
+                "rate": "75",
+                "rate_version": "cfg-2026-08-17-v1",
+                "configuration_id": "cfg-2026-08-17-v1"
+              }
+            ],
+            "direct_cost": "750.00",
+            "included": true,
+            "deduct_sign": 1,
+            "markup_rate": "0.15",
+            "markup_value": "112.50",
+            "selling_value": "862.50",
+            "configuration_id": "cfg-2026-08-17-v1"
+          },
+          {
+            "id": "est_1f7078710baa232847f31b5e",
+            "code": "01 21 16",
+            "category": "contingency",
+            "description": "Contingency",
+            "direct_cost": "3000.00",
+            "included": true,
+            "deduct_sign": 1,
+            "markup_type": "special",
+            "markup_rate": "0",
+            "markup_value": "0.00",
+            "selling_value": "3000.00",
+            "area": "0",
+            "tax_treatment": "not_applicable",
+            "configuration_id": "cfg-2026-08-17-v1",
+            "lineage": [
+              {
+                "source_type": "contingency",
+                "configuration_id": "cfg-2026-08-17-v1"
+              }
+            ]
+          }
+        ],
+        "totals": {
+          "direct_cost": "16078.08",
+          "markup_profit": "1345.30",
+          "selling_value": "17423.38",
+          "margin_percentage": "0.07721234341442360781891917642",
+          "square_feet": "69",
+          "price_per_square_foot": "252.51",
+          "reconciliation": "ok",
+          "contingency": "3000.00",
+          "bond": "0.00"
+        },
+        "validation": []
+      },
+      "immutable": true
+    },
+    "immutable": true,
+    "reversal_status": "pending_policy"
+  },
+  "contract_allocations": [
+    {
+      "id": "cal_f3c1d7420a28448fa4d7724a25fa9882",
+      "award_id": "awd_6650644a302b4087a86713d9e4331632",
+      "source_estimate_line_id": "est_9ecd7d8922f86318a0bc4c13",
+      "code": "08 40 00",
+      "description": "Entrances, Storefronts, and Curtain Walls — Bracing and Anchoring",
+      "original_cost": "72.00",
+      "current_estimated_cost": "72.00",
+      "labor_hours": "0",
+      "contract_value": "79.20",
+      "reestimate_history": [
+        {
+          "id": "reh_f9c6b9f1ee884c2884242fdf41cd05a5",
+          "prior_value": "72.00",
+          "new_value": "72.00",
+          "variance": "0.00",
+          "reason": "Representative no-change re-estimate",
+          "actor": "Verification PM",
+          "role": "Project Manager",
+          "timestamp": "2026-08-17T20:09:59.887845+00:00",
+          "approval_status": "pending_policy"
+        }
+      ],
+      "procurement_status": "not_started"
+    },
+    {
+      "id": "cal_b2063c2bb1794f30befa22c5d78d491b",
+      "award_id": "awd_6650644a302b4087a86713d9e4331632",
+      "source_estimate_line_id": "est_7f5d324dd97c60052eabcd1d",
+      "code": "08 40 00",
+      "description": "Entrances, Storefronts, and Curtain Walls — Sheet Metal Membrane Air Barriers",
+      "original_cost": "48.00",
+      "current_estimated_cost": "48.00",
+      "labor_hours": "0",
+      "contract_value": "52.80",
+      "reestimate_history": [],
+      "procurement_status": "not_started"
+    },
+    {
+      "id": "cal_837b7349c04244abb035bf5b73e32d75",
+      "award_id": "awd_6650644a302b4087a86713d9e4331632",
+      "source_estimate_line_id": "est_8eb8bb6bf8a62dbe6e3c108e",
+      "code": "08 40 00",
+      "description": "Entrances, Storefronts, and Curtain Walls — Flashing and Sheet Metal",
+      "original_cost": "128.00",
+      "current_estimated_cost": "128.00",
+      "labor_hours": "0",
+      "contract_value": "140.80",
+      "reestimate_history": [],
+      "procurement_status": "not_started"
+    },
+    {
+      "id": "cal_eb44b0116b8546d6971df464f2e4fad5",
+      "award_id": "awd_6650644a302b4087a86713d9e4331632",
+      "source_estimate_line_id": "est_fd4c0d54c4871ce90482a081",
+      "code": "08 40 00",
+      "description": "Entrances, Storefronts, and Curtain Walls — Backer Rods",
+      "original_cost": "72.00",
+      "current_estimated_cost": "72.00",
+      "labor_hours": "0",
+      "contract_value": "79.20",
+      "reestimate_history": [],
+      "procurement_status": "not_started"
+    },
+    {
+      "id": "cal_55167f8e6e8c40f9a83b4425ee68797f",
+      "award_id": "awd_6650644a302b4087a86713d9e4331632",
+      "source_estimate_line_id": "est_d44b28f36b2f862411030d04",
+      "code": "08 40 00",
+      "description": "Entrances, Storefronts, and Curtain Walls — Joint Sealants",
+      "original_cost": "138.24",
+      "current_estimated_cost": "138.24",
+      "labor_hours": "0",
+      "contract_value": "152.06",
+      "reestimate_history": [],
+      "procurement_status": "not_started"
+    },
+    {
+      "id": "cal_0d2b4549ac764a6d9cfadc1bd704cd2e",
+      "award_id": "awd_6650644a302b4087a86713d9e4331632",
+      "source_estimate_line_id": "est_0208dde52b400bf93b9b5cc6",
+      "code": "08 40 00",
+      "description": "Entrances, Storefronts, and Curtain Walls — Tie Back",
+      "original_cost": "90.00",
+      "current_estimated_cost": "90.00",
+      "labor_hours": "0",
+      "contract_value": "99.00",
+      "reestimate_history": [],
+      "procurement_status": "not_started"
+    },
+    {
+      "id": "cal_ae1ac7fde3a943dfa66a31230240736a",
+      "award_id": "awd_6650644a302b4087a86713d9e4331632",
+      "source_estimate_line_id": "est_3b0b4236c77e41923e22e515",
+      "code": "08 40 00",
+      "description": "Entrances, Storefronts, and Curtain Walls — Backpans / Insulation",
+      "original_cost": "579.84",
+      "current_estimated_cost": "579.84",
+      "labor_hours": "0",
+      "contract_value": "637.82",
+      "reestimate_history": [],
+      "procurement_status": "not_started"
+    },
+    {
+      "id": "cal_01c307ec138d4a869570615ee4a1cb7d",
+      "award_id": "awd_6650644a302b4087a86713d9e4331632",
+      "source_estimate_line_id": "est_632e1ecb9f0952c34535b7f1",
+      "code": "08 40 00",
+      "description": "Entrances, Storefronts, and Curtain Walls",
+      "original_cost": "10500.00",
+      "current_estimated_cost": "10500.00",
+      "labor_hours": "0",
+      "contract_value": "11550.00",
+      "reestimate_history": [],
+      "procurement_status": "not_started"
+    },
+    {
+      "id": "cal_f41d4920244d4bcdb6f3ce7888dd0395",
+      "award_id": "awd_6650644a302b4087a86713d9e4331632",
+      "source_estimate_line_id": "est_842c2d795fe8a965cd4b9b77",
+      "code": "11 00 00",
+      "description": "Lift",
+      "original_cost": "700.00",
+      "current_estimated_cost": "700.00",
+      "labor_hours": "0",
+      "contract_value": "770.00",
+      "reestimate_history": [],
+      "procurement_status": "not_started"
+    },
+    {
+      "id": "cal_4ac098ded1cb4d66bc60d9d1dae1a1a8",
+      "award_id": "awd_6650644a302b4087a86713d9e4331632",
+      "source_estimate_line_id": "est_889046b46caeed8483252186",
+      "code": "08 40 00",
+      "description": "Field installation",
+      "original_cost": "750.00",
+      "current_estimated_cost": "750.00",
+      "labor_hours": "10",
+      "contract_value": "862.50",
+      "reestimate_history": [],
+      "procurement_status": "not_started"
+    },
+    {
+      "id": "cal_d053eabd89b744a4b8fa493c9b0397e8",
+      "award_id": "awd_6650644a302b4087a86713d9e4331632",
+      "source_estimate_line_id": "est_1f7078710baa232847f31b5e",
+      "code": "01 21 16",
+      "description": "Contingency",
+      "original_cost": "3000.00",
+      "current_estimated_cost": "3000.00",
+      "labor_hours": "0",
+      "contract_value": "3000.00",
+      "reestimate_history": [],
+      "procurement_status": "not_started"
+    }
+  ],
+  "change_orders": [
+    {
+      "id": "pco_f796b3e7fb3e4fe1a0db287362aa4c17",
+      "identifier": "PCO-VERIFY",
+      "description": "Representative change",
+      "status": "draft",
+      "cost_lines": [
+        {
+          "id": "pcl_c946334bbb5b466287c76267f12587bb",
+          "description": "Verification cost",
+          "quantity": null,
+          "unit": null,
+          "taxable": false,
+          "cost": "100.00",
+          "stage_one": "100.00",
+          "stage_two": "100.00",
+          "customer_price": "100.00",
+          "margin": "0"
+        }
+      ],
+      "markup_configuration_id": "cfg-2026-08-17-v1",
+      "markup_one_restricted": "0",
+      "markup_two_restricted": "0",
+      "total_cost": "100.00",
+      "customer_price": "100.00",
+      "margin": "0",
+      "approval": {
+        "status": "pending_policy"
+      },
+      "contract_effect": "not_applied",
+      "created_at": "2026-08-17T20:09:59.917829+00:00",
+      "created_by": "Verification PM"
+    }
+  ],
+  "sov_lines": [
+    {
+      "id": "sov_fb0bd61d97d9479a8c1f1e5388879638",
+      "allocation_id": "cal_f3c1d7420a28448fa4d7724a25fa9882",
+      "revision_history": [
+        {
+          "timestamp": "2026-08-17T20:09:59.948673+00:00",
+          "actor": "Verification PM",
+          "role": "Project Manager",
+          "prior": null,
+          "new": {
+            "components": [
+              "79.20"
+            ],
+            "scheduled_value": "79.20",
+            "allocation_percentage": "1",
+            "remaining_value": "0.00",
+            "status": "exact"
+          }
+        }
+      ],
+      "description": "Representative SOV line",
+      "components": [
+        "79.20"
+      ],
+      "scheduled_value": "79.20",
+      "allocation_percentage": "1",
+      "remaining_value": "0.00",
+      "status": "exact",
+      "approval_status": "ready"
+    }
+  ],
+  "closeout": null,
+  "configuration_lineage": [
+    {
+      "configuration_id": "cfg-2026-08-17-v1",
+      "adopted_at": "2026-08-17T20:09:59.767595+00:00",
+      "actor": "Verification Estimator"
+    }
+  ],
+  "audit_events": [
+    {
+      "id": "aud_7c3b7b14d368408fa3196de04a541070",
+      "timestamp": "2026-08-17T20:09:59.767595+00:00",
+      "actor": "Verification Estimator",
+      "role": "Estimator",
+      "entity_type": "project",
+      "entity_id": "d2963b29-7a81-482d-8d3e-e793aeb3e994",
+      "operation": "create",
+      "prior_value": null,
+      "new_value": {
+        "name": "Representative Verification Project"
+      },
+      "reason": "New project",
+      "correlation_id": "cor_203b1761d9854f09bdd4e2d549bcf58e"
+    },
+    {
+      "id": "aud_f32777198c2247d0b81e9458e024c781",
+      "timestamp": "2026-08-17T20:09:59.791292+00:00",
+      "actor": "Verification Estimator",
+      "role": "Estimator",
+      "entity_type": "project",
+      "entity_id": "d2963b29-7a81-482d-8d3e-e793aeb3e994",
+      "operation": "edit_save",
+      "prior_value": {
+        "name": "Representative Verification Project",
+        "working_total": "0.00"
+      },
+      "new_value": {
+        "name": "Representative Verification Project",
+        "working_total": "17423.38"
+      },
+      "reason": "Representative vertical workflow",
+      "correlation_id": "cor_d05aae6b5b11403bbd19c8ca4bf46f62"
+    },
+    {
+      "id": "aud_5acc3489851f4a6cb29a0e07804e48be",
+      "timestamp": "2026-08-17T20:09:59.817067+00:00",
+      "actor": "Verification GM",
+      "role": "General Manager",
+      "entity_type": "review",
+      "entity_id": "revw_d679eb46a204404b9648aa94a6281af6",
+      "operation": "review",
+      "prior_value": null,
+      "new_value": {
+        "id": "revw_d679eb46a204404b9648aa94a6281af6",
+        "revision_id": null,
+        "reviewer": "Verification GM",
+        "reviewer_role": "General Manager",
+        "decision": "reviewed",
+        "comment": "Workflow verification; policy evidence pending",
+        "timestamp": "2026-08-17T20:09:59.817053+00:00",
+        "evidence_status": "pending_policy"
+      },
+      "reason": "Workflow verification; policy evidence pending",
+      "correlation_id": "cor_d088209c9e1749058f503d8203a537a2"
+    },
+    {
+      "id": "aud_224d9f574b934b599b8085b4e01775df",
+      "timestamp": "2026-08-17T20:09:59.847289+00:00",
+      "actor": "Verification Estimator",
+      "role": "Estimator",
+      "entity_type": "estimate_revision",
+      "entity_id": "rev_f93df1291cb243d6afd609d1a8b44dd2",
+      "operation": "submit",
+      "prior_value": null,
+      "new_value": {
+        "submission_id": "sub_f96a823bc5d24d828fbc8d7303b1b3d3",
+        "total": "17423.38"
+      },
+      "reason": "Representative workflow submission",
+      "correlation_id": "cor_5e74aaf8acca442598efb34f0cb30d55"
+    },
+    {
+      "id": "aud_a61c0c22cc6442af8befbf20e5e2845f",
+      "timestamp": "2026-08-17T20:09:59.872730+00:00",
+      "actor": "Verification PM",
+      "role": "Project Manager",
+      "entity_type": "award",
+      "entity_id": "awd_6650644a302b4087a86713d9e4331632",
+      "operation": "activate",
+      "prior_value": null,
+      "new_value": {
+        "revision_id": "rev_f93df1291cb243d6afd609d1a8b44dd2",
+        "ntp_date": "2026-08-17"
+      },
+      "reason": "Notice to proceed",
+      "correlation_id": "cor_67e6eb1da6294b4d9694a71feb60703f"
+    },
+    {
+      "id": "aud_476432f9d22f42ba9936014fb5b5e334",
+      "timestamp": "2026-08-17T20:09:59.887857+00:00",
+      "actor": "Verification PM",
+      "role": "Project Manager",
+      "entity_type": "contract_allocation",
+      "entity_id": "cal_f3c1d7420a28448fa4d7724a25fa9882",
+      "operation": "reestimate",
+      "prior_value": "72.00",
+      "new_value": "72.00",
+      "reason": "Representative no-change re-estimate",
+      "correlation_id": "cor_3ea69faa919847b79ce871f288d8ba6c"
+    },
+    {
+      "id": "aud_d222e80a49b24b74b81cd382cdb9524b",
+      "timestamp": "2026-08-17T20:09:59.917840+00:00",
+      "actor": "Verification PM",
+      "role": "Project Manager",
+      "entity_type": "change_order",
+      "entity_id": "pco_f796b3e7fb3e4fe1a0db287362aa4c17",
+      "operation": "create",
+      "prior_value": null,
+      "new_value": {
+        "identifier": "PCO-VERIFY",
+        "customer_price": "100.00"
+      },
+      "reason": "Create PCO",
+      "correlation_id": "cor_87d038e2a8444606affe6d87ccc94fde"
+    },
+    {
+      "id": "aud_f373173f32ec40beac6ae5d84a6fa771",
+      "timestamp": "2026-08-17T20:09:59.948685+00:00",
+      "actor": "Verification PM",
+      "role": "Project Manager",
+      "entity_type": "sov_line",
+      "entity_id": "sov_fb0bd61d97d9479a8c1f1e5388879638",
+      "operation": "save",
+      "prior_value": null,
+      "new_value": {
+        "scheduled_value": "79.20",
+        "status": "exact"
+      },
+      "reason": "SOV allocation",
+      "correlation_id": "cor_8911a56b324b4311a3eee3a0448ecbd7"
+    }
+  ]
+}

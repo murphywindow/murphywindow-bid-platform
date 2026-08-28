@@ -3,15 +3,14 @@ from __future__ import annotations
 
 from copy import deepcopy
 from datetime import UTC, datetime
-import json
-from pathlib import Path
 from uuid import uuid4
 
 from .rate_reference import owner_rate_reference
 from .numeric_precision import default_decimal_precision
+from .project_ids import SEED_TEST_PROJECT_ID, random_project_id
 
-SCHEMA_VERSION = "1.4.0"
-INTERCHANGE_VERSION = "1.4.0"
+SCHEMA_VERSION = "1.5.0"
+INTERCHANGE_VERSION = "1.5.0"
 CONFIG_VERSION = "cfg-2026-08-19-v5"
 
 PROJECT_TYPES = (
@@ -46,7 +45,7 @@ def uid(prefix: str) -> str:
     return f"{prefix}_{uuid4().hex}"
 
 
-def default_configuration() -> dict:
+def default_configuration(cost_code_reference: dict | None = None) -> dict:
     """Seeded from INF-4320; unsupported commercial numbers remain zero/disabled."""
     rates = owner_rate_reference()
     material_rules = [
@@ -58,8 +57,7 @@ def default_configuration() -> dict:
         ("mat_tieback", "Tie Back", "06 00 00", "tie_back_qty", "1", "45.00", "each", "Anchoring"),
         ("mat_backpan", "Backpans / Insulation", "07 60 00", "backpan_lf", "1", "48.32", "linear foot", "Flashing"),
     ]
-    reference_path = Path(__file__).resolve().parents[1] / "data" / "reference" / "codes.json"
-    reference = json.loads(reference_path.read_text(encoding="utf-8")) if reference_path.exists() else {"records": [], "reference_id": None, "source": None}
+    reference = cost_code_reference or {"records": [], "reference_id": None, "source": None}
     return {
         "schema_version": SCHEMA_VERSION,
         "id": CONFIG_VERSION,
@@ -104,13 +102,13 @@ def default_configuration() -> dict:
             "Rate update cadence and effective-date policy", "Travel, per diem, excluded-day, lodging, and tax-exemption rules",
             "SOV operating approval roles", "Closeout gates, approval, archive, and retention"
         ],
-        "application_settings": {"autosave_seconds": 0, "autosave_debounce_ms": 250, "autosave_status": "confirmed_user_request", "backup_retention": 20, "default_port": 8765, "large_bid_threshold": None, "large_bid_threshold_status": "pending", "retention_days": None, "retention_status": "pending", "decimal_precision": default_decimal_precision(),
+        "application_settings": {"autosave_seconds": 0, "autosave_debounce_ms": 250, "autosave_status": "confirmed_user_request", "backup_retention": 20, "default_port": 8765, "large_bid_threshold": None, "large_bid_threshold_status": "pending", "retention_days": None, "retention_status": "pending", "decimal_precision": default_decimal_precision(), "frame_square_footage_method": "per_frame_then_quantity",
                                  "mileage": {"origin_label": "Rogers, Minnesota 55374 city center", "origin_latitude": "45.1888596", "origin_longitude": "-93.5524563", "origin_status": "owner_requested_city_origin_configurable", "geocoder_primary": "US Census Geocoder Public_AR_Current", "geocoder_fallback": "OpenStreetMap Nominatim public service", "router": "OSRM public routing service", "online_required": True, "rounding": "nearest 0.1 mile, ROUND_HALF_UP"}}
     }
 
 
-def new_project(name: str, actor: str, role: str, configuration_id: str = CONFIG_VERSION) -> dict:
-    ts, project_id = now(), uid("prj")
+def new_project(name: str, actor: str, role: str, configuration_id: str = CONFIG_VERSION, *, project_id: str | None = None) -> dict:
+    ts, project_id = now(), project_id or random_project_id()
     return {
         "schema_version": SCHEMA_VERSION,
         "interchange_version": INTERCHANGE_VERSION,
@@ -119,11 +117,11 @@ def new_project(name: str, actor: str, role: str, configuration_id: str = CONFIG
             "address_street": "", "address_city": "", "address_state": "", "zip": "", "county": "", "address_match_metadata": None,
             "miles_from_rogers": None, "project_type": "", "project_type_status": "missing", "building_type": "", "estimator": actor if role == "Estimator" else "",
             "project_manager": "", "owner_name": "", "owner_organization_id": None, "owner_legal_name": "", "owner_address": "",
-            "owner_website": "", "owner_phone": "", "owner_email": "", "architect": "", "engineer": "", "general_contractor": "",
-            "construction_manager": "", "plan_source": "", "contract_type": "", "contract_type_status": "missing", "wage_type": "", "wage_type_status": "missing", "addenda_count": 0, "walkthrough": "", "frame_sealant_colors": "",
+            "owner_website": "", "owner_phone": "", "owner_email": "", "architect": "", "architect_address": "", "engineer": "", "engineer_address": "", "general_contractor": "", "general_contractor_address": "",
+            "construction_manager": "", "construction_manager_address": "", "plan_source": "", "contract_type": "", "contract_type_status": "missing", "wage_type": "Non-PW", "wage_type_status": "current", "addenda_count": 0, "walkthrough": None, "frame_sealant_colors": "",
             "additional_information": "", "notes": "", "proposal_scope": "", "proposal_inclusions": "", "proposal_exclusions": "",
             "wage_data_id": None, "wage_selection_source": None, "wage_selected_at": None, "tax_exempt": False, "tax_rate_id": "tax_default",
-            "tax_selection_source": None, "tax_selected_at": None, "bid_due_date": None, "start_date": None, "completion_date": None,
+            "tax_selection_source": None, "tax_selected_at": None, "bid_due_date": None, "start_date": None, "completion_date": None, "final_completion_date": None,
             "fabrication_due_date": None, "fabrication_start_date": None, "lifecycle_state": "estimate_created", "archived": False,
             "configuration_id": configuration_id, "bid_version": {"major": 0, "minor": 0, "patch": 0, "display": "B0.0.0", "sequence": 0, "last_event": "create", "recorded_at": ts},
             "created_at": ts, "updated_at": ts
@@ -145,9 +143,9 @@ def new_project(name: str, actor: str, role: str, configuration_id: str = CONFIG
     }
 
 
-def duplicate_project(source: dict, name: str, actor: str, role: str) -> dict:
+def duplicate_project(source: dict, name: str, actor: str, role: str, *, project_id: str | None = None) -> dict:
     result = deepcopy(source)
-    ts, old_id, new_id = now(), source["project"]["id"], uid("prj")
+    ts, old_id, new_id = now(), source["project"]["id"], project_id or random_project_id()
     result["project"].update({"id": new_id, "revision": 0, "name": name, "lifecycle_state": "estimate_created", "archived": False,
                               "bid_version": {"major": 0, "minor": 0, "patch": 0, "display": "B0.0.0", "sequence": 0, "last_event": "duplicate", "recorded_at": ts},
                               "created_at": ts, "updated_at": ts})
@@ -171,7 +169,7 @@ def test_project(actor: str = "Test Estimator") -> dict:
     """Reusable local sandbox. Startup creates it once and never overwrites edits."""
     doc = new_project("MW Bid Platform Test Project", actor, "Estimator")
     doc["project"].update({
-        "id": "prj_00000000000000000000000000004320", "project_number": "TEST-4320", "address": "Rogers, MN",
+        "id": SEED_TEST_PROJECT_ID, "project_number": "TEST-4320", "address": "Rogers, MN",
         "address_city": "Rogers", "address_state": "MN", "project_type": "New Construction - Exterior Storefront", "project_type_status": "current", "building_type": "Commercial",
         "contract_type": "Bid to CM/GC", "contract_type_status": "current", "wage_type": "Non-PW", "wage_type_status": "current", "bid_due_date": "2026-09-01T14:00",
         "proposal_scope": "Test storefront and frame scope for learning the local bid workflow.",

@@ -1,0 +1,751 @@
+{
+  "schema_version": "1.1.0",
+  "interchange_version": "1.1.0",
+  "project": {
+    "id": "3ba369d4-c0a9-422b-816d-ce88beafefd7",
+    "revision": 0,
+    "name": "Historical Reference Bid 0059",
+    "abbreviation": "",
+    "project_number": "HIST-0059",
+    "mwd_po": "",
+    "address": "",
+    "address_street": "",
+    "address_city": "",
+    "address_state": "",
+    "zip": "",
+    "county": "",
+    "address_match_metadata": null,
+    "miles_from_rogers": null,
+    "project_type": "Repair - Interior Storefront",
+    "project_type_status": "current",
+    "building_type": "Hospitality",
+    "estimator": "Historical Reference Seeder",
+    "project_manager": "",
+    "owner_name": "",
+    "owner_organization_id": null,
+    "owner_legal_name": "",
+    "owner_address": "",
+    "owner_website": "",
+    "owner_phone": "",
+    "owner_email": "",
+    "architect": "",
+    "engineer": "",
+    "general_contractor": "",
+    "construction_manager": "",
+    "plan_source": "",
+    "contract_type": "Bid to CM/GC",
+    "contract_type_status": "missing",
+    "wage_type": "Non-PW",
+    "wage_type_status": "missing",
+    "addenda_count": 0,
+    "walkthrough": "",
+    "frame_sealant_colors": "",
+    "additional_information": "",
+    "notes": "Controlled simulated historical reference evidence; never a live customer project.",
+    "proposal_scope": "",
+    "proposal_inclusions": "",
+    "proposal_exclusions": "",
+    "wage_data_id": null,
+    "wage_selection_source": null,
+    "wage_selected_at": null,
+    "tax_exempt": false,
+    "tax_rate_id": "tax_default",
+    "tax_selection_source": null,
+    "tax_selected_at": null,
+    "bid_due_date": "2020-10-14",
+    "start_date": null,
+    "completion_date": null,
+    "fabrication_due_date": null,
+    "fabrication_start_date": null,
+    "lifecycle_state": "estimate_created",
+    "archived": false,
+    "configuration_id": "cfg-2026-08-19-v5",
+    "bid_version": {
+      "major": 0,
+      "minor": 0,
+      "patch": 0,
+      "display": "B0.0.0",
+      "sequence": 0,
+      "last_event": "create",
+      "recorded_at": "2026-08-20T18:37:30.587574+00:00"
+    },
+    "created_at": "2026-08-20T18:37:30.587574+00:00",
+    "updated_at": "2026-08-20T18:37:30.587574+00:00",
+    "data_classification": "historical_reference_fixture"
+  },
+  "contacts": [],
+  "cost_codes": [
+    {
+      "id": "ccd_prj_histref_0059_0",
+      "code": "08 41 13",
+      "description": "Aluminum-Framed Entrances and Storefronts",
+      "deduct": false,
+      "status": "active"
+    },
+    {
+      "id": "ccd_prj_histref_0059_1",
+      "code": "08 44 13",
+      "description": "Glazed Aluminum Curtain Walls",
+      "deduct": false,
+      "status": "active"
+    },
+    {
+      "id": "ccd_prj_histref_0059_2",
+      "code": "08 80 00",
+      "description": "Glazing",
+      "deduct": false,
+      "status": "active"
+    },
+    {
+      "id": "ccd_prj_histref_0059_3",
+      "code": "ALT1-08 41 13",
+      "description": "Aluminum-Framed Entrances and Storefronts",
+      "deduct": false,
+      "status": "active"
+    }
+  ],
+  "quotes": [],
+  "takeoff_sections": [
+    {
+      "id": "sec_prj_histref_0059_0",
+      "code": "08 41 13",
+      "name": "Aluminum-Framed Entrances and Storefronts",
+      "lines": [
+        {
+          "id": "frm_prj_histref_0059_0_0",
+          "mark": "F1-1",
+          "quantity": 8,
+          "width_inches": 144,
+          "height_inches": 108,
+          "caulking_passes": 3,
+          "calculated": {
+            "square_feet": "864.0000"
+          }
+        },
+        {
+          "id": "frm_prj_histref_0059_0_1",
+          "mark": "F1-2",
+          "quantity": 3,
+          "width_inches": 48,
+          "height_inches": 108,
+          "caulking_passes": 3,
+          "calculated": {
+            "square_feet": "108.0000"
+          }
+        },
+        {
+          "id": "frm_prj_histref_0059_0_2",
+          "mark": "F1-3",
+          "quantity": 10,
+          "width_inches": 96,
+          "height_inches": 120,
+          "caulking_passes": 3,
+          "calculated": {
+            "square_feet": "800.0000"
+          }
+        }
+      ],
+      "totals": {
+        "square_feet": "1772.0000"
+      }
+    },
+    {
+      "id": "sec_prj_histref_0059_1",
+      "code": "08 44 13",
+      "name": "Glazed Aluminum Curtain Walls",
+      "lines": [
+        {
+          "id": "frm_prj_histref_0059_1_0",
+          "mark": "F2-1",
+          "quantity": 14,
+          "width_inches": 120,
+          "height_inches": 144,
+          "caulking_passes": 3,
+          "calculated": {
+            "square_feet": "1680.0000"
+          }
+        },
+        {
+          "id": "frm_prj_histref_0059_1_1",
+          "mark": "F2-2",
+          "quantity": 11,
+          "width_inches": 72,
+          "height_inches": 72,
+          "caulking_passes": 3,
+          "calculated": {
+            "square_feet": "396.0000"
+          }
+        },
+        {
+          "id": "frm_prj_histref_0059_1_2",
+          "mark": "F2-3",
+          "quantity": 2,
+          "width_inches": 72,
+          "height_inches": 144,
+          "caulking_passes": 3,
+          "calculated": {
+            "square_feet": "144.0000"
+          }
+        }
+      ],
+      "totals": {
+        "square_feet": "2220.0000"
+      }
+    },
+    {
+      "id": "sec_prj_histref_0059_2",
+      "code": "08 80 00",
+      "name": "Glazing",
+      "lines": [
+        {
+          "id": "frm_prj_histref_0059_2_0",
+          "mark": "F3-1",
+          "quantity": 7,
+          "width_inches": 48,
+          "height_inches": 84,
+          "caulking_passes": 3,
+          "calculated": {
+            "square_feet": "196.0000"
+          }
+        },
+        {
+          "id": "frm_prj_histref_0059_2_1",
+          "mark": "F3-2",
+          "quantity": 4,
+          "width_inches": 144,
+          "height_inches": 84,
+          "caulking_passes": 3,
+          "calculated": {
+            "square_feet": "336.0000"
+          }
+        },
+        {
+          "id": "frm_prj_histref_0059_2_2",
+          "mark": "F3-3",
+          "quantity": 11,
+          "width_inches": 60,
+          "height_inches": 108,
+          "caulking_passes": 3,
+          "calculated": {
+            "square_feet": "495.0000"
+          }
+        }
+      ],
+      "totals": {
+        "square_feet": "1027.0000"
+      }
+    },
+    {
+      "id": "sec_prj_histref_0059_3",
+      "code": "ALT1-08 41 13",
+      "name": "Aluminum-Framed Entrances and Storefronts",
+      "lines": [
+        {
+          "id": "frm_prj_histref_0059_3_0",
+          "mark": "F4-1",
+          "quantity": 2,
+          "width_inches": 48,
+          "height_inches": 108,
+          "caulking_passes": 3,
+          "calculated": {
+            "square_feet": "72.0000"
+          }
+        },
+        {
+          "id": "frm_prj_histref_0059_3_1",
+          "mark": "F4-2",
+          "quantity": 4,
+          "width_inches": 48,
+          "height_inches": 108,
+          "caulking_passes": 3,
+          "calculated": {
+            "square_feet": "144.0000"
+          }
+        },
+        {
+          "id": "frm_prj_histref_0059_3_2",
+          "mark": "F4-3",
+          "quantity": 5,
+          "width_inches": 120,
+          "height_inches": 84,
+          "caulking_passes": 3,
+          "calculated": {
+            "square_feet": "350.0000"
+          }
+        }
+      ],
+      "totals": {
+        "square_feet": "566.0000"
+      }
+    }
+  ],
+  "doors": [],
+  "hardware_assignments": [],
+  "equipment": [],
+  "borrowed_lites": [],
+  "labor_estimates": [],
+  "travel_estimates": [],
+  "working_estimate": {
+    "id": "wrk_3a37f23e23e74a62a5f108f5cd96a5d4",
+    "alternate_inclusion": {
+      "ALT1": false,
+      "ALT2": false,
+      "ALT3": false,
+      "ALT4": false
+    },
+    "markup_overrides": {},
+    "contingency_enabled": false,
+    "contingency_override": null,
+    "contingency_override_reason": "",
+    "bond_enabled": false,
+    "bond_override": null,
+    "bond_override_reason": "",
+    "borrowed_lite_source_by_code": {},
+    "quote_selection_by_code": {},
+    "labor_suggestion_exclusions": [],
+    "component_markup_overrides": {},
+    "pending_controlled_values": [],
+    "lines": [],
+    "code_summaries": [],
+    "cost_code_summaries": [],
+    "category_subtotals": {},
+    "totals": {}
+  },
+  "estimate_revisions": [
+    {
+      "id": "rev_prj_histref_0059_1",
+      "revision_number": 1,
+      "configuration_id": "cfg-2026-08-19-v5",
+      "status": "submitted",
+      "immutable": true,
+      "created_at": "2020-10-14T12:00:00+00:00",
+      "bid_version": {
+        "display": "B1.0.0",
+        "major": 1,
+        "minor": 0,
+        "patch": 0,
+        "sequence": 1
+      },
+      "project_snapshot": {
+        "id": "3ba369d4-c0a9-422b-816d-ce88beafefd7",
+        "revision": 0,
+        "name": "Historical Reference Bid 0059",
+        "abbreviation": "",
+        "project_number": "HIST-0059",
+        "mwd_po": "",
+        "address": "",
+        "address_street": "",
+        "address_city": "",
+        "address_state": "",
+        "zip": "",
+        "county": "",
+        "address_match_metadata": null,
+        "miles_from_rogers": null,
+        "project_type": "Repair - Interior Storefront",
+        "project_type_status": "current",
+        "building_type": "Hospitality",
+        "estimator": "Historical Reference Seeder",
+        "project_manager": "",
+        "owner_name": "",
+        "owner_organization_id": null,
+        "owner_legal_name": "",
+        "owner_address": "",
+        "owner_website": "",
+        "owner_phone": "",
+        "owner_email": "",
+        "architect": "",
+        "engineer": "",
+        "general_contractor": "",
+        "construction_manager": "",
+        "plan_source": "",
+        "contract_type": "Bid to CM/GC",
+        "contract_type_status": "missing",
+        "wage_type": "Non-PW",
+        "wage_type_status": "missing",
+        "addenda_count": 0,
+        "walkthrough": "",
+        "frame_sealant_colors": "",
+        "additional_information": "",
+        "notes": "Controlled simulated historical reference evidence; never a live customer project.",
+        "proposal_scope": "",
+        "proposal_inclusions": "",
+        "proposal_exclusions": "",
+        "wage_data_id": null,
+        "wage_selection_source": null,
+        "wage_selected_at": null,
+        "tax_exempt": false,
+        "tax_rate_id": "tax_default",
+        "tax_selection_source": null,
+        "tax_selected_at": null,
+        "bid_due_date": "2020-10-14",
+        "start_date": null,
+        "completion_date": null,
+        "fabrication_due_date": null,
+        "fabrication_start_date": null,
+        "lifecycle_state": "estimate_created",
+        "archived": false,
+        "configuration_id": "cfg-2026-08-19-v5",
+        "bid_version": {
+          "major": 0,
+          "minor": 0,
+          "patch": 0,
+          "display": "B0.0.0",
+          "sequence": 0,
+          "last_event": "create",
+          "recorded_at": "2026-08-20T18:37:30.587574+00:00"
+        },
+        "created_at": "2026-08-20T18:37:30.587574+00:00",
+        "updated_at": "2026-08-20T18:37:30.587574+00:00",
+        "data_classification": "historical_reference_fixture"
+      },
+      "cost_codes": [
+        {
+          "id": "ccd_prj_histref_0059_0",
+          "code": "08 41 13",
+          "description": "Aluminum-Framed Entrances and Storefronts",
+          "deduct": false,
+          "status": "active"
+        },
+        {
+          "id": "ccd_prj_histref_0059_1",
+          "code": "08 44 13",
+          "description": "Glazed Aluminum Curtain Walls",
+          "deduct": false,
+          "status": "active"
+        },
+        {
+          "id": "ccd_prj_histref_0059_2",
+          "code": "08 80 00",
+          "description": "Glazing",
+          "deduct": false,
+          "status": "active"
+        },
+        {
+          "id": "ccd_prj_histref_0059_3",
+          "code": "ALT1-08 41 13",
+          "description": "Aluminum-Framed Entrances and Storefronts",
+          "deduct": false,
+          "status": "active"
+        }
+      ],
+      "source_snapshot": {
+        "takeoff_sections": [
+          {
+            "id": "sec_prj_histref_0059_0",
+            "code": "08 41 13",
+            "name": "Aluminum-Framed Entrances and Storefronts",
+            "lines": [
+              {
+                "id": "frm_prj_histref_0059_0_0",
+                "mark": "F1-1",
+                "quantity": 8,
+                "width_inches": 144,
+                "height_inches": 108,
+                "caulking_passes": 3,
+                "calculated": {
+                  "square_feet": "864.0000"
+                }
+              },
+              {
+                "id": "frm_prj_histref_0059_0_1",
+                "mark": "F1-2",
+                "quantity": 3,
+                "width_inches": 48,
+                "height_inches": 108,
+                "caulking_passes": 3,
+                "calculated": {
+                  "square_feet": "108.0000"
+                }
+              },
+              {
+                "id": "frm_prj_histref_0059_0_2",
+                "mark": "F1-3",
+                "quantity": 10,
+                "width_inches": 96,
+                "height_inches": 120,
+                "caulking_passes": 3,
+                "calculated": {
+                  "square_feet": "800.0000"
+                }
+              }
+            ],
+            "totals": {
+              "square_feet": "1772.0000"
+            }
+          },
+          {
+            "id": "sec_prj_histref_0059_1",
+            "code": "08 44 13",
+            "name": "Glazed Aluminum Curtain Walls",
+            "lines": [
+              {
+                "id": "frm_prj_histref_0059_1_0",
+                "mark": "F2-1",
+                "quantity": 14,
+                "width_inches": 120,
+                "height_inches": 144,
+                "caulking_passes": 3,
+                "calculated": {
+                  "square_feet": "1680.0000"
+                }
+              },
+              {
+                "id": "frm_prj_histref_0059_1_1",
+                "mark": "F2-2",
+                "quantity": 11,
+                "width_inches": 72,
+                "height_inches": 72,
+                "caulking_passes": 3,
+                "calculated": {
+                  "square_feet": "396.0000"
+                }
+              },
+              {
+                "id": "frm_prj_histref_0059_1_2",
+                "mark": "F2-3",
+                "quantity": 2,
+                "width_inches": 72,
+                "height_inches": 144,
+                "caulking_passes": 3,
+                "calculated": {
+                  "square_feet": "144.0000"
+                }
+              }
+            ],
+            "totals": {
+              "square_feet": "2220.0000"
+            }
+          },
+          {
+            "id": "sec_prj_histref_0059_2",
+            "code": "08 80 00",
+            "name": "Glazing",
+            "lines": [
+              {
+                "id": "frm_prj_histref_0059_2_0",
+                "mark": "F3-1",
+                "quantity": 7,
+                "width_inches": 48,
+                "height_inches": 84,
+                "caulking_passes": 3,
+                "calculated": {
+                  "square_feet": "196.0000"
+                }
+              },
+              {
+                "id": "frm_prj_histref_0059_2_1",
+                "mark": "F3-2",
+                "quantity": 4,
+                "width_inches": 144,
+                "height_inches": 84,
+                "caulking_passes": 3,
+                "calculated": {
+                  "square_feet": "336.0000"
+                }
+              },
+              {
+                "id": "frm_prj_histref_0059_2_2",
+                "mark": "F3-3",
+                "quantity": 11,
+                "width_inches": 60,
+                "height_inches": 108,
+                "caulking_passes": 3,
+                "calculated": {
+                  "square_feet": "495.0000"
+                }
+              }
+            ],
+            "totals": {
+              "square_feet": "1027.0000"
+            }
+          },
+          {
+            "id": "sec_prj_histref_0059_3",
+            "code": "ALT1-08 41 13",
+            "name": "Aluminum-Framed Entrances and Storefronts",
+            "lines": [
+              {
+                "id": "frm_prj_histref_0059_3_0",
+                "mark": "F4-1",
+                "quantity": 2,
+                "width_inches": 48,
+                "height_inches": 108,
+                "caulking_passes": 3,
+                "calculated": {
+                  "square_feet": "72.0000"
+                }
+              },
+              {
+                "id": "frm_prj_histref_0059_3_1",
+                "mark": "F4-2",
+                "quantity": 4,
+                "width_inches": 48,
+                "height_inches": 108,
+                "caulking_passes": 3,
+                "calculated": {
+                  "square_feet": "144.0000"
+                }
+              },
+              {
+                "id": "frm_prj_histref_0059_3_2",
+                "mark": "F4-3",
+                "quantity": 5,
+                "width_inches": 120,
+                "height_inches": 84,
+                "caulking_passes": 3,
+                "calculated": {
+                  "square_feet": "350.0000"
+                }
+              }
+            ],
+            "totals": {
+              "square_feet": "566.0000"
+            }
+          }
+        ],
+        "borrowed_lites": []
+      },
+      "estimate": {
+        "lines": [
+          {
+            "id": "est_prj_histref_0059_0",
+            "code": "08 41 13",
+            "description": "Aluminum-Framed Entrances and Storefronts",
+            "included": true,
+            "direct_cost": "62149.24",
+            "selling_value": "72350.69",
+            "area": "1772.0000"
+          },
+          {
+            "id": "est_prj_histref_0059_1",
+            "code": "08 44 13",
+            "description": "Glazed Aluminum Curtain Walls",
+            "included": true,
+            "direct_cost": "131980.48",
+            "selling_value": "154725.07",
+            "area": "2220.0000"
+          },
+          {
+            "id": "est_prj_histref_0059_2",
+            "code": "08 80 00",
+            "description": "Glazing",
+            "included": true,
+            "direct_cost": "29253.96",
+            "selling_value": "34538.32",
+            "area": "1027.0000"
+          },
+          {
+            "id": "est_prj_histref_0059_3",
+            "code": "ALT1-08 41 13",
+            "description": "Aluminum-Framed Entrances and Storefronts",
+            "included": true,
+            "direct_cost": "21884.19",
+            "selling_value": "26021.63",
+            "area": "566.0000"
+          }
+        ],
+        "cost_code_summaries": [
+          {
+            "code": "08 41 13",
+            "description": "Aluminum-Framed Entrances and Storefronts",
+            "included": true,
+            "direct_cost": "62149.24",
+            "selling_value": "72350.69",
+            "margin_dollars": "10201.45",
+            "margin_percentage": "0.141",
+            "total_square_feet": "1772.0000",
+            "dollars_per_square_foot": "40.8300",
+            "metric_definition": "bid-cost-code-sell-value-per-frame-plus-borrowed-lite-sf.v1"
+          },
+          {
+            "code": "08 44 13",
+            "description": "Glazed Aluminum Curtain Walls",
+            "included": true,
+            "direct_cost": "131980.48",
+            "selling_value": "154725.07",
+            "margin_dollars": "22744.59",
+            "margin_percentage": "0.147",
+            "total_square_feet": "2220.0000",
+            "dollars_per_square_foot": "69.6960",
+            "metric_definition": "bid-cost-code-sell-value-per-frame-plus-borrowed-lite-sf.v1"
+          },
+          {
+            "code": "08 80 00",
+            "description": "Glazing",
+            "included": true,
+            "direct_cost": "29253.96",
+            "selling_value": "34538.32",
+            "margin_dollars": "5284.36",
+            "margin_percentage": "0.153",
+            "total_square_feet": "1027.0000",
+            "dollars_per_square_foot": "33.6303",
+            "metric_definition": "bid-cost-code-sell-value-per-frame-plus-borrowed-lite-sf.v1"
+          },
+          {
+            "code": "ALT1-08 41 13",
+            "description": "Aluminum-Framed Entrances and Storefronts",
+            "included": true,
+            "direct_cost": "21884.19",
+            "selling_value": "26021.63",
+            "margin_dollars": "4137.44",
+            "margin_percentage": "0.159",
+            "total_square_feet": "566.0000",
+            "dollars_per_square_foot": "45.9746",
+            "metric_definition": "bid-cost-code-sell-value-per-frame-plus-borrowed-lite-sf.v1"
+          }
+        ],
+        "totals": {
+          "direct_cost": "245267.87",
+          "selling_value": "287635.71",
+          "markup_profit": "42367.84",
+          "margin_percentage": "0.1472968707536348668251240432",
+          "square_feet": "5585.0000"
+        }
+      }
+    }
+  ],
+  "alternates": [],
+  "reviews": [],
+  "submissions": [
+    {
+      "id": "sub_prj_histref_0059_1",
+      "revision_id": "rev_prj_histref_0059_1",
+      "immutable": true,
+      "submitted_at": "2020-10-14T12:00:00+00:00",
+      "recipient": "Historical Reference Archive"
+    }
+  ],
+  "proposal_artifacts": [],
+  "proposal_history": [],
+  "working_branch": null,
+  "bid_tabulations": [],
+  "award": null,
+  "contract_allocations": [],
+  "change_orders": [],
+  "sov_lines": [],
+  "closeout": null,
+  "configuration_lineage": [
+    {
+      "configuration_id": "cfg-2026-08-19-v5",
+      "adopted_at": "2026-08-20T18:37:30.587574+00:00",
+      "actor": "Historical Reference Seeder"
+    }
+  ],
+  "audit_events": [
+    {
+      "id": "aud_8172500e61d94c1698b85b79ffab694c",
+      "timestamp": "2026-08-20T18:37:30.587574+00:00",
+      "actor": "Historical Reference Seeder",
+      "role": "Estimator",
+      "entity_type": "project",
+      "entity_id": "3ba369d4-c0a9-422b-816d-ce88beafefd7",
+      "operation": "create",
+      "prior_value": null,
+      "new_value": {
+        "name": "Historical Reference Bid 0059"
+      },
+      "reason": "New project",
+      "correlation_id": "cor_dc5697fb3ac44e5db580905fef91e2b3"
+    }
+  ]
+}

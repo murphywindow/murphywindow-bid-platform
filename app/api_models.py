@@ -4,7 +4,9 @@ from __future__ import annotations
 from typing import Any, Literal
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, Field, SecretStr
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
+
+from .phone import normalize_phone_number
 
 
 class MasterRecordCommand(BaseModel):
@@ -33,6 +35,13 @@ class MasterRecordCommand(BaseModel):
     office_phone: str | None = None
     mobile_phone: str | None = None
     update_scope: Literal["master"] = "master"
+
+    @field_validator("primary_phone", "phone", "office_phone", "mobile_phone", mode="before")
+    @classmethod
+    def normalize_phone_fields(cls, value: Any) -> Any:
+        if value is None:
+            return None
+        return normalize_phone_number(value)
 
 
 class CustomCostCodeCommand(BaseModel):

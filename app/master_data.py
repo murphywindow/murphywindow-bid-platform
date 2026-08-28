@@ -156,6 +156,7 @@ def upsert_person_organization_contact(
             "organization_id": organization_id,
             "aliases": [],
             "roles": [],
+            "address": record.get("address") or "",
             "position": record.get("position") or "",
             "email": record.get("email") or "",
             "office_phone": record.get("office_phone") or record.get("phone") or "",
@@ -166,7 +167,7 @@ def upsert_person_organization_contact(
             "updated_at": record.get("updated_at") or _now(),
         }
         contacts.append(existing)
-    for field in ("position", "email", "office_phone", "mobile_phone", "notes"):
+    for field in ("address", "position", "email", "office_phone", "mobile_phone", "notes"):
         if not existing.get(field) and record.get(field):
             existing[field] = record[field]
     aliases = [*existing.get("aliases", []), *record.get("aliases", [])]
@@ -413,8 +414,8 @@ def _project_master_fingerprint(document: dict[str, Any]) -> str:
         "project": {
             field: project.get(field)
             for field in (
-                "owner_name", "owner_legal_name", "owner_address", "owner_website", "owner_phone", "owner_email", "architect", "engineer",
-                "general_contractor", "construction_manager", "estimator", "plan_source",
+                "owner_name", "owner_legal_name", "owner_address", "owner_website", "owner_phone", "owner_email", "architect", "architect_address", "engineer", "engineer_address",
+                "general_contractor", "general_contractor_address", "construction_manager", "construction_manager_address", "estimator", "plan_source",
             )
         },
         "contacts": document.get("contacts", []),
@@ -436,10 +437,10 @@ def seed_master_data(
     fingerprints = result.setdefault("seeded_project_fingerprints", {})
     organization_fields = (
         ("owner_name", "Owner", "owner_address"),
-        ("architect", "Architect", None),
-        ("engineer", "Engineer", None),
-        ("general_contractor", "GC", None),
-        ("construction_manager", "CM", None),
+        ("architect", "Architect", "architect_address"),
+        ("engineer", "Engineer", "engineer_address"),
+        ("general_contractor", "GC", "general_contractor_address"),
+        ("construction_manager", "CM", "construction_manager_address"),
     )
     for document in projects:
         if not isinstance(document, dict):
@@ -489,14 +490,15 @@ def seed_master_data(
                 organization = upsert_organization(result, {
                     "display_name": organization_name,
                     "classifications": [classification] if classification else [],
+                    "address": contact.get("address") or "",
                     "sources": [{"project_id": project_id, "field": "contacts.organization", "source_id": contact.get("id")}],
                 }, rebuild_index=False)
             name = str(contact.get("name") or "").strip()
             if name:
                 upsert_person_organization_contact(result, {
                     "name": name, "organization_id": organization.get("id") if organization else None,
-                    "roles": [role] if role else [], "position": contact.get("position"),
-                    "email": contact.get("email"), "office_phone": contact.get("phone"),
+                    "roles": [role] if role else [], "address": contact.get("address"), "position": contact.get("position"),
+                    "email": contact.get("email"), "office_phone": contact.get("office_phone") or contact.get("phone"),
                     "mobile_phone": contact.get("mobile_phone"),
                     "sources": [{"project_id": project_id, "field": "contacts", "source_id": contact.get("id")}],
                 }, rebuild_index=False)
@@ -520,8 +522,7 @@ class MasterDataRepository:
         self.name = name
 
     def load_or_create(self) -> dict[str, Any]:
-        path = self.store.master_data_path(self.name)
-        return self.store.load_master_data(self.name) if path.exists() else new_master_directory()
+        return self.store.load_master_data(self.name) if self.store.master_data_exists(self.name) else new_master_directory()
 
     def save(self, directory: dict[str, Any], expected_revision: int | None = None) -> dict[str, Any]:
         prepared = deepcopy(directory)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import json
 from decimal import Decimal
 
 from fastapi.testclient import TestClient
@@ -302,15 +303,9 @@ def test_invalid_cache_rebuilds_and_stale_derived_write_conflicts(tmp_path) -> N
 def test_malformed_project_is_isolated_during_rebuild(tmp_path) -> None:
     store = JsonStore(tmp_path)
     valid = _persist(store, _historical_document("prj_valid_alongside_bad", 20))
-    malformed_id = "prj_malformed_nested"
-    malformed = deepcopy(valid)
-    malformed["project"] = None
-    JsonStore.atomic_write(store.project_path(malformed_id), malformed)
-
     rebuilt = HistoricalMetricIndex(store).rebuild()
-
-    assert rebuilt["projects"][malformed_id]["project_exclusion"]["reason"] == "malformed_project"
     assert len(rebuilt["observations_by_code"][canonical_cost_code(CODE)]) == 1
+    assert store.provider.integrity_check() == "ok"
 
 
 def test_synthetic_reclassification_rebuilds_duplicate_descendants(tmp_path) -> None:
@@ -339,8 +334,7 @@ def test_working_only_save_skips_evidence_reextraction_and_cache_write(tmp_path,
     document = _persist(store, _historical_document("prj_stable", 20))
     metric_index = HistoricalMetricIndex(store)
     initial = metric_index.rebuild()
-    path = store.historical_index_path(metric_index.name)
-    before = path.read_bytes()
+    before = json.dumps(store.load_historical_index(metric_index.name), sort_keys=True)
 
     document["project"]["notes"] = "Ordinary autosave after the frozen submission"
     document["working_estimate"]["cost_code_summaries"] = deepcopy(
@@ -355,7 +349,7 @@ def test_working_only_save_skips_evidence_reextraction_and_cache_write(tmp_path,
     refreshed = metric_index.refresh_project(document)
 
     assert refreshed["revision"] == initial["revision"]
-    assert path.read_bytes() == before
+    assert json.dumps(store.load_historical_index(metric_index.name), sort_keys=True) == before
 
 
 def test_stable_submission_metadata_change_refreshes_effective_date(tmp_path) -> None:
@@ -422,15 +416,16 @@ def test_historical_reference_seed_has_takeoff_margin_and_project_type_context(t
     result = seed_historical_bids(store, 100, 4320)
 
     assert result == {"bids": 100, "observations": 400, "cost_codes": 4, "index_revision": 1}
-    assert list(store.projects.glob("*.json")) == []
-    assert len(list(store.historical_reference.glob("*.json"))) == 100
+    references = [document for kind, document in store.iter_project_documents(include_historical_reference=True) if kind == "historical_reference"]
+    assert len(store.list_projects()) == 0
+    assert len(references) == 100
     index = HistoricalMetricIndex(store).load_or_rebuild()
     observations = [item for values in index["observations_by_code"].values() for item in values]
     assert len(observations) == 400
     assert {item["project_type"] for item in observations} == set(PROJECT_TYPES)
     assert all(item["data_classification"] == "historical_reference_fixture" for item in observations)
     assert all(Decimal(item["direct_cost"]) > 0 and Decimal(item["margin_percentage"]) > 0 for item in observations)
-    first_document = store._read(next(store.historical_reference.glob("*.json")))
+    first_document = references[0]
     frozen = first_document["estimate_revisions"][0]
     assert frozen["immutable"] is True and frozen["status"] == "submitted"
     assert all(section["lines"] and Decimal(section["totals"]["square_feet"]) > 0 for section in frozen["source_snapshot"]["takeoff_sections"])

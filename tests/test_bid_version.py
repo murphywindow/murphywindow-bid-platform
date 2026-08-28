@@ -20,7 +20,7 @@ def test_bid_semantic_version_rules_and_monotonic_sequence():
 
 def test_seeded_test_project_is_rich_editable_draft():
     doc = make_test_project()
-    assert doc["project"]["id"] == "prj_00000000000000000000000000004320"
+    assert doc["project"]["id"] == "06e84ea0-a276-45e2-af97-0d220556b945"
     assert doc["project"]["project_number"] == "TEST-4320"
     assert doc["project"]["bid_version"]["display"] == "B0.0.0"
     assert len(doc["quotes"]) + sum(len(alt.get("changes", {}).get("quotes", {}).get("added", [])) for alt in doc["alternates"]) >= 3

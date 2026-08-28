@@ -22,7 +22,7 @@ Trailing spaces in the second occurrence normalize to the same stable code. The 
 
 ## Application behavior
 
-`data/reference/codes.json` is the canonical imported payload. Configuration `cfg-2026-08-17-v2` first adopted it; current configuration `cfg-2026-08-19-v5` retains the same owner-confirmed reference, owner rate tables, and versioned mileage settings while adding the schema 1.1 policy metadata. Search matches display code, normalized code, primary description, and description aliases. Selecting a result creates a project cost-code record containing the reference ID and reference configuration ID.
+SQL tables `cost_code_references` and `cost_code_records` are authoritative. The packaged `app/static-data/codes.json` is an immutable bootstrap resource for initializing a brand-new empty database; it is never updated by the application and is never consulted after the SQL reference exists. Configuration `cfg-2026-08-17-v2` first adopted this owner reference; current configuration `cfg-2026-08-19-v5` retains it. Search matches display code, normalized code, primary description, and description aliases. Selecting a result creates a project cost-code record containing the reference ID and reference configuration ID.
 
 An entered code not found in this list is preserved for correction and produces a field-specific `invalid_cost_code` validation warning. The list does not supply internal MWD mappings, vendor directories, deduct status, tax treatment, or commercial pricing; those remain separate versioned data and must not be inferred from the code description.
 
@@ -31,7 +31,7 @@ Project scope records and Frame Spec Sections use the selected code as a Groupin
 Re-import with:
 
 ```powershell
-.\.venv\Scripts\python.exe scripts\import_codes.py C:\path\to\codes.xlsx data\reference\codes.json
+.\.venv\Scripts\python.exe scripts\import_codes.py C:\path\to\codes.xlsx data
 ```
 
 Review the reported counts/hash and run the full tests before creating and activating a new configuration version. Historical submitted and awarded estimates remain pinned to their original configuration.

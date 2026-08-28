@@ -3,7 +3,7 @@ import json
 import pytest
 
 from app.custom_code_auth import (
-    PASSWORD_HASH_ENV, SECRET_FILE_ENV, USERNAME_ENV,
+    PASSWORD_HASH_ENV, USERNAME_ENV,
     hash_password, verify_custom_code_credentials, verify_password,
 )
 from app.master_data import (
@@ -114,7 +114,7 @@ def test_master_directory_persistence_is_atomic_revisioned_backed_up_and_no_chur
     repository = MasterDataRepository(store)
     first = repository.seed_projects([history_project()])
     assert first["revision"] == 1
-    assert store.master_data_path().exists()
+    assert store.master_data_exists()
 
     unchanged = repository.seed_projects([history_project()])
     assert unchanged["revision"] == 1
@@ -127,15 +127,12 @@ def test_master_directory_persistence_is_atomic_revisioned_backed_up_and_no_chur
     assert len(store.master_data_backup_names()) == 1
     with pytest.raises(ConflictError, match="Concurrent master-data edit"):
         repository.save(updated, expected_revision=1)
-    assert json.loads(store.master_data_path().read_text(encoding="utf-8"))["revision"] == 2
+    assert store.load_master_data()["revision"] == 2
 
     valid_backup = store.master_data_backup_names()[0]
-    store.master_data_path().write_text("{ malformed master data", encoding="utf-8")
     restored = store.restore_master_data(valid_backup)
     assert restored["schema_version"] == "1.0.0"
-    assert json.loads(store.master_data_path().read_text(encoding="utf-8"))["revision"] == restored["revision"]
-    corrupt = list((store.master_data_backups / "directory").glob("*.corrupt"))
-    assert len(corrupt) == 1 and corrupt[0].read_text(encoding="utf-8") == "{ malformed master data"
+    assert store.load_master_data()["revision"] == restored["revision"]
 
 
 def test_existing_project_reindexes_only_when_reusable_history_changes(tmp_path):
@@ -169,8 +166,5 @@ def test_custom_code_credentials_use_only_hashes_and_fail_closed(tmp_path):
     assert verify_custom_code_credentials("custom-user", password, environment={}) is False
     assert verify_custom_code_credentials("custom-user", password, environment={USERNAME_ENV: "custom-user"}) is False
 
-    secret_path = tmp_path / "custom-code-secret.json"
-    secret_path.write_text(json.dumps({"username": "local-user", "password_hash": encoded}), encoding="utf-8")
-    file_environment = {SECRET_FILE_ENV: str(secret_path)}
-    result = verify_custom_code_credentials("local-user", password, environment=file_environment)
+    result = verify_custom_code_credentials("local-user", password, environment={}, stored_credentials={"username":"local-user","password_hash":encoded})
     assert result is True and isinstance(result, bool)

@@ -1,6 +1,7 @@
 .venv/
 __pycache__/
 .pytest_cache/
+.pytest-tmp-*/
 *.pyc
 data/projects/*.json
 data/backups/**/*.json
@@ -11,6 +12,8 @@ data/master-data-backups/**/*.json
 data/historical-index/*.json
 data/historical-reference/*.json
 data/secrets/*.json
+data/murphywindow.db*
+data/used-project-ids.sqlite3
 tmp/
 !data/projects/.gitkeep
 !data/backups/.gitkeep

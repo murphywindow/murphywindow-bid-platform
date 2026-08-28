@@ -56,8 +56,8 @@ def test_active_project_migration_is_lossless_idempotent_and_leaves_history_froz
     migrated = migrate_project_document(source)
 
     assert source == source_before
-    assert migrated["schema_version"] == "1.4.0"
-    assert migrated["interchange_version"] == "1.4.0"
+    assert migrated["schema_version"] == "1.5.0"
+    assert migrated["interchange_version"] == "1.5.0"
     assert migrated["project"]["project_type"] == "Legacy Renovation"
     assert migrated["project"]["project_type_status"] == "legacy_unsupported"
     assert migrated["project"]["contract_type_status"] == "legacy_unsupported"
@@ -148,7 +148,7 @@ def test_1_4_migration_normalizes_optional_zero_quantities_and_alt_snapshots():
         }}}
     }}]
 
-    migrated = migrate_project_document(source)
+    migrated = migrate_project_document(source, target_version="1.4.0")
 
     section = migrated["takeoff_sections"][0]
     assert section["tie_back_qty"] is None and section["backpan_lf"] is None
@@ -159,22 +159,44 @@ def test_1_4_migration_normalizes_optional_zero_quantities_and_alt_snapshots():
     assert migrated["schema_migrations"][-1]["id"] == "project-1.3.0-to-1.4.0"
 
 
+def test_1_5_migration_adds_structured_parties_dates_locations_and_stable_tab_order():
+    source = migrate_project_document(legacy_document(), target_version="1.4.0")
+    source["project"].update({"walkthrough": "Legacy walkthrough note", "owner_phone": "6125550199"})
+    source["contacts"][0].update({"office_phone": "7635550188"})
+    source["borrowed_lites"] = [{"id": "brl_legacy", "mark": "BL1"}]
+
+    migrated = migrate_project_document(source)
+
+    assert migrated["project"]["completion_date"] is None
+    assert migrated["project"]["final_completion_date"] is None
+    assert migrated["project"]["walkthrough"] is None
+    assert migrated["project"]["walkthrough_notes"] == "Legacy walkthrough note"
+    assert migrated["project"]["owner_phone"] == "(612) 555-0199"
+    assert migrated["contacts"][0]["address"] == ""
+    assert migrated["contacts"][0]["office_phone"] == "(763) 555-0188"
+    assert migrated["borrowed_lites"][0]["location"] == ""
+    assert migrated["takeoff_sections"][0]["tab_order"] == 0
+    assert migrated["schema_migrations"][-1]["id"] == "project-1.4.0-to-1.5.0"
+
+
 def test_unknown_schema_fails_closed():
     with pytest.raises(MigrationError, match="No supported project migration path"):
         migrate_project_document({"schema_version": "9.0.0", "project": {}})
 
 
-def test_json_store_migrates_on_load_without_rewriting_the_source(tmp_path):
-    store = JsonStore(tmp_path)
+def test_explicit_json_migration_migrates_without_rewriting_the_source(tmp_path):
     source = legacy_document()
-    path = store.project_path(source["project"]["id"])
-    JsonStore.atomic_write(path, source)
+    path = tmp_path / "projects" / f"{source['project']['id']}.json"
+    path.parent.mkdir(parents=True);path.write_text(json.dumps(source),encoding="utf-8")
     raw_before = path.read_bytes()
+    store = JsonStore(tmp_path)
+    assert store.list_projects()==[]
+    store.migrate_legacy_data_once(tmp_path)
 
     loaded, recovered_from = store.load_project(source["project"]["id"])
 
     assert recovered_from is None
-    assert loaded["schema_version"] == "1.4.0"
+    assert loaded["schema_version"] == "1.5.0"
     assert loaded["project"]["revision"] == 7
     assert path.read_bytes() == raw_before
     assert json.loads(path.read_text(encoding="utf-8"))["schema_version"] == "1.0.0"

@@ -136,8 +136,7 @@ def seed(store: JsonStore, count: int, seed_value: int) -> dict:
         raise ValueError("Historical reference count must be between 100 and 500.")
     for index in range(count):
         document = historical_bid(index, seed_value)
-        path = store.historical_reference / f"{document['project']['id']}.json"
-        store.atomic_write(path, document)
+        store.save_historical_reference(document)
     index = HistoricalMetricIndex(store).rebuild()
     references = [record for record in index["projects"].values() if record.get("data_classification") == "historical_reference_fixture"]
     observations = [item for record in references for item in record.get("observations", [])]

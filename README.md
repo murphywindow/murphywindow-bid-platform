@@ -17,14 +17,12 @@ Stop cleanly with **Ctrl+C** in the launcher window. Project saves are discrete 
 
 ## Data, saves, and recovery
 
-- Primary projects: `data/projects/<stable-project-id>.json`
-- Automatic/manual snapshots: `data/backups/<stable-project-id>/`
-- Effective-dated configuration: `data/configurations/`
-- Reusable historical master data: `data/master-data/`
-- Controlled historical comparison fixtures: `data/historical-reference/` (kept out of the normal project picker)
+- Authoritative offline database: `data/murphywindow.db` (SQLite)
+- Projects, backups, configurations, reusable master data, historical evidence, proposal snapshots, and PDF artifacts are transactional SQL records.
+- Existing `data/projects`, `data/backups`, `data/configurations`, `data/master-data`, and related JSON directories are read-only migration/rollback sources after verified import.
 - Local hash-backed application secrets: `data/secrets/` (ignored by Git)
 - Optional export workspace: `data/exports/`
-- Immutable proposal snapshots: `data/proposals/<stable-project-id>/<proposal-id>.json`
+- Immutable proposal snapshots and PDFs are stored and hash-verified in SQL.
 - Original proposal PDFs: `data/proposal-artifacts/<stable-project-id>/<artifact-id>.pdf`
 
 An actual committed form change marks the tab **Unsaved changes** and starts an immediate save after a 250 ms browser-event debounce. Rapid changes may share one atomic disk write, but every changed datapoint receives its own bid patch increment and audit event. The client shows **Saving**, **Saved**, **Unsaved changes**, **Save failed**, or **Save conflict** and never starts overlapping saves. Explicit Save uses the same transaction immediately.
@@ -37,7 +35,7 @@ Every project shows a bid-semantic version such as `B0.3.7`:
 - **Minor** increments and patch resets to zero when an immutable bid submission is created.
 - **Major** increments and minor/patch reset to zero when notice-to-proceed activation creates the awarded baseline.
 
-The independent JSON file `revision` is a concurrency/persistence counter; the `Bmajor.minor.patch` value is the user-facing bid/workflow version. A submitted estimate revision stores its exact bid version, and an award records both the accepted submitted version and activation version.
+The SQL project `revision` is a concurrency/persistence counter; the `Bmajor.minor.patch` value is the user-facing bid/workflow version. A submitted estimate revision stores its exact bid version, and an award records both the accepted submitted version and activation version.
 
 Those counters are not proposal identities. Autosave revision ≠ Proposal version, and current editable state ≠ historical Proposal snapshot. Explicit generation assigns an immutable `P1`, `P2`, … identity plus a separately editable Proposal Name. The complete normalized project and effective configuration are canonicalized with sorted object keys and hashed with SHA-256. Operational metadata (file revision, autosave/update time, bid patch counter, audit/history IDs, UI state, proposal/artifact identity, and branch metadata) is excluded; all commercial inputs, descriptions, source selection, calculated results, proposal language, and frozen effective configuration are included. Exact fingerprints are rejected as duplicates even when a different name is entered; the same price is permitted when any included state differs.
 
@@ -45,9 +43,9 @@ Those counters are not proposal identities. Autosave revision ≠ Proposal versi
 
 The platform itself follows Semantic Versioning (`MAJOR.MINOR.PATCH`). The authoritative value is in `app/version.py`, is used by FastAPI, and is returned by `/api/health`. Release history is maintained in [CHANGELOG.md](CHANGELOG.md). This software version is deliberately separate from project schema, job-data interchange, configuration, generator, JSON file revision, and the per-project `Bmajor.minor.patch` bid lifecycle.
 
-Before replacing an existing primary file, the server copies it to the project backup directory. It writes the new JSON to a temporary sibling, flushes and `fsync`s it, then uses atomic `os.replace`; a failed/interrupted write leaves the prior primary intact. Twenty backups are retained by default. **Backup** creates a labeled manual snapshot. **Refresh** warns before discarding dirty or failed changes. Expected file revisions detect concurrent-tab edits; reload one tab and reapply its changes rather than overwriting the other.
+Project writes, normalized projections, and recovery snapshots commit in one SQL transaction; a failed operation rolls back the complete unit. Twenty snapshots are retained by default. **Backup** creates a labeled manual snapshot. **Refresh** warns before discarding dirty or failed changes. Expected revisions detect concurrent-tab edits; reload one tab and reapply its changes rather than overwriting the other.
 
-If a primary JSON is malformed, Open offers the newest valid backup. To restore explicitly, use the recovery API (`POST /api/projects/{id}/recover` with `{"backup":"filename.json"}`) after reviewing the backup list returned by Open. Recovery is audited. For manual disaster recovery, stop the server, copy a validated backup to a new filename outside `data`, then use project Import so the original is not overwritten.
+If an aggregate integrity hash fails, Open can offer the newest valid SQL backup. Restore explicitly with `POST /api/projects/{id}/recover` and a returned backup ID. Recovery is audited. See [SQL storage](docs/SQL_STORAGE.md) for database backup and migration verification.
 
 Write-permission failures leave the in-browser document dirty and show **Save failed**. Restore write permission to `data`, then press Save. Do not close the only dirty tab until Save succeeds or export/copy its data.
 
@@ -99,6 +97,7 @@ Submission continues to create its existing immutable estimate revision and subm
 - [Job-data interchange](docs/INTERCHANGE_SCHEMA.md)
 - [Owner cost-code reference](docs/COST_CODE_REFERENCE.md)
 - [Owner rate reference](docs/RATE_REFERENCE.md)
+- [SQL storage and JSON audit](docs/SQL_STORAGE.md)
 - [Unresolved commercial rules](docs/UNRESOLVED_RULES.md)
 
 All currency inputs retain cent precision. Submitted revisions and proposal snapshots freeze raw Base data, alternate differences and calculated results, normalized estimate lines, calculation lineage, configuration ID, and totals so future Base, alternate, or configuration edits cannot change history. Stable IDs replace workbook cell coordinates.
@@ -120,12 +119,12 @@ The suite covers named calculation services, boundaries, tax/quote behavior, fri
 - **No quote $/SF:** add a matching frame/borrowed-lite code and dimensions. Total quote cost may remain valid; unit analysis is shown as unavailable.
 - **Missing rate:** configure an effective rate or enter a versioned working assumption. The engine never silently substitutes a missing rate with zero.
 - **Save conflict:** another tab saved first. Keep this tab open, use Export/Copy if needed, reload, and reapply intentional changes.
-- **Malformed JSON:** use Open recovery, inspect backups, and restore the newest valid snapshot. Never edit the primary while the server is running.
+- **Database integrity:** stop writes and preserve `data/murphywindow.db` plus any `-wal`/`-shm` files. Never edit database bytes manually. `scripts/migrate_to_sql.py` is only for a controlled first-time import from a legacy source tree; it is not a repair or startup command.
 - **Proposal PDF:** explicitly generated proposals and submitted revisions have immutable artifact identities; a historical PDF is always rendered from its frozen artifact body, never current project data.
 
 The app intentionally excludes the erroneous SharePoint dependency, dormant GPT extension, broken Excel references, missing tool-panel/dispatcher targets, wrong reset targets, former separate ALT worksheets, and deprecated SOV PDF button.
 
-The owner-provided `codes.xlsx` is imported read-only into `data/reference/codes.json`: 9,332 populated source rows become 9,330 normalized unique searchable records. The two duplicate normalized codes retain their alternative descriptions and source rows. Run `python scripts/import_codes.py C:\path\to\codes.xlsx` to produce a new reference payload, then create a new configuration version; existing submitted/awarded estimates remain pinned.
+The owner-provided `codes.xlsx` is imported through the SQL repository: 9,332 populated source rows become 9,330 normalized unique searchable records. The two duplicate normalized codes retain their alternative descriptions and source rows. Run `python scripts/import_codes.py C:\path\to\codes.xlsx data` to update SQL, then create a new configuration version; existing submitted/awarded estimates remain pinned.
 
 In **Scope and Cost Codes**, begin typing either a code or description to receive matches from this imported reference. Selecting a match normalizes the code and fills its owner-reference description. The description remains an editable project field; later calculations fill only blank descriptions and never replace project-specific wording.
 

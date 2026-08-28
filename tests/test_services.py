@@ -15,7 +15,10 @@ from app.services import (
 
 
 def example():
-    cfg = default_configuration()
+    cfg = default_configuration({"reference_id":"test-reference","source":"test","records":[
+        {"id":"csi_084000","normalized_code":"084000","display_code":"08 40 00","description":"Entrances, Storefronts, and Curtain Walls","active":True},
+        {"id":"csi_079000","normalized_code":"079000","display_code":"07 90 00","description":"Joint Sealants","active":True},
+    ]})
     cfg["tax_rates"][0]["rate"] = ".10"
     cfg["markup_defaults"]["base_product"]["rate"] = ".20"
     cfg["markup_defaults"]["LAF"]["rate"] = ".30"
@@ -42,6 +45,13 @@ def test_systems_administrator_has_every_application_permission():
 
     with pytest.raises(DomainError):
         require("Support", "edit_estimate")
+
+
+def test_new_projects_default_to_non_prevailing_wage():
+    project = new_project("Default wage", "Estimator", "Estimator")["project"]
+    assert project["wage_type"] == "Non-PW"
+    assert project["wage_type_status"] == "current"
+    assert project["wage_data_id"] is None
 
 
 def test_bid_assembly_tax_markups_lineage_and_alternates():
@@ -77,13 +87,22 @@ def test_frame_calculated_quantities_retain_fractional_results_through_project_c
 
     calculated = frame["calculated"]
     expected_perimeter = D("2") * (D("42.75") / D("12") + D("120.5") / D("12")) * D("3.05")
-    assert D(calculated["square_feet"]) == D("3.05") * D("42.75") * D("120.5") / D("144")
+    assert D(calculated["square_feet"]) == D(36) * D("3.05")
     assert D(calculated["perimeter_lf"]) == expected_perimeter
     assert D(calculated["caulking_lf"]) == expected_perimeter * D("3.11")
     assert D(calculated["head_sill_qty"]) == D("3.05") * D("42.75") / D("6")
     assert all(not D(calculated[key]) == D(calculated[key]).to_integral_value() for key in (
         "square_feet", "perimeter_lf", "caulking_lf", "head_sill_qty",
     ))
+
+
+def test_project_configuration_can_round_frame_area_after_quantity():
+    doc, cfg = example()
+    frame = doc["takeoff_sections"][0]["lines"][0]
+    frame.update({"quantity": 10, "width_inches": 48, "height_inches": 80})
+    cfg["application_settings"]["frame_square_footage_method"] = "quantity_then_round_up"
+    calculate_project(doc, cfg)
+    assert D(frame["calculated"]["square_feet"]) == D(267)
 
 
 def test_owner_reference_validates_code_preserves_invalid_and_fills_description():
@@ -159,7 +178,7 @@ def test_quote_selection_is_implicit_by_code_uses_adjusted_cost_and_locks_manual
     assert D(doc["quotes"][1]["calculated_cost"]) == D("950")
     assert [row["id"] for row in doc["quotes"] if row["used"]] == ["quo_b"]
     assert D(doc["quotes"][0]["square_feet"]) == D("1")
-    assert doc["quotes"][0]["square_feet_source"] == "frame_default"
+    assert doc["quotes"][0]["square_feet_source"] == "takeoff_default"
     assert doc["quotes"][1]["square_feet"] == "777"
 
     doc["working_estimate"]["quote_selection_by_code"]["08 40 00"] = {
@@ -174,7 +193,7 @@ def test_quote_selection_is_implicit_by_code_uses_adjusted_cost_and_locks_manual
     assert D(lineage["surcharge_amount"]) == D("90")
 
 
-def test_quote_frame_default_combines_frame_sections_but_excludes_borrowed_lites():
+def test_quote_takeoff_default_combines_frame_sections_and_borrowed_lites():
     doc, cfg = example()
     doc["takeoff_sections"].append({
         "id": "sec_2", "definition_id": "frame-v1", "code": "08 40 00", "name": "More frames",
@@ -187,7 +206,8 @@ def test_quote_frame_default_combines_frame_sections_but_excludes_borrowed_lites
     }]
     doc["quotes"][0].update({"square_feet": None, "square_feet_source": "unassigned"})
     calculate_project(doc, cfg)
-    assert D(doc["quotes"][0]["square_feet"]) == D("3")
+    assert D(doc["quotes"][0]["square_feet"]) == D("8")
+    assert doc["quotes"][0]["square_feet_source"] == "takeoff_default"
     summary = next(row for row in doc["working_estimate"]["cost_code_summaries"] if row["code"] == "08 40 00")
     assert D(summary["total_square_feet"]) == D("8")  # 3 Frame SF + BRL's five-SF row minimum.
 
@@ -281,6 +301,36 @@ def test_installation_material_formula_override_uses_square_feet_and_is_reversib
     assert restored["operator"] == "multiply"
     assert restored["operand"] == restored["controlled_operand"] == "0.08"
     assert restored["is_formula_override"] is False
+
+
+def test_installation_material_custom_basis_uses_freeform_result_value():
+    doc, cfg = example()
+    section = doc["takeoff_sections"][0]
+    section["material_overrides"]["mat_sealant"] = {
+        "source_override": "custom", "custom_quantity_override": "17.25",
+        "operator_override": "divide", "operand_override": "0",
+    }
+    calculate_project(doc, cfg)
+    result = next(row for row in section["material_results"] if row["material_rule_id"] == "mat_sealant")
+    assert result["source"] == "custom"
+    assert D(result["source_quantity"]) == D("17.25")
+    assert D(result["calculated_quantity"]) == D("17.25")
+    assert D(result["pre_tax_cost"]) == D("207")
+    assert result["custom_quantity_override"] == "17.25"
+
+
+def test_installation_material_custom_quantity_one_at_fifty_thousand_rate_costs_fifty_thousand():
+    doc, cfg = example()
+    section = doc["takeoff_sections"][0]
+    section["material_overrides"]["mat_sealant"] = {
+        "source_override": "custom", "custom_quantity_override": "1",
+        "rate_override": "50000",
+    }
+    calculate_project(doc, cfg)
+    result = next(row for row in section["material_results"] if row["material_rule_id"] == "mat_sealant")
+    assert D(result["calculated_quantity"]) == D("1")
+    assert D(result["effective_rate"]) == D("50000")
+    assert D(result["pre_tax_cost"]) == D("50000")
 
 
 def test_equipment_subtotal_is_pre_tax_and_each_row_honors_taxable_flag():

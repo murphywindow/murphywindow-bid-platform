@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Any
 
 from .calculations import normalize_code, split_variant
+from .phone import PHONE_ERROR, normalize_phone_number
 from .schema import CONTRACT_TYPES, PROJECT_TYPES, WAGE_TYPES, now, uid
 from .services import DomainError
 
@@ -263,10 +264,43 @@ def _controlled_reference(config: dict[str, Any]) -> dict[str, dict[str, Any]]:
     }
 
 
+def _normalize_project_phones(incoming: dict[str, Any], current: dict[str, Any]) -> None:
+    """Canonicalize changed phones while allowing untouched incomplete legacy values."""
+    project = incoming.setdefault("project", {})
+    prior_project = current.get("project", {})
+
+    def normalize(container: dict[str, Any], prior: dict[str, Any], field: str, label: str) -> None:
+        if field not in container:
+            return
+        value = container.get(field)
+        try:
+            container[field] = normalize_phone_number(value)
+        except ValueError as exc:
+            if value == prior.get(field):
+                return
+            raise DomainError(
+                f"{label}: {PHONE_ERROR}",
+                "invalid_phone",
+                [{"field": field, "value": value}],
+            ) from exc
+
+    normalize(project, prior_project, "owner_phone", "Owner phone")
+    prior_contacts = {str(row.get("id")): row for row in current.get("contacts", []) if row.get("id")}
+    for index, contact in enumerate(incoming.setdefault("contacts", [])):
+        prior = prior_contacts.get(str(contact.get("id")), {})
+        for field, label in (
+            ("phone", "Phone"),
+            ("office_phone", "Office phone"),
+            ("mobile_phone", "Mobile phone"),
+        ):
+            normalize(contact, prior, field, f"Contact {index + 1} {label}")
+
+
 def validate_project_inputs(incoming: dict[str, Any], current: dict[str, Any], config: dict[str, Any]) -> dict[str, Any]:
     """Enforce current controlled inputs while preserving unchanged legacy values."""
     project = incoming.setdefault("project", {})
     prior_project = current.get("project", {})
+    _normalize_project_phones(incoming, current)
     for field, status_field, allowed in (
         ("project_type", "project_type_status", PROJECT_TYPES),
         ("contract_type", "contract_type_status", CONTRACT_TYPES),

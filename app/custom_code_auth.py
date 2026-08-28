@@ -9,16 +9,13 @@ import base64
 import binascii
 import hashlib
 import hmac
-import json
 import os
 import secrets
-from pathlib import Path
 from typing import Mapping
 
 
 USERNAME_ENV = "MURPHY_CUSTOM_CODE_USERNAME"
 PASSWORD_HASH_ENV = "MURPHY_CUSTOM_CODE_PASSWORD_HASH"
-SECRET_FILE_ENV = "MURPHY_CUSTOM_CODE_SECRET_FILE"
 HASH_NAME = "sha256"
 HASH_SCHEME = "pbkdf2_sha256"
 DEFAULT_ITERATIONS = 600_000
@@ -67,25 +64,21 @@ def verify_password(password: str, encoded_hash: str) -> bool:
 
 
 def _load_credentials(
-    environment: Mapping[str, str], secret_file: str | Path | None
+    environment: Mapping[str, str],
+    stored_credentials: Mapping[str, str] | None = None,
 ) -> tuple[str, str] | None:
     username = environment.get(USERNAME_ENV)
     password_hash = environment.get(PASSWORD_HASH_ENV)
     if username and password_hash:
         return username, password_hash
 
-    configured_path = secret_file or environment.get(SECRET_FILE_ENV)
-    if not configured_path:
-        return None
-    try:
-        payload = json.loads(Path(configured_path).read_text(encoding="utf-8"))
-    except (OSError, ValueError, TypeError):
-        return None
-    file_username = payload.get("username") if isinstance(payload, dict) else None
-    file_hash = payload.get("password_hash") if isinstance(payload, dict) else None
-    if not isinstance(file_username, str) or not isinstance(file_hash, str):
-        return None
-    return file_username, file_hash
+    if stored_credentials:
+        stored_username = stored_credentials.get("username")
+        stored_hash = stored_credentials.get("password_hash")
+        if isinstance(stored_username, str) and isinstance(stored_hash, str):
+            return stored_username, stored_hash
+
+    return None
 
 
 def verify_custom_code_credentials(
@@ -93,7 +86,7 @@ def verify_custom_code_credentials(
     password: str,
     *,
     environment: Mapping[str, str] | None = None,
-    secret_file: str | Path | None = None,
+    stored_credentials: Mapping[str, str] | None = None,
 ) -> bool:
     """Return only whether the dedicated custom-code credential is valid.
 
@@ -101,7 +94,7 @@ def verify_custom_code_credentials(
     caller should emit a generic authorization error and must not include either
     submitted value in logs, audit records, or responses.
     """
-    configured = _load_credentials(environment or os.environ, secret_file)
+    configured = _load_credentials(environment or os.environ, stored_credentials)
     if configured is None:
         return False
     expected_username, encoded_hash = configured
