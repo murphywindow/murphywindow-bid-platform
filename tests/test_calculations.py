@@ -12,7 +12,7 @@ from app.calculations import (
 
 
 @pytest.mark.parametrize("name,expected", [
-    (None, ""), ("", ""), ("The City of Rogers Center", "CRCI"),
+    (None, ""), ("", ""), ("The City of Minneapolis Center", "CMCI"),
     ("North", "NORT"), ("A & B", "B"), ("2026 Civic Center", "2026"),
     ("St. Paul Public Safety Complex", "SPPS"),
 ])

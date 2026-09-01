@@ -49,11 +49,11 @@ If an aggregate integrity hash fails, Open can offer the newest valid SQL backup
 
 Write-permission failures leave the in-browser document dirty and show **Save failed**. Restore write permission to `data`, then press Save. Do not close the only dirty tab until Save succeeds or export/copy its data.
 
-### Driving mileage from Rogers
+### Driving mileage from Minneapolis (60-mile per-diem radius)
 
-Enter a complete job street address, city/state, and ZIP on Project Information. After the address change is committed, the app automatically requests a route; **Calculate route** retries on demand. It geocodes the destination, calculates the fastest driving route from the configured Rogers, Minnesota 55374 city-center point, converts route meters to miles, and rounds half-up to one decimal. The mileage remains manually editable.
+Enter a complete job street address, city/state, and ZIP on Project Information. After the address change is committed, the app automatically requests a route; **Calculate route** retries on demand. It geocodes the destination, calculates the fastest driving route from the configured Minneapolis, Minnesota city-center point, converts route meters to miles, and rounds half-up to one decimal. The mileage remains manually editable.
 
-The calculation stores the input and matched addresses, origin/destination coordinates, miles, route duration, providers, rounding rule, timestamp, and application-settings configuration ID. A repeated unchanged address uses the persisted result unless a manual retry is requested. Failures never erase the prior mileage. The lookup requires internet access and currently uses the U.S. Census Geocoder first, OpenStreetMap Nominatim as a rate-limited cached fallback, and OSRM for routing. Public-service availability is not guaranteed; configure self-hosted or contracted endpoints before broader/multi-user deployment. The default city-center origin is configurable and should be replaced with the exact approved Rogers departure location if mileage policy requires it.
+The calculation stores the input and matched addresses, origin/destination coordinates, miles, route duration, providers, rounding rule, timestamp, and application-settings configuration ID. A repeated unchanged address uses the persisted result unless a manual retry is requested. Failures never erase the prior mileage. The lookup requires internet access and currently uses the U.S. Census Geocoder first, OpenStreetMap Nominatim as a rate-limited cached fallback, and OSRM for routing. Public-service availability is not guaranteed; configure self-hosted or contracted endpoints before broader/multi-user deployment. The default city-center origin is configurable and should be replaced with the exact approved Minneapolis departure location if mileage policy requires it.
 
 ## Realistic test-project generator
 

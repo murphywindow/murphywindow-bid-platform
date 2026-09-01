@@ -103,7 +103,7 @@ def default_configuration(cost_code_reference: dict | None = None) -> dict:
             "SOV operating approval roles", "Closeout gates, approval, archive, and retention"
         ],
         "application_settings": {"autosave_seconds": 0, "autosave_debounce_ms": 250, "autosave_status": "confirmed_user_request", "backup_retention": 20, "default_port": 8765, "large_bid_threshold": None, "large_bid_threshold_status": "pending", "retention_days": None, "retention_status": "pending", "decimal_precision": default_decimal_precision(), "frame_square_footage_method": "per_frame_then_quantity",
-                                 "mileage": {"origin_label": "Rogers, Minnesota 55374 city center", "origin_latitude": "45.1888596", "origin_longitude": "-93.5524563", "origin_status": "owner_requested_city_origin_configurable", "geocoder_primary": "US Census Geocoder Public_AR_Current", "geocoder_fallback": "OpenStreetMap Nominatim public service", "router": "OSRM public routing service", "online_required": True, "rounding": "nearest 0.1 mile, ROUND_HALF_UP"}}
+                                 "mileage": {"origin_label": "Minneapolis, Minnesota city center", "origin_latitude": "44.9778", "origin_longitude": "-93.2650", "origin_status": "owner_requested_city_origin_configurable", "geocoder_primary": "US Census Geocoder Public_AR_Current", "geocoder_fallback": "OpenStreetMap Nominatim public service", "router": "OSRM public routing service", "online_required": True, "rounding": "nearest 0.1 mile, ROUND_HALF_UP"}}
     }
 
 
@@ -115,7 +115,7 @@ def new_project(name: str, actor: str, role: str, configuration_id: str = CONFIG
         "project": {
             "id": project_id, "revision": 0, "name": name, "abbreviation": "", "project_number": "", "mwd_po": "", "address": "",
             "address_street": "", "address_city": "", "address_state": "", "zip": "", "county": "", "address_match_metadata": None,
-            "miles_from_rogers": None, "project_type": "", "project_type_status": "missing", "building_type": "", "estimator": actor if role == "Estimator" else "",
+            "miles_from_minneapolis": None, "project_type": "", "project_type_status": "missing", "building_type": "", "estimator": actor if role == "Estimator" else "",
             "project_manager": "", "owner_name": "", "owner_organization_id": None, "owner_legal_name": "", "owner_address": "",
             "owner_website": "", "owner_phone": "", "owner_email": "", "architect": "", "architect_address": "", "engineer": "", "engineer_address": "", "general_contractor": "", "general_contractor_address": "",
             "construction_manager": "", "construction_manager_address": "", "plan_source": "", "contract_type": "", "contract_type_status": "missing", "wage_type": "Non-PW", "wage_type_status": "current", "addenda_count": 0, "walkthrough": None, "frame_sealant_colors": "",
@@ -169,8 +169,8 @@ def test_project(actor: str = "Test Estimator") -> dict:
     """Reusable local sandbox. Startup creates it once and never overwrites edits."""
     doc = new_project("MW Bid Platform Test Project", actor, "Estimator")
     doc["project"].update({
-        "id": SEED_TEST_PROJECT_ID, "project_number": "TEST-4320", "address": "Rogers, MN",
-        "address_city": "Rogers", "address_state": "MN", "project_type": "New Construction - Exterior Storefront", "project_type_status": "current", "building_type": "Commercial",
+        "id": SEED_TEST_PROJECT_ID, "project_number": "TEST-4320", "address": "Minneapolis, MN",
+        "address_city": "Minneapolis", "address_state": "MN", "project_type": "New Construction - Exterior Storefront", "project_type_status": "current", "building_type": "Commercial",
         "contract_type": "Bid to CM/GC", "contract_type_status": "current", "wage_type": "Non-PW", "wage_type_status": "current", "bid_due_date": "2026-09-01T14:00",
         "proposal_scope": "Test storefront and frame scope for learning the local bid workflow.",
         "proposal_exclusions": "Training data only. This is not a customer offer.", "notes": "Reusable sandbox seeded by the application. Safe to edit, duplicate, submit, and activate for testing."

@@ -55,7 +55,7 @@ PROJECT_PROFILES = [
 ]
 
 LOCATIONS = [
-    ("Rogers", "MN", "55374", 4, "Hennepin"), ("Elk River", "MN", "55330", 18, "Sherburne"),
+    ("Minneapolis", "MN", "55401", 4, "Hennepin"), ("Elk River", "MN", "55330", 18, "Sherburne"),
     ("Maple Grove", "MN", "55369", 15, "Hennepin"), ("Plymouth", "MN", "55446", 23, "Hennepin"),
     ("Brooklyn Park", "MN", "55443", 24, "Hennepin"), ("Minneapolis", "MN", "55401", 31, "Hennepin"),
     ("St. Paul", "MN", "55101", 43, "Ramsey"), ("Woodbury", "MN", "55125", 52, "Washington"),
@@ -156,7 +156,7 @@ def generate_test_project(config: dict, actor: str, role: str, seed: int | str |
 
     doc["project"].update({
         "project_number": project_number, "address": f"{street_number} {rng.choice(STREETS)}, {city}, {state}", "zip": zip_code,
-        "miles_from_rogers": miles, "project_type": profile["project_type"], "building_type": profile["building_type"],
+        "miles_from_minneapolis": miles, "project_type": profile["project_type"], "building_type": profile["building_type"],
         "project_type_status": "current", "contract_type": profile["contract_type"], "contract_type_status": "current",
         "owner_name": owner, "owner_address": f"100 Civic Plaza, {city}, {state} {zip_code}",
         "architect": architect, "engineer": engineer, "general_contractor": gc,

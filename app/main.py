@@ -868,7 +868,7 @@ def save_project(project_id: str, payload: dict = Body(...), x_override_token: s
             x_override_token, actor=actor, project_id=project_id, page="project"
         )
         require(role, "edit_estimate")
-        if incoming["project"].get("miles_from_rogers") != current["project"].get("miles_from_rogers") and not override_active:
+        if incoming["project"].get("miles_from_minneapolis") != current["project"].get("miles_from_minneapolis") and not override_active:
             raise DomainError("Drive miles are calculated from the selected address and are locked.", "calculated_field_locked")
         # Client editing never receives authority to mutate immutable/lifecycle collections.
         if incoming.get("project", {}).get("historical_proposal"):
@@ -1067,13 +1067,13 @@ def calculate_project_mileage(project_id: str, payload: dict = Body(default={}),
             calculate_driving_mileage(query, settings, destination=selected_destination)
             if selected_destination else calculate_driving_mileage(query, settings)
         )
-        prior = {"miles_from_rogers": doc["project"].get("miles_from_rogers"), "mileage_calculation": prior_result}
-        doc["project"]["miles_from_rogers"] = result["miles"]
+        prior = {"miles_from_minneapolis": doc["project"].get("miles_from_minneapolis"), "mileage_calculation": prior_result}
+        doc["project"]["miles_from_minneapolis"] = result["miles"]
         doc["project"]["mileage_calculation"] = {**result, "settings_configuration_id": latest_config["id"]}
         bump_bid_version(doc, "mileage_calculated")
         audit(doc, actor, role, "project_datapoint", project_id, "mileage_calculated", prior,
-              {"miles_from_rogers": result["miles"], "mileage_calculation": doc["project"]["mileage_calculation"]},
-              "Driving mileage calculated from job address to configured Rogers origin")
+              {"miles_from_minneapolis": result["miles"], "mileage_calculation": doc["project"]["mileage_calculation"]},
+              "Driving mileage calculated from job address to configured Minneapolis origin")
         saved = store.save_project(doc, expected)
         return {"project": redact(saved, role), "mileage": result, "cached": False}
     except MileageError as exc:

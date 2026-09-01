@@ -43,8 +43,8 @@ def test_driving_mileage_uses_census_then_osrm_and_rounds_to_one_decimal():
     assert result["miles"] == "12.4"
     assert result["duration_minutes"] == "30.0"
     assert result["geocoder"] == "US Census Geocoder Public_AR_Current"
-    assert result["origin"]["label"].startswith("Rogers")
-    assert client.calls[1][0].endswith("-93.5524563,45.1888596;-93.1,45.1")
+    assert result["origin"]["label"].startswith("Minneapolis")
+    assert client.calls[1][0].endswith("-93.2650,44.9778;-93.1,45.1")
 
 
 def test_nominatim_is_a_fallback_and_result_is_cached():
@@ -62,18 +62,18 @@ def test_nominatim_is_a_fallback_and_result_is_cached():
 
 def test_incomplete_address_is_rejected_without_a_request():
     with pytest.raises(MileageError, match="complete job address"):
-        calculate_driving_mileage("Rogers", client=FakeClient([]))
+        calculate_driving_mileage("Mpls", client=FakeClient([]))
 
 
 def test_address_search_returns_structured_census_results_and_echoes_request_id():
-    query = "321 Unique Census Search Avenue, Rogers MN"
+    query = "321 Unique Census Search Avenue, Minneapolis MN"
     client = FakeClient([{"result": {"addressMatches": [{
-        "matchedAddress": "321 UNIQUE CENSUS SEARCH AVE, ROGERS, MN, 55374",
+        "matchedAddress": "321 UNIQUE CENSUS SEARCH AVE, MINNEAPOLIS, MN, 55401",
         "coordinates": {"x": -93.55, "y": 45.18},
         "addressComponents": {
             "fromAddress": "321", "streetName": "UNIQUE CENSUS SEARCH",
-            "suffixType": "AVE", "city": "ROGERS", "state": "MN",
-            "zip": "55374", "county": "Hennepin",
+            "suffixType": "AVE", "city": "MINNEAPOLIS", "state": "MN",
+            "zip": "55401", "county": "Hennepin",
         },
     }]}}])
     result = search_addresses(query, limit=5, request_id="request-new", client=client)
@@ -82,10 +82,10 @@ def test_address_search_returns_structured_census_results_and_echoes_request_id(
     assert result["provider"].startswith("US Census")
     assert result["results"] == [{
         "id": result["results"][0]["id"],
-        "label": "321 Unique Census Search Ave., Rogers, MN 55374",
-        "matched_address": "321 Unique Census Search Ave., Rogers, MN 55374",
-        "street": "321 UNIQUE CENSUS SEARCH AVE", "city": "ROGERS",
-        "state": "MN", "zip": "55374", "county": "Hennepin",
+        "label": "321 Unique Census Search Ave., Minneapolis, MN 55401",
+        "matched_address": "321 Unique Census Search Ave., Minneapolis, MN 55401",
+        "street": "321 UNIQUE CENSUS SEARCH AVE", "city": "MINNEAPOLIS",
+        "state": "MN", "zip": "55401", "county": "Hennepin",
         "latitude": "45.18", "longitude": "-93.55",
         "provider": "US Census Geocoder Public_AR_Current", "attribution": None,
     }]
@@ -140,7 +140,7 @@ def test_mapping_connection_failure_is_actionable_and_does_not_leak_socket_detai
     monkeypatch.setattr("app.mileage._LAST_NOMINATIM_REQUEST", 0.0)
     with pytest.raises(MileageError) as caught:
         search_addresses(
-            "500 Network Test Avenue, Rogers, MN 55374",
+            "500 Network Test Avenue, Minneapolis, MN 55401",
             client=ConnectionBlockedClient(),
         )
     message = str(caught.value)

@@ -461,8 +461,8 @@ def test_health_static_and_project_crud_conflict(client):
     assert created.status_code == 200
     doc=created.json()["project"]; pid=doc["project"]["id"]
     assert client.get("/api/projects",headers=h()).json()["projects"][0]["id"] == pid
-    doc["project"]["address"]="Rogers"
-    saved=client.put(f"/api/projects/{pid}",headers=h(),json={"project":doc,"expected_revision":1,"changes":[{"path":"project.address","prior":"","new":"Rogers"},{"path":"project.notes","prior":"","new":"Two changes"}]})
+    doc["project"]["address"]="Minneapolis"
+    saved=client.put(f"/api/projects/{pid}",headers=h(),json={"project":doc,"expected_revision":1,"changes":[{"path":"project.address","prior":"","new":"Minneapolis"},{"path":"project.notes","prior":"","new":"Two changes"}]})
     assert saved.status_code == 200 and saved.json()["project"]["project"]["revision"] == 2
     assert saved.json()["project"]["project"]["bid_version"]["display"] == "B0.0.2"
     assert len([e for e in saved.json()["project"]["audit_events"] if e["operation"] == "data_point_change"]) == 2
@@ -983,9 +983,9 @@ def test_mileage_is_locked_except_for_scoped_administrator_session_override(clie
     })
     doc = create_project(client, "Session override contract")
     project_id = doc["project"]["id"]
-    doc["project"]["miles_from_rogers"] = "47.5"
+    doc["project"]["miles_from_minneapolis"] = "47.5"
     body = {"project": doc, "expected_revision": doc["project"]["revision"], "changes": [{
-        "path": "project.miles_from_rogers", "prior": None, "new": "47.5",
+        "path": "project.miles_from_minneapolis", "prior": None, "new": "47.5",
     }]}
     locked = client.put(f"/api/projects/{project_id}", headers=h(), json=body)
     assert locked.status_code == 422, locked.text
@@ -1000,7 +1000,7 @@ def test_mileage_is_locked_except_for_scoped_administrator_session_override(clie
         **h("Systems Administrator"), "X-Override-Token": token,
     }, json=body)
     assert saved.status_code == 200
-    assert saved.json()["project"]["project"]["miles_from_rogers"] == "47.5"
+    assert saved.json()["project"]["project"]["miles_from_minneapolis"] == "47.5"
     assert password not in saved.text
 
     client.delete("/api/session-overrides", headers={
@@ -1008,7 +1008,7 @@ def test_mileage_is_locked_except_for_scoped_administrator_session_override(clie
     })
     body["project"] = saved.json()["project"]
     body["expected_revision"] = body["project"]["project"]["revision"]
-    body["project"]["project"]["miles_from_rogers"] = "48.0"
+    body["project"]["project"]["miles_from_minneapolis"] = "48.0"
     relocked = client.put(f"/api/projects/{project_id}", headers={
         **h("Systems Administrator"), "X-Override-Token": token,
     }, json=body)
@@ -1264,14 +1264,14 @@ def test_mileage_command_persists_one_decimal_lineage_and_is_idempotently_cached
 
     monkeypatch.setattr(main, "calculate_driving_mileage", lambda address, settings: {
         "input_address": address, "matched_address": "100 MAIN STREET, MINNEAPOLIS, MN, 55401", "miles": "31.7",
-        "distance_meters": "51016.2", "duration_minutes": "38.4", "origin": {"label": "Rogers", "latitude": "45", "longitude": "-93"},
+        "distance_meters": "51016.2", "duration_minutes": "38.4", "origin": {"label": "Minneapolis", "latitude": "45", "longitude": "-93"},
         "destination": {"latitude": "44", "longitude": "-93"}, "geocoder": "Test geocoder", "router": "Test router",
         "attribution": None, "calculated_at": "2026-08-17T00:00:00+00:00", "rounding": "nearest 0.1 mile", "cache_hit": False,
     })
     result = client.post(f"/api/projects/{project_id}/mileage", headers=h(), json={"expected_revision": created["project"]["revision"]})
     assert result.status_code == 200
     doc = result.json()["project"]
-    assert doc["project"]["miles_from_rogers"] == "31.7"
+    assert doc["project"]["miles_from_minneapolis"] == "31.7"
     assert doc["project"]["mileage_calculation"]["matched_address"].startswith("100 MAIN")
     assert doc["project"]["bid_version"]["patch"] == 2
     assert any(event["operation"] == "mileage_calculated" for event in doc["audit_events"])

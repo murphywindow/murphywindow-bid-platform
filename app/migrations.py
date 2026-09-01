@@ -517,6 +517,11 @@ def migrate_project_document(
     # Additive proposal-history containers do not rewrite legacy evidence.
     result.setdefault("proposal_history", [])
     result.setdefault("working_branch", None)
+    project = result.setdefault("project", {})
+    if "miles_from_minneapolis" not in project:
+        project["miles_from_minneapolis"] = project.pop("miles_from_rogers", None)
+    else:
+        project.pop("miles_from_rogers", None)
     return result
 
 

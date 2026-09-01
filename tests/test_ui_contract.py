@@ -1899,7 +1899,7 @@ def test_project_address_has_dynamic_route_mileage_and_manual_override():
     assert "data-calculate-mileage" in source
     assert "queueMileageCalculation" in source
     assert "/mileage`" in source
-    assert 'data-path="project.miles_from_rogers"' in source
+    assert 'data-path="project.miles_from_minneapolis"' in source
     assert "mileageInput.value=result.mileage.miles" in source
     assert 'step="0.1"' in source
     assert "item.label||item.matched_address" in source

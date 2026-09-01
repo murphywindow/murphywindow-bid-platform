@@ -30,7 +30,7 @@ The 2.1 web contract now confirms Project Type, Contract Type, Wage Type, local 
 10. Equipment duration semantics and certain DRS-to-BID lineage.
 11. SOV role, approval, underallocation treatment, and rounding policy beyond reconciliation.
 12. Closeout gates, final approval, exceptions, archive location, and retention period.
-13. Exact approved Rogers mileage origin, route-provider service level, and whether travel policy uses one-way, round-trip, or another mileage basis.
+13. Exact approved Minneapolis mileage origin, route-provider service level, and whether travel policy uses one-way, round-trip, or another mileage basis.
 14. A controlled Design Labor rate and its source/effective-date authority.
 15. The authoritative Door/Hardware monetary route into Bid, including cost code, tax, and markup treatment.
 16. Whether Installation Materials should receive a distinct controlled markup; until confirmed, the web contract explicitly inherits Base Product markup.

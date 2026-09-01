@@ -19,9 +19,9 @@ METERS_PER_MILE = Decimal("1609.344")
 USER_AGENT = "MurphyWindowBidPlatform/1.0 (local estimating mileage lookup)"
 
 DEFAULT_SETTINGS = {
-    "origin_label": "Rogers, Minnesota 55374 city center",
-    "origin_latitude": "45.1888596",
-    "origin_longitude": "-93.5524563",
+    "origin_label": "Minneapolis, Minnesota city center",
+    "origin_latitude": "44.9778",
+    "origin_longitude": "-93.2650",
     "origin_status": "owner_requested_city_origin_configurable",
     "geocoder_primary": "US Census Geocoder Public_AR_Current",
     "geocoder_fallback": "OpenStreetMap Nominatim public service",
@@ -312,7 +312,7 @@ def calculate_driving_mileage(
     address: str, settings: dict | None = None, *, client: httpx.Client | None = None,
     destination: dict | None = None,
 ) -> dict:
-    """Geocode one job address and return fastest-route mileage from configured Rogers origin."""
+    """Geocode one job address and return fastest-route mileage from the configured Minneapolis origin."""
     query = " ".join(str(address or "").split())
     if len(query) < 8:
         raise MileageError("Enter a complete job address before calculating drive mileage.")

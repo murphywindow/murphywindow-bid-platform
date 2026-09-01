@@ -18,7 +18,7 @@ def legacy_document():
             "contract_type": "Negotiated lump sum",
             "prevailing_wage_required": False,
             "bid_due_date": "2026-09-01",
-            "address": "100 Main Street, Rogers, MN 55374",
+            "address": "100 Main Street, Minneapolis, MN 55401",
         },
         "contacts": [{"id": "con_legacy", "name": "Alex", "organization": "Steinier"}],
         "cost_codes": [{"id": "ccd_legacy", "code": "08 41 13"}],
